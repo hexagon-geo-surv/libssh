@@ -616,3 +616,34 @@ coverity:
     when: on_failure
     paths:
       - obj/cov-int/*.txt
+
+###############################################################################
+#                                  MacOS                                      #
+###############################################################################
+# snippet for running libssh tests on macOS SaaS runners.
+.macos_test_template:
+  tags:
+    - saas-macos-medium-m1
+  image: macos-14-xcode-15
+  variables:
+    GIT_STRATEGY: fetch
+
+
+libssh-tests-macos:
+  extends: .macos_test_template
+  stage: test
+  before_script:
+    - echo "Building before running libssh tests on macOS"
+    - brew update
+    - brew install cmake
+    - brew install openssl
+    - mkdir build && cd build
+  script:
+    - cmake -DOPENSSL_ROOT_DIR=`brew --prefix openssl` ..
+    - make -j$(sysctl -n hw.logicalcpu)
+    - make test
+  only:
+    - branches
+    - tags
+  except:
+    - schedules

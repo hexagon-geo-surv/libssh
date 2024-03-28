@@ -637,13 +637,10 @@ libssh-tests-macos:
     - brew update
     - brew install cmake
     - brew install openssl
-    - mkdir build && cd build || exit 1
+    - mkdir build && cd build
   script:
     - cmake -DOPENSSL_ROOT_DIR=`brew --prefix openssl` ..
-    - make -j$(sysctl -n hw.logicalcpu)
+    - make
     - make test
-  only:
-    - branches
-    - tags
   except:
     - schedules

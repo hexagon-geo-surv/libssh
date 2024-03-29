@@ -621,26 +621,35 @@ coverity:
 #                                  MacOS                                      #
 ###############################################################################
 # snippet for running libssh tests on macOS SaaS runners.
-.macos_test_template:
+.macos:
   tags:
     - saas-macos-medium-m1
   image: macos-14-xcode-15
-  variables:
-    GIT_STRATEGY: fetch
-
-
-libssh-tests-macos:
-  extends: .macos_test_template
-  stage: test
   before_script:
-    - echo "Building before running libssh tests on macOS"
+    - echo "MacOS runner started"
     - brew update
     - brew install cmake
     - brew install openssl
-    - mkdir build && cd build
+
+.macos-m1/build:
+  extends: .macos
+  variables:
+    CMAKE_DEFAULT_OPTIONS: "-DCMAKE_BUILD_TYPE=RelWithDebInfo -DPICKY_DEVELOPER=ON"
+    CMAKE_BUILD_OPTIONS: "-DWITH_BLOWFISH_CIPHER=ON -DWITH_SFTP=ON -DWITH_SERVER=ON -DWITH_ZLIB=ON -DWITH_PCAP=ON -DWITH_DEBUG_CRYPTO=ON -DWITH_DEBUG_PACKET=ON -DWITH_DEBUG_CALLTRACE=ON"
+    CMAKE_TEST_OPTIONS: "-DUNIT_TESTING=ON -DCLIENT_TESTING=ON -DSERVER_TESTING=ON -DWITH_BENCHMARKS=ON -DFUZZ_TESTING=ON"
+    CMAKE_OPTIONS: $CMAKE_DEFAULT_OPTIONS $CMAKE_BUILD_OPTIONS $CMAKE_TEST_OPTIONS
+  stage: build
   script:
-    - cmake -DOPENSSL_ROOT_DIR=`brew --prefix openssl` ..
-    - make
-    - make test
+    - mkdir -p build && cd build
+    - cmake $CMAKE_OPTIONS ..
+    - make -j$(sysctl -n hw.logicalcpu) && make -j$(sysctl -n hw.logicalcpu) install
+
+macos-m1/tests:
+  extends: .macos-m1/build
+  stage: test
+  script:
+    - cmake $CMAKE_OPTIONS .. &&
+      make -j$(sysctl -n hw.logicalcpu) &&
+      ctest --output-on-failure
   except:
     - schedules

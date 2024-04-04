@@ -630,6 +630,7 @@ coverity:
     - brew update
     - brew install cmake
     - brew install openssl
+    - mkdir obj && cd obj
 
 .macos-m1/build:
   extends: .macos
@@ -640,7 +641,6 @@ coverity:
     CMAKE_OPTIONS: $CMAKE_DEFAULT_OPTIONS $CMAKE_BUILD_OPTIONS $CMAKE_TEST_OPTIONS
   stage: build
   script:
-    - mkdir -p build && cd build
     - cmake $CMAKE_OPTIONS ..
     - make -j$(sysctl -n hw.logicalcpu) && make -j$(sysctl -n hw.logicalcpu) install
 

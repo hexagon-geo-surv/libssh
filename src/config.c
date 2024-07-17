@@ -155,6 +155,8 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"xauthlocation", SOC_NA, true},
     {"pubkeyacceptedkeytypes", SOC_PUBKEYACCEPTEDKEYTYPES, true},
     {"requiredrsasize", SOC_REQUIRED_RSA_SIZE, true},
+    {"gssapikeyexchange", SOC_GSSAPIKEYEXCHANGE, true},
+    {"gssapikexalgorithms", SOC_GSSAPIKEXALGORITHMS, true},
     {NULL, SOC_UNKNOWN, false},
 };
 
@@ -1555,6 +1557,23 @@ static int ssh_config_parse_line_internal(ssh_session session,
         CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
         if (*parsing) {
             ssh_options_set(session, SSH_OPTIONS_CERTIFICATE, p);
+        }
+        break;
+    case SOC_GSSAPIKEYEXCHANGE: {
+        bool b = false;
+        i = ssh_config_get_yesno(&s, -1);
+        CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
+        if (*parsing) {
+            bool b = (i == 1) ? true : false;
+            ssh_options_set(session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &b);
+        }
+        break;
+    }
+    case SOC_GSSAPIKEXALGORITHMS:
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        if (*parsing) {
+            ssh_options_set(session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS, p);
         }
         break;
     case SOC_REQUIRED_RSA_SIZE:

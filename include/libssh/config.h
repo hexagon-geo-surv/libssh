@@ -69,6 +69,8 @@ enum ssh_config_opcode_e {
     SOC_CERTIFICATE,
     SOC_REQUIRED_RSA_SIZE,
     SOC_ADDRESSFAMILY,
+    SOC_GSSAPIKEYEXCHANGE,
+    SOC_GSSAPIKEXALGORITHMS,
 
     SOC_MAX /* Keep this one last in the list */
 };

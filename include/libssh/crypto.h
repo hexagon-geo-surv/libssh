@@ -95,6 +95,10 @@ enum ssh_key_exchange_e {
     /* mlkem1024nistp384-sha384 */
     SSH_KEX_MLKEM1024NISTP384_SHA384,
 #endif /* HAVE_MLKEM */
+    /* gss-group14-sha256-* */
+    SSH_GSS_KEX_DH_GROUP14_SHA256,
+    /* gss-group16-sha512-* */
+    SSH_GSS_KEX_DH_GROUP16_SHA512,
 };
 
 enum ssh_cipher_e {

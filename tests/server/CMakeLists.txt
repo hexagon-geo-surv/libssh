@@ -19,7 +19,8 @@ if (WITH_GSSAPI AND GSSAPI_FOUND AND GSSAPI_TESTING)
         ${LIBSSH_SERVER_TESTS}
         torture_gssapi_server_auth
         torture_gssapi_server_auth_cb
-        torture_gssapi_server_delegation)
+        torture_gssapi_server_delegation
+        torture_gssapi_server_key_exchange)
 endif()
 
 include_directories(${libssh_SOURCE_DIR}/include

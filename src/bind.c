@@ -386,6 +386,7 @@ void ssh_bind_free(ssh_bind sshbind){
   SAFE_FREE(sshbind->rsakey);
   SAFE_FREE(sshbind->ecdsakey);
   SAFE_FREE(sshbind->ed25519key);
+  SAFE_FREE(sshbind->gssapi_key_exchange_algs);
 
   ssh_key_free(sshbind->rsa);
   sshbind->rsa = NULL;
@@ -463,6 +464,15 @@ int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd)
     }
 
     session->common.log_verbosity = sshbind->common.log_verbosity;
+    session->opts.gssapi_key_exchange = sshbind->gssapi_key_exchange;
+
+    if (sshbind->gssapi_key_exchange_algs != NULL) {
+        session->opts.gssapi_key_exchange_algs = strdup(sshbind->gssapi_key_exchange_algs);
+        if (session->opts.gssapi_key_exchange_algs == NULL) {
+            ssh_set_error_oom(sshbind);
+            return SSH_ERROR;
+        }
+    }
 
     if (sshbind->banner != NULL) {
         session->server_opts.custombanner = strdup(sshbind->banner);

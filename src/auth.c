@@ -45,6 +45,7 @@
 #include "libssh/pki.h"
 #include "libssh/gssapi.h"
 #include "libssh/legacy.h"
+#include "libssh/gssapi.h"
 
 /**
  * @defgroup libssh_auth The SSH authentication functions
@@ -88,6 +89,7 @@ static int ssh_auth_response_termination(void *user)
         case SSH_AUTH_STATE_GSSAPI_REQUEST_SENT:
         case SSH_AUTH_STATE_GSSAPI_TOKEN:
         case SSH_AUTH_STATE_GSSAPI_MIC_SENT:
+        case SSH_AUTH_STATE_GSSAPI_KEYEX_MIC_SENT:
         case SSH_AUTH_STATE_PUBKEY_AUTH_SENT:
         case SSH_AUTH_STATE_PUBKEY_OFFER_SENT:
         case SSH_AUTH_STATE_PASSWORD_AUTH_SENT:
@@ -120,6 +122,9 @@ static const char *ssh_auth_get_current_method(ssh_session session)
         break;
     case SSH_AUTH_METHOD_GSSAPI_MIC:
         method = "gssapi";
+        break;
+    case SSH_AUTH_METHOD_GSSAPI_KEYEX:
+        method = "gssapi-keyex";
         break;
     default:
         break;
@@ -175,6 +180,7 @@ static int ssh_userauth_get_response(ssh_session session)
         case SSH_AUTH_STATE_GSSAPI_REQUEST_SENT:
         case SSH_AUTH_STATE_GSSAPI_TOKEN:
         case SSH_AUTH_STATE_GSSAPI_MIC_SENT:
+        case SSH_AUTH_STATE_GSSAPI_KEYEX_MIC_SENT:
         case SSH_AUTH_STATE_PUBKEY_OFFER_SENT:
         case SSH_AUTH_STATE_PUBKEY_AUTH_SENT:
         case SSH_AUTH_STATE_PASSWORD_AUTH_SENT:
@@ -271,6 +277,9 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_failure) {
     }
     if (strstr(auth_methods, "gssapi-with-mic") != NULL) {
         session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_MIC;
+    }
+    if (strstr(auth_methods, "gssapi-keyex") != NULL) {
+        session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_KEYEX;
     }
 
 end:
@@ -2434,6 +2443,132 @@ int ssh_userauth_gssapi(ssh_session session)
         session->pending_call_state = SSH_PENDING_CALL_NONE;
         return rc;
     }
+
+pending:
+    rc = ssh_userauth_get_response(session);
+    if (rc != SSH_AUTH_AGAIN) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
+    }
+#else
+    (void) session; /* unused */
+#endif
+    return rc;
+}
+
+/**
+ * @brief Try to authenticate through the "gssapi-with-keyex" method.
+ *
+ * @param[in] session The ssh session to use.
+ *
+ * @returns
+ *   - `SSH_AUTH_ERROR`:   A serious error happened.
+ *   - `SSH_AUTH_DENIED`:  Authentication failed : use another method.
+ *   - `SSH_AUTH_PARTIAL`: You've been partially authenticated, you still
+ *                         have to use another method.
+ *   - `SSH_AUTH_SUCCESS`: Authentication success.
+ *   - `SSH_AUTH_AGAIN`:   In nonblocking mode, you've got to call this again
+ *                         later.
+ */
+int ssh_userauth_gssapi_keyex(ssh_session session)
+{
+    int rc = SSH_AUTH_DENIED;
+#ifdef WITH_GSSAPI
+    ssh_buffer buf = ssh_buffer_new();
+    gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
+    OM_uint32 maj_stat, min_stat;
+    gss_buffer_desc mic_token_buf = GSS_C_EMPTY_BUFFER;
+
+    switch(session->pending_call_state) {
+    case SSH_PENDING_CALL_NONE:
+        break;
+    case SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX:
+        goto pending;
+    default:
+        ssh_set_error(session,
+                SSH_FATAL,
+                "Wrong state (%d) during pending SSH call",
+                session->pending_call_state);
+        return SSH_ERROR;
+    }
+
+    /* Check if GSSAPI Key exchange was performed */
+    switch (session->current_crypto->kex_type) {
+        case SSH_GSS_KEX_DH_GROUP14_SHA256:
+        case SSH_GSS_KEX_DH_GROUP16_SHA512:
+            break;
+        default:
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key exchange.");
+            return SSH_ERROR;
+    }
+
+    rc = ssh_userauth_request_service(session);
+    if (rc == SSH_AGAIN) {
+        return SSH_AUTH_AGAIN;
+    } else if (rc == SSH_ERROR) {
+        return SSH_AUTH_ERROR;
+    }
+    SSH_LOG(SSH_LOG_DEBUG, "Authenticating with gssapi-with-keyex");
+
+    session->auth.current_method = SSH_AUTH_METHOD_GSSAPI_KEYEX;
+    session->auth.state = SSH_AUTH_STATE_NONE;
+    session->pending_call_state = SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX;
+
+    rc = ssh_buffer_pack(buf,
+                         "dPbsss",
+                         session->current_crypto->session_id_len,
+                         session->current_crypto->session_id_len,
+                         session->current_crypto->session_id,
+                         SSH2_MSG_USERAUTH_REQUEST,
+                         session->opts.username,
+                         "ssh-connection",
+                         "gssapi-keyex");
+    if (rc != SSH_OK) {
+        ssh_set_error_oom(session);
+        session->auth.state = SSH_AUTH_STATE_NONE;
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
+        return rc;
+    }
+
+    mic_buf.length = ssh_buffer_get_len(buf);
+    mic_buf.value = ssh_buffer_get(buf);
+
+    maj_stat = gss_get_mic(&min_stat,session->gssapi->ctx, GSS_C_QOP_DEFAULT,
+                           &mic_buf, &mic_token_buf);
+    if (GSS_ERROR(maj_stat)) {
+        ssh_gssapi_log_error(SSH_LOG_DEBUG,
+                             "generating MIC",
+                             maj_stat,
+                             min_stat);
+        session->auth.state = SSH_AUTH_STATE_NONE;
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
+        return SSH_ERROR;
+    }
+    SSH_BUFFER_FREE(buf);
+
+    rc = ssh_buffer_pack(session->out_buffer,
+                         "bsssdP",
+                         SSH2_MSG_USERAUTH_REQUEST,
+                         session->opts.username,
+                         "ssh-connection",
+                         "gssapi-keyex",
+                         mic_token_buf.length,
+                         (size_t)mic_token_buf.length,
+                         mic_token_buf.value);
+    if (rc != SSH_OK) {
+        ssh_set_error_oom(session);
+        session->auth.state = SSH_AUTH_STATE_NONE;
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
+        gss_release_buffer(&min_stat, &mic_token_buf);
+        return rc;
+    }
+
+    gss_release_buffer(&min_stat, &mic_token_buf);
+
+    session->auth.state = SSH_AUTH_STATE_GSSAPI_KEYEX_MIC_SENT;
+
+    ssh_packet_send(session);
 
 pending:
     rc = ssh_userauth_get_response(session);

@@ -256,6 +256,70 @@
 # krb5_mcc_generate_new allocates a hashtab on a static global variable
 # It doesn't get freed.
 {
+   Reachable memory from getaddrinfo
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:malloc
+   fun:strdup
+   fun:_dl_load_cache_lookup
+   fun:_dl_map_object
+   fun:dl_open_worker_begin
+   fun:_dl_catch_exception
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   fun:_dl_open
+   fun:do_dlopen
+   fun:_dl_catch_exception
+   fun:_dl_catch_error
+   fun:dlerror_run
+   ...
+   fun:getaddrinfo
+   ...
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+   ...
+   fun:ssh_userauth_gssapi
+   fun:torture_gssapi_auth_server_identity
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+
+{
+   Reachable memory from getaddrinfo
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:UnknownInlinedFun
+   fun:_dl_new_object
+   fun:_dl_map_object_from_fd
+   fun:_dl_map_object
+   fun:dl_open_worker_begin
+   fun:_dl_catch_exception
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   fun:_dl_open
+   fun:do_dlopen
+   fun:_dl_catch_exception
+   fun:_dl_catch_error
+   fun:dlerror_run
+   ...
+   fun:getaddrinfo
+   ...
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+   ...
+   fun:ssh_userauth_gssapi
+   fun:torture_gssapi_auth_server_identity
+   ...
+   fun:_cmocka_run_group_tests
+   fun:torture_run_tests
+   fun:main
+}
+
+{
    Reachable memory from libkrb5
    Memcheck:Leak
    match-leak-kinds: reachable

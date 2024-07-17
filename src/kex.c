@@ -49,6 +49,8 @@
 #include "libssh/pki.h"
 #include "libssh/bignum.h"
 #include "libssh/token.h"
+#include "libssh/gssapi.h"
+#include "libssh/dh-gss.h"
 
 #ifdef HAVE_BLOWFISH
 # define BLOWFISH ",blowfish-cbc"
@@ -806,6 +808,32 @@ int ssh_set_client_kex(ssh_session session)
         ssh_set_error(session, SSH_FATAL, "PRNG error");
         return SSH_ERROR;
     }
+#ifdef WITH_GSSAPI
+    if (session->opts.gssapi_key_exchange) {
+        char *gssapi_algs = NULL;
+
+        ok = ssh_gssapi_init(session);
+        if (ok != SSH_OK) {
+            ssh_set_error_oom(session);
+            return SSH_ERROR;
+        }
+
+        ok = ssh_gssapi_import_name(session->gssapi, session->opts.host);
+        if (ok != SSH_OK) {
+            return SSH_ERROR;
+        }
+
+        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs ? session->opts.gssapi_key_exchange_algs : GSSAPI_KEY_EXCHANGE_SUPPORTED);
+        if (gssapi_algs == NULL) {
+            return SSH_ERROR;
+        }
+
+        /* Prefix the default algorithms with gsskex algs */
+        session->opts.wanted_methods[SSH_KEX] =
+            ssh_prefix_without_duplicates(default_methods[SSH_KEX], gssapi_algs);
+        SAFE_FREE(gssapi_algs);
+    }
+#endif
 
     /* Set the list of allowed algorithms in order of preference, if it hadn't
      * been set yet. */
@@ -910,6 +938,10 @@ kex_select_kex_type(const char *kex)
 {
     if (strcmp(kex, "diffie-hellman-group1-sha1") == 0) {
         return SSH_KEX_DH_GROUP1_SHA1;
+    } else if (strncmp(kex, "gss-group14-sha256-", 19) == 0) {
+        return SSH_GSS_KEX_DH_GROUP14_SHA256;
+    } else if (strncmp(kex, "gss-group16-sha512-", 19) == 0) {
+        return SSH_GSS_KEX_DH_GROUP16_SHA512;
     } else if (strcmp(kex, "diffie-hellman-group14-sha1") == 0) {
         return SSH_KEX_DH_GROUP14_SHA1;
     } else if (strcmp(kex, "diffie-hellman-group14-sha256") == 0) {
@@ -966,6 +998,12 @@ static void revert_kex_callbacks(ssh_session session)
     case SSH_KEX_DH_GROUP16_SHA512:
     case SSH_KEX_DH_GROUP18_SHA512:
         ssh_client_dh_remove_callbacks(session);
+        break;
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
+#ifdef WITH_GSSAPI
+        ssh_client_gss_dh_remove_callbacks(session);
+#endif /* WITH_GSSAPI */
         break;
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:
@@ -1436,6 +1474,23 @@ int ssh_make_sessionid(ssh_session session)
         goto error;
     }
 
+    if (server_pubkey_blob == NULL && session->opts.gssapi_key_exchange) {
+        ssh_string_free(server_pubkey_blob);
+        server_pubkey_blob = ssh_string_new(0);
+    }
+
+    if (session->server) {
+        switch (session->next_crypto->kex_type) {
+        case SSH_GSS_KEX_DH_GROUP14_SHA256:
+        case SSH_GSS_KEX_DH_GROUP16_SHA512:
+            ssh_string_free(server_pubkey_blob);
+            server_pubkey_blob = ssh_string_new(0);
+            break;
+        default:
+            break;
+        }
+    }
+
     rc = ssh_buffer_pack(buf,
                          "dPdPS",
                          ssh_buffer_get_len(client_hash),
@@ -1457,7 +1512,9 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_DH_GROUP1_SHA1:
     case SSH_KEX_DH_GROUP14_SHA1:
     case SSH_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_KEX_DH_GROUP16_SHA512:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
     case SSH_KEX_DH_GROUP18_SHA512:
         rc = ssh_dh_keypair_get_keys(session->next_crypto->dh_ctx,
                                      DH_CLIENT_KEYPAIR, NULL, &client_pubkey);
@@ -1651,6 +1708,7 @@ int ssh_make_sessionid(ssh_session session)
                                    session->next_crypto->secret_hash);
         break;
     case SSH_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_KEX_ECDH_SHA2_NISTP256:
     case SSH_KEX_CURVE25519_SHA256:
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
@@ -1686,6 +1744,7 @@ int ssh_make_sessionid(ssh_session session)
                                      session->next_crypto->secret_hash);
         break;
     case SSH_KEX_DH_GROUP16_SHA512:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
     case SSH_KEX_DH_GROUP18_SHA512:
     case SSH_KEX_ECDH_SHA2_NISTP521:
     case SSH_KEX_SNTRUP761X25519_SHA512:

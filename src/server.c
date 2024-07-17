@@ -60,6 +60,7 @@
 #include "libssh/options.h"
 #include "libssh/curve25519.h"
 #include "libssh/token.h"
+#include "libssh/gssapi.h"
 
 #define set_status(session, status) do {\
         if (session->common.callbacks && session->common.callbacks->connect_status_function) \
@@ -98,6 +99,9 @@ int server_set_kex(ssh_session session)
     enum ssh_keytypes_e keytype;
     size_t len;
     int ok;
+#ifdef WITH_GSSAPI
+    char *gssapi_algs = NULL;
+#endif /* WITH_GSSAPI */
 
     /* Skip if already set, for example for the rekey or when we do the guessing
      * it could have been already used to make some protocol decisions. */
@@ -168,6 +172,28 @@ int server_set_kex(ssh_session session)
     if (rc < 0) {
         return -1;
     }
+
+#ifdef WITH_GSSAPI
+    if (session->opts.gssapi_key_exchange) {
+        ok = ssh_gssapi_init(session);
+        if (ok != SSH_OK) {
+            ssh_set_error_oom(session);
+            return SSH_ERROR;
+        }
+
+        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs ? session->opts.gssapi_key_exchange_algs : GSSAPI_KEY_EXCHANGE_SUPPORTED);
+        if (gssapi_algs == NULL) {
+            return SSH_ERROR;
+        }
+        ssh_gssapi_free(session);
+
+        /* Prefix the default algorithms with gsskex algs */
+        session->opts.wanted_methods[SSH_KEX] =
+            ssh_prefix_without_duplicates(ssh_kex_get_default_methods(SSH_KEX), gssapi_algs);
+
+        SAFE_FREE(gssapi_algs);
+    }
+#endif /* WITH_GSSAPI */
 
     for (i = 0; i < SSH_KEX_METHODS; i++) {
         wanted = session->opts.wanted_methods[i];

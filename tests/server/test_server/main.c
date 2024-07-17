@@ -295,6 +295,7 @@ static int init_server_state(struct server_state_st *state,
     }
 
     state->parse_global_config = arguments->with_global_config;
+    state->gssapi_key_exchange_algs = NULL;
 
     if (arguments->config_file) {
         state->config_file = arguments->config_file;

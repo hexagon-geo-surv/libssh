@@ -41,6 +41,11 @@
 #include "libssh/priv.h"
 #include "libssh/session.h"
 #include <sys/types.h>
+#include "libssh/misc.h"
+#include "libssh/options.h"
+#include "libssh/config_parser.h"
+#include "libssh/gssapi.h"
+#include "libssh/token.h"
 #ifdef WITH_SERVER
 #include "libssh/server.h"
 #include "libssh/bind.h"
@@ -559,6 +564,16 @@ int ssh_options_set_algo(ssh_session session,
  *              - SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS
  *                Set it to specify that GSSAPI should delegate credentials
  *                to the server (int, 0 = false).
+ *
+ *              - SSH_OPTIONS_GSSAPI_KEY_EXCHANGE
+ *                Set to true to do GSSAPI key exchange (bool).
+ *
+ *              - SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS
+ *                Set the GSSAPI key exchange method to be used (const char *,
+ *                comma-separated list). ex:
+ *                "gss-group14-sha256-,gss-group16-sha512-"
+ *                These will prefix the default algorithms if
+ *                SSH_OPTIONS_GSSAPI_KEY_EXCHANGE is true.
  *
  *              - SSH_OPTIONS_PASSWORD_AUTH
  *                Set it if password authentication should be used
@@ -1240,6 +1255,40 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 session->opts.gss_delegate_creds = (x & 0xff);
             }
             break;
+#ifdef WITH_GSSAPI
+        case SSH_OPTIONS_GSSAPI_KEY_EXCHANGE:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                bool *x = (bool *)value;
+                rc = ssh_gssapi_check_client_config(session);
+                if (rc == SSH_OK) {
+                    session->opts.gssapi_key_exchange = *x;
+                } else {
+                    SSH_LOG(SSH_LOG_WARN, "Disabled GSSAPI key exchange");
+                    session->opts.gssapi_key_exchange = false;
+                }
+            }
+            break;
+        case SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS:
+            v = value;
+            if (v == NULL || v[0] == '\0') {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                /* Check if algorithms are supported */
+                char *ret = ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, v);
+                if (ret == NULL) {
+                    ssh_set_error(session,
+                                  SSH_FATAL,
+                                  "GSSAPI key exchange algorithms not supported or invalid");
+                    return -1;
+                }
+                session->opts.gssapi_key_exchange_algs = ret;
+            }
+            break;
+#endif
         case SSH_OPTIONS_PASSWORD_AUTH:
         case SSH_OPTIONS_PUBKEY_AUTH:
         case SSH_OPTIONS_KBDINT_AUTH:
@@ -2277,6 +2326,14 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                        Default is 3072 bits or 2048 bits in FIPS mode.
  *                        (int)
  *
+ *                      - SSH_BIND_OPTIONS_GSSAPI_KEY_EXCHANGE
+ *                        Set true to enable GSSAPI key exchange,
+ *                        false to disable GSSAPI key exchange. (bool)
+ *
+ *                      - SSH_BIND_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS
+ *                        Set the GSSAPI key exchange method to be used (const char *,
+ *                        comma-separated list). ex:
+ *                        "gss-group14-sha256-,gss-group16-sha512-"
  *
  * @param  value        The value to set. This is a generic pointer and the
  *                      datatype which should be used is described at the
@@ -2674,6 +2731,34 @@ ssh_bind_options_set(ssh_bind sshbind,
             sshbind->rsa_min_size = *x;
         }
         break;
+#ifdef WITH_GSSAPI
+    case SSH_BIND_OPTIONS_GSSAPI_KEY_EXCHANGE:
+        if (value == NULL) {
+            ssh_set_error_invalid(sshbind);
+            return -1;
+        } else {
+            bool *x = (bool *)value;
+            sshbind->gssapi_key_exchange = *x;
+        }
+        break;
+    case SSH_BIND_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS:
+        if (value == NULL) {
+            ssh_set_error_invalid(sshbind);
+            return -1;
+        } else {
+            char *ret = NULL;
+            SAFE_FREE(sshbind->gssapi_key_exchange_algs);
+            ret = ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, value);
+            if (ret == NULL) {
+                ssh_set_error(sshbind,
+                              SSH_REQUEST_DENIED,
+                              "GSSAPI key exchange algorithms not supported or invalid");
+                return -1;
+            }
+            sshbind->gssapi_key_exchange_algs = ret;
+        }
+        break;
+#endif /* WITH_GSSAPI */
     default:
         ssh_set_error(sshbind,
                       SSH_REQUEST_DENIED,

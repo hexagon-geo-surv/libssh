@@ -52,6 +52,7 @@ typedef struct ssh_kbdint_struct* ssh_kbdint;
 ssh_kbdint ssh_kbdint_new(void);
 void ssh_kbdint_clean(ssh_kbdint kbd);
 void ssh_kbdint_free(ssh_kbdint kbd);
+int ssh_userauth_gssapi_keyex(ssh_session session);
 
 /** @internal
  * States of authentication in the client-side. They describe
@@ -88,6 +89,8 @@ enum ssh_auth_state_e {
   SSH_AUTH_STATE_PASSWORD_AUTH_SENT,
   /** We have sent a request without auth information (method 'none') */
   SSH_AUTH_STATE_AUTH_NONE_SENT,
+  /** We have sent the MIC and expecting to be authenticated */
+  SSH_AUTH_STATE_GSSAPI_KEYEX_MIC_SENT,
 };
 
 /** @internal

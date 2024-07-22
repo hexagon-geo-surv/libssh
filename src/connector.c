@@ -381,14 +381,12 @@ ssh_connector_fd_out_cb(ssh_connector connector)
  *
  * @returns 0
  */
-static int ssh_connector_fd_cb(ssh_poll_handle p,
+static int ssh_connector_fd_cb(UNUSED_PARAM(ssh_poll_handle p),
                                socket_t fd,
                                int revents,
                                void *userdata)
 {
     ssh_connector connector = userdata;
-
-    (void)p;
 
     if (revents & POLLERR) {
         ssh_connector_except(connector, fd);
@@ -419,7 +417,7 @@ static int ssh_connector_fd_cb(ssh_poll_handle p,
  * @returns Amount of data bytes consumed
  */
 static int ssh_connector_channel_data_cb(ssh_session session,
-                                         ssh_channel channel,
+                                         UNUSED_PARAM(ssh_channel channel),
                                          void *data,
                                          uint32_t len,
                                          int is_stderr,
@@ -428,10 +426,6 @@ static int ssh_connector_channel_data_cb(ssh_session session,
     ssh_connector connector = userdata;
     int w;
     uint32_t window;
-
-    (void) session;
-    (void) channel;
-    (void) is_stderr;
 
     SSH_LOG(SSH_LOG_TRACE,"connector data on channel");
 
@@ -510,10 +504,11 @@ static int ssh_connector_channel_data_cb(ssh_session session,
  *
  * @returns Amount of data bytes consumed
  */
-static int ssh_connector_channel_write_wontblock_cb(ssh_session session,
-                                                    ssh_channel channel,
-                                                    uint32_t bytes,
-                                                    void *userdata)
+static int
+ssh_connector_channel_write_wontblock_cb(ssh_session session,
+                                         UNUSED_PARAM(ssh_channel channel),
+                                         uint32_t bytes,
+                                         void *userdata)
 {
     ssh_connector connector = userdata;
     uint8_t buffer[CHUNKSIZE];

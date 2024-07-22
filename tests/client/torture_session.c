@@ -97,7 +97,7 @@ static void torture_channel_read_error(void **state) {
     rc = ssh_channel_request_exec(channel, "hexdump -C /dev/urandom");
     assert_ssh_return_code(session, rc);
 
-    /* send crap and for server to send us a disconnect */
+    /* send crap and wait for server to send us a disconnect */
     fd = ssh_get_fd(session);
     assert_true(fd > 2);
     rc = write(fd, "AAAA", 4);

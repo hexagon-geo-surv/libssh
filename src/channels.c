@@ -636,11 +636,13 @@ SSH_PACKET_CALLBACK(channel_rcv_data)
 
     SSH_LOG(SSH_LOG_PACKET,
             "Channel receiving %" PRIu32 " bytes data%s (local win=%" PRIu32
-            " remote win=%" PRIu32 ")",
+            " remote win=%" PRIu32 ") on channel %" PRIu32 ":%" PRIu32,
             len,
-            is_stderr ? " in stderr"  : "",
+            is_stderr ? " in stderr" : "",
             channel->local_window,
-            channel->remote_window);
+            channel->remote_window,
+            channel->local_channel,
+            channel->remote_channel);
 
     if (len > channel->local_window) {
         SSH_LOG(SSH_LOG_RARE,
@@ -831,8 +833,10 @@ SSH_PACKET_CALLBACK(channel_rcv_request)
         channel->exit.status = true;
 
         SSH_LOG(SSH_LOG_PACKET,
-                "received exit-status %u",
-                channel->exit.code);
+                "received exit-status %u on channel %" PRIu32 ":%" PRIu32,
+                channel->exit.code,
+                channel->local_channel,
+                channel->remote_channel);
 
         ssh_callbacks_execute_list(channel->callbacks,
                                    ssh_channel_callbacks,
@@ -1921,7 +1925,10 @@ static int channel_request(ssh_channel channel, const char *request,
   }
 
   SSH_LOG(SSH_LOG_PACKET,
-      "Sent a SSH_MSG_CHANNEL_REQUEST %s", request);
+          "Sent a SSH_MSG_CHANNEL_REQUEST %s on channel %" PRIu32 ":%" PRIu32,
+          request,
+          channel->local_channel,
+          channel->remote_channel);
   if (reply == 0) {
     channel->request_state = SSH_CHANNEL_REQ_STATE_NONE;
     return SSH_OK;
@@ -1941,13 +1948,20 @@ pending:
       rc=SSH_ERROR;
       break;
     case SSH_CHANNEL_REQ_STATE_DENIED:
-      ssh_set_error(session, SSH_REQUEST_DENIED,
-          "Channel request %s failed", request);
+      ssh_set_error(session,
+                    SSH_REQUEST_DENIED,
+                    "Channel request %s failed on channel %" PRIu32 ":%" PRIu32,
+                    request,
+                    channel->local_channel,
+                    channel->remote_channel);
       rc=SSH_ERROR;
       break;
     case SSH_CHANNEL_REQ_STATE_ACCEPTED:
       SSH_LOG(SSH_LOG_DEBUG,
-          "Channel request %s success",request);
+              "Channel request %s success on channel %" PRIu32 ":%" PRIu32,
+              request,
+              channel->local_channel,
+              channel->remote_channel);
       rc=SSH_OK;
       break;
     case SSH_CHANNEL_REQ_STATE_PENDING:

@@ -166,7 +166,7 @@ int ssh_connector_set_out_channel(ssh_connector connector,
 
     /* Fallback to default value for invalid flags */
     if (!(flags & SSH_CONNECTOR_STDOUT) && !(flags & SSH_CONNECTOR_STDERR)) {
-        connector->in_flags = SSH_CONNECTOR_STDOUT;
+        connector->out_flags = SSH_CONNECTOR_STDOUT;
     }
 
     return ssh_add_channel_callbacks(channel, &connector->out_channel_cb);

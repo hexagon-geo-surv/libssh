@@ -407,6 +407,10 @@ static int ssh_connector_fd_cb(UNUSED_PARAM(ssh_poll_handle p),
  *
  * @brief Callback called when data is received on channel.
  *
+ * @param[in] session The SSH session
+ *
+ * @param[in] channel The channel data came from
+ *
  * @param[in] data Pointer to the data
  *
  * @param[in] len Length of data
@@ -428,7 +432,11 @@ static int ssh_connector_channel_data_cb(ssh_session session,
     int w;
     uint32_t window;
 
-    SSH_LOG(SSH_LOG_TRACE,"connector data on channel");
+    SSH_LOG(SSH_LOG_TRACE,
+            "Received data (%" PRIu32 ") on channel (%" PRIu32 ":%" PRIu32 ")",
+            len,
+            channel->local_channel,
+            channel->remote_channel);
 
     if (is_stderr && !(connector->in_flags & SSH_CONNECTOR_STDERR)) {
         /* ignore stderr */
@@ -442,6 +450,7 @@ static int ssh_connector_channel_data_cb(ssh_session session,
     }
 
     if (connector->out_wontblock) {
+        SSH_LOG(SSH_LOG_TRACE, "Writing won't block");
         if (connector->out_channel != NULL) {
             uint32_t window_len;
 
@@ -490,6 +499,7 @@ static int ssh_connector_channel_data_cb(ssh_session session,
 
         return w;
     } else {
+        SSH_LOG(SSH_LOG_TRACE, "Writing would block: wait?");
         connector->in_available = 1;
 
         return 0;
@@ -519,7 +529,12 @@ ssh_connector_channel_write_wontblock_cb(ssh_session session,
 
     (void) channel;
 
-    SSH_LOG(SSH_LOG_TRACE, "Channel write won't block");
+    SSH_LOG(SSH_LOG_TRACE,
+            "Write won't block (%" PRIu32 ") on channel (%" PRIu32 ":%" PRIu32 ")",
+            bytes,
+            channel->local_channel,
+            channel->remote_channel);
+
     if (connector->in_available) {
         if (connector->in_channel != NULL) {
             uint32_t len = MIN(CHUNKSIZE, bytes);
@@ -530,7 +545,7 @@ ssh_connector_channel_write_wontblock_cb(ssh_session session,
                                              0);
             if (r == SSH_ERROR) {
                 ssh_connector_except_channel(connector, connector->in_channel);
-            } else if(r == 0 && ssh_channel_is_eof(connector->in_channel)){
+            } else if (r == 0 && ssh_channel_is_eof(connector->in_channel)) {
                 ssh_channel_send_eof(connector->out_channel);
             } else if (r > 0) {
                 w = ssh_channel_write(connector->out_channel, buffer, r);
@@ -601,15 +616,15 @@ int ssh_connector_set_event(ssh_connector connector, ssh_event event)
         }
     }
     if (connector->in_channel != NULL) {
-        rc = ssh_event_add_session(event,
-                ssh_channel_get_session(connector->in_channel));
+        ssh_session session = ssh_channel_get_session(connector->in_channel);
+        rc = ssh_event_add_session(event, session);
         if (rc != SSH_OK)
             goto error;
         if (ssh_channel_poll_timeout(connector->in_channel, 0, 0) > 0){
             connector->in_available = 1;
         }
     }
-    if(connector->out_channel != NULL) {
+    if (connector->out_channel != NULL) {
         ssh_session session = ssh_channel_get_session(connector->out_channel);
 
         rc =  ssh_event_add_session(event, session);

@@ -213,18 +213,18 @@ static void select_loop(ssh_session session,ssh_channel channel)
     /* stdin */
     connector_in = ssh_connector_new(session);
     ssh_connector_set_out_channel(connector_in, channel, SSH_CONNECTOR_STDINOUT);
-    ssh_connector_set_in_fd(connector_in, 0);
+    ssh_connector_set_in_fd(connector_in, STDIN_FILENO);
     ssh_event_add_connector(event, connector_in);
 
     /* stdout */
     connector_out = ssh_connector_new(session);
-    ssh_connector_set_out_fd(connector_out, 1);
+    ssh_connector_set_out_fd(connector_out, STDOUT_FILENO);
     ssh_connector_set_in_channel(connector_out, channel, SSH_CONNECTOR_STDINOUT);
     ssh_event_add_connector(event, connector_out);
 
     /* stderr */
     connector_err = ssh_connector_new(session);
-    ssh_connector_set_out_fd(connector_err, 2);
+    ssh_connector_set_out_fd(connector_err, STDERR_FILENO);
     ssh_connector_set_in_channel(connector_err, channel, SSH_CONNECTOR_STDERR);
     ssh_event_add_connector(event, connector_err);
 

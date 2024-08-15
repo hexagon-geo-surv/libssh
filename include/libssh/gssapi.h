@@ -89,6 +89,8 @@ OM_uint32 ssh_gssapi_init_ctx(struct ssh_gssapi_struct *gssapi,
 char *ssh_gssapi_oid_hash(ssh_string oid);
 char *ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs);
 int ssh_gssapi_check_client_config(ssh_session session);
+ssh_buffer ssh_gssapi_build_mic(ssh_session session, const char *context);
+int ssh_gssapi_auth_keyex_mic(ssh_session session, gss_buffer_desc *mic_token_buf);
 
 #ifdef __cplusplus
 }

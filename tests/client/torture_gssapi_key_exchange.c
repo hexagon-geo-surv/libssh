@@ -226,6 +226,38 @@ torture_gssapi_key_exchange_auth(void **state)
     torture_teardown_kdc_server(state);
 }
 
+static void
+torture_gssapi_key_exchange_no_auth(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    bool f = false;
+
+    /* Valid */
+    torture_setup_kdc_server(
+        state,
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local list_principals",
+
+        "echo bar | kinit alice");
+
+    /* Don't do GSSAPI Key Exchange */
+    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &f);
+    assert_ssh_return_code(s->ssh.session, rc);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, 0);
+
+    /* Still try to do "gssapi-keyex" auth */
+    rc = ssh_userauth_gssapi_keyex(session);
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+
+    torture_teardown_kdc_server(state);
+}
+
 int
 torture_run_tests(void)
 {
@@ -244,6 +276,9 @@ torture_run_tests(void)
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_auth,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_no_auth,
                                         session_setup,
                                         session_teardown),
     };

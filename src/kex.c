@@ -1480,14 +1480,9 @@ int ssh_make_sessionid(ssh_session session)
     }
 
     if (session->server) {
-        switch (session->next_crypto->kex_type) {
-        case SSH_GSS_KEX_DH_GROUP14_SHA256:
-        case SSH_GSS_KEX_DH_GROUP16_SHA512:
+        if (ssh_kex_is_gss(session->next_crypto)) {
             ssh_string_free(server_pubkey_blob);
             server_pubkey_blob = ssh_string_new(0);
-            break;
-        default:
-            break;
         }
     }
 
@@ -2019,4 +2014,22 @@ error:
     }
 
     return rc;
+}
+
+/** @internal
+ * @brief Check if a given crypto context has a GSSAPI KEX set
+ *
+ * @param[in] crypto The SSH crypto context
+ * @return true if the KEX of the context is a GSSAPI KEX, false otherwise
+ */
+bool
+ssh_kex_is_gss(struct ssh_crypto_struct *crypto)
+{
+    switch (crypto->kex_type) {
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
+        return true;
+    default:
+        return false;
+    }
 }

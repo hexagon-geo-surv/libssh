@@ -2473,9 +2473,7 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
 {
     int rc = SSH_AUTH_DENIED;
 #ifdef WITH_GSSAPI
-    ssh_buffer buf = ssh_buffer_new();
-    gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
-    OM_uint32 maj_stat, min_stat;
+    OM_uint32 min_stat;
     gss_buffer_desc mic_token_buf = GSS_C_EMPTY_BUFFER;
 
     switch(session->pending_call_state) {
@@ -2492,15 +2490,11 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     }
 
     /* Check if GSSAPI Key exchange was performed */
-    switch (session->current_crypto->kex_type) {
-        case SSH_GSS_KEX_DH_GROUP14_SHA256:
-        case SSH_GSS_KEX_DH_GROUP16_SHA512:
-            break;
-        default:
-            ssh_set_error(session,
-                          SSH_FATAL,
-                          "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key exchange.");
-            return SSH_ERROR;
+    if (!ssh_kex_is_gss(session->current_crypto)) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key exchange.");
+        return SSH_ERROR;
     }
 
     rc = ssh_userauth_request_service(session);
@@ -2515,37 +2509,13 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     session->auth.state = SSH_AUTH_STATE_NONE;
     session->pending_call_state = SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX;
 
-    rc = ssh_buffer_pack(buf,
-                         "dPbsss",
-                         session->current_crypto->session_id_len,
-                         session->current_crypto->session_id_len,
-                         session->current_crypto->session_id,
-                         SSH2_MSG_USERAUTH_REQUEST,
-                         session->opts.username,
-                         "ssh-connection",
-                         "gssapi-keyex");
+    session->gssapi->user = strdup(session->opts.username);
+    rc = ssh_gssapi_auth_keyex_mic(session, &mic_token_buf);
     if (rc != SSH_OK) {
-        ssh_set_error_oom(session);
         session->auth.state = SSH_AUTH_STATE_NONE;
         session->pending_call_state = SSH_PENDING_CALL_NONE;
         return rc;
     }
-
-    mic_buf.length = ssh_buffer_get_len(buf);
-    mic_buf.value = ssh_buffer_get(buf);
-
-    maj_stat = gss_get_mic(&min_stat,session->gssapi->ctx, GSS_C_QOP_DEFAULT,
-                           &mic_buf, &mic_token_buf);
-    if (GSS_ERROR(maj_stat)) {
-        ssh_gssapi_log_error(SSH_LOG_DEBUG,
-                             "generating MIC",
-                             maj_stat,
-                             min_stat);
-        session->auth.state = SSH_AUTH_STATE_NONE;
-        session->pending_call_state = SSH_PENDING_CALL_NONE;
-        return SSH_ERROR;
-    }
-    SSH_BUFFER_FREE(buf);
 
     rc = ssh_buffer_pack(session->out_buffer,
                          "bsssdP",

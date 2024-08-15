@@ -699,6 +699,12 @@ int ssh_auth_reply_default(ssh_session session,int partial) {
 	  strncat(methods_c,"gssapi-with-mic,",
 			  sizeof(methods_c) - strlen(methods_c) - 1);
   }
+    /* Check if GSSAPI Key exchange was performed */
+    if (session->auth.supported_methods & SSH_AUTH_METHOD_GSSAPI_KEYEX) {
+        if (ssh_kex_is_gss(session->current_crypto)) {
+            strncat(methods_c, "gssapi-keyex,", sizeof(methods_c) - strlen(methods_c) - 1);
+        }
+    }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_INTERACTIVE) {
     strncat(methods_c, "keyboard-interactive,",
             sizeof(methods_c) - strlen(methods_c) - 1);

@@ -247,6 +247,7 @@ LIBSSH_API void ssh_bind_free(ssh_bind ssh_bind_o);
  *                          SSH_AUTH_METHOD_HOSTBASED
  *                          SSH_AUTH_METHOD_INTERACTIVE
  *                          SSH_AUTH_METHOD_GSSAPI_MIC
+ *                          SSH_AUTH_METHOD_GSSAPI_KEYEX
  */
 LIBSSH_API void ssh_set_auth_methods(ssh_session session, int auth_methods);
 

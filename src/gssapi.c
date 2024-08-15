@@ -457,7 +457,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_token_server)
 
 #endif /* WITH_SERVER */
 
-static ssh_buffer ssh_gssapi_build_mic(ssh_session session)
+ssh_buffer ssh_gssapi_build_mic(ssh_session session, const char *context)
 {
     struct ssh_crypto_struct *crypto = NULL;
     ssh_buffer mic_buffer = NULL;
@@ -481,7 +481,7 @@ static ssh_buffer ssh_gssapi_build_mic(ssh_session session)
                          SSH2_MSG_USERAUTH_REQUEST,
                          session->gssapi->user,
                          "ssh-connection",
-                         "gssapi-with-mic");
+                         context);
     if (rc != SSH_OK) {
         ssh_set_error_oom(session);
         SSH_BUFFER_FREE(mic_buffer);
@@ -516,7 +516,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_mic)
         goto error;
     }
 
-    mic_buffer = ssh_gssapi_build_mic(session);
+    mic_buffer = ssh_gssapi_build_mic(session, "gssapi-with-mic");
     if (mic_buffer == NULL) {
         ssh_set_error_oom(session);
         goto error;
@@ -1166,6 +1166,40 @@ out:
     return SSH_AUTH_ERROR;
 }
 
+/**
+ * @brief Get the MIC for "gssapi-keyex" authentication.
+ * @returns SSH_ERROR:   A serious error happened\n
+ *          SSH_OK:      MIC token is stored in mic_token_buf
+ */
+int ssh_gssapi_auth_keyex_mic(ssh_session session, gss_buffer_desc *mic_token_buf) {
+    ssh_buffer buf = NULL;
+    gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
+    OM_uint32 maj_stat, min_stat;
+
+    buf = ssh_gssapi_build_mic(session, "gssapi-keyex");
+    if (buf == NULL) {
+        ssh_set_error_oom(session);
+        return SSH_ERROR;
+    }
+
+    mic_buf.length = ssh_buffer_get_len(buf);
+    mic_buf.value = ssh_buffer_get(buf);
+
+    maj_stat = gss_get_mic(&min_stat,session->gssapi->ctx, GSS_C_QOP_DEFAULT,
+                           &mic_buf, mic_token_buf);
+    if (GSS_ERROR(maj_stat)) {
+        ssh_gssapi_log_error(SSH_LOG_DEBUG,
+                             "generating MIC",
+                             maj_stat,
+                             min_stat);
+        SSH_BUFFER_FREE(buf);
+        return SSH_ERROR;
+    }
+    SSH_BUFFER_FREE(buf);
+
+    return SSH_OK;
+}
+
 static gss_OID ssh_gssapi_oid_from_string(ssh_string oid_s)
 {
     gss_OID ret = NULL;
@@ -1275,7 +1309,7 @@ static int ssh_gssapi_send_mic(ssh_session session)
 
     SSH_LOG(SSH_LOG_PACKET,"Sending SSH_MSG_USERAUTH_GSSAPI_MIC");
 
-    mic_buffer = ssh_gssapi_build_mic(session);
+    mic_buffer = ssh_gssapi_build_mic(session, "gssapi-with-mic");
     if (mic_buffer == NULL) {
         ssh_set_error_oom(session);
         return SSH_ERROR;

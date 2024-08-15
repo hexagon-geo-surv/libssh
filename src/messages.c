@@ -1147,6 +1147,67 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request)
 
         return SSH_PACKET_USED;
     }
+    if (strcmp(method, "gssapi-keyex") == 0) {
+        gss_buffer_desc received_mic = GSS_C_EMPTY_BUFFER;
+        gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
+        ssh_string mic_token_string = NULL;
+        OM_uint32 maj_stat, min_stat;
+        ssh_buffer buf = NULL;
+
+        if (!ssh_kex_is_gss(session->current_crypto)) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key Exchange");
+            ssh_auth_reply_default(session, 0);
+            goto error;
+        }
+
+        rc = ssh_buffer_unpack(packet, "S", &mic_token_string);
+        if (rc != SSH_OK){
+            ssh_auth_reply_default(session, 0);
+            goto error;
+        }
+        received_mic.length = ssh_string_len(mic_token_string);
+        received_mic.value = ssh_string_data(mic_token_string);
+
+        session->gssapi->user = strdup(msg->auth_request.username);
+        buf = ssh_gssapi_build_mic(session, "gssapi-keyex");
+        if (buf == NULL) {
+            ssh_set_error_oom(session);
+            SSH_STRING_FREE(mic_token_string);
+            ssh_auth_reply_default(session, 0);
+            goto error;
+        }
+
+        mic_buf.length = ssh_buffer_get_len(buf);
+        mic_buf.value = ssh_buffer_get(buf);
+
+        maj_stat = gss_verify_mic(&min_stat,
+                                  session->gssapi->ctx,
+                                  &mic_buf,
+                                  &received_mic,
+                                  NULL);
+        if (maj_stat != GSS_S_COMPLETE) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Failed to verify MIC for \"gssapi-keyex\" auth");
+            SSH_BUFFER_FREE(buf);
+            SSH_STRING_FREE(mic_token_string);
+            ssh_auth_reply_default(session, 0);
+            goto error;
+        }
+
+        ssh_auth_reply_success(session, 0);
+
+        /* bypass the message queue thing */
+        SAFE_FREE(service);
+        SAFE_FREE(method);
+        SSH_BUFFER_FREE(buf);
+        SSH_MESSAGE_FREE(msg);
+        SSH_STRING_FREE(mic_token_string);
+
+        return SSH_PACKET_USED;
+    }
 #endif
 
     msg->auth_request.method = SSH_AUTH_METHOD_UNKNOWN;

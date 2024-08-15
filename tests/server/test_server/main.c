@@ -115,6 +115,9 @@ static void print_auth_methods(int auth_methods)
     if (auth_methods & SSH_AUTH_METHOD_GSSAPI_MIC) {
         printf("\tSSH_AUTH_METHOD_GSSAPI_MIC\n");
     }
+    if (auth_methods & SSH_AUTH_METHOD_GSSAPI_KEYEX) {
+        printf("\tSSH_AUTH_METHOD_GSSAPI_KEYEX\n");
+    }
 }
 
 static void print_verbosity(int verbosity)

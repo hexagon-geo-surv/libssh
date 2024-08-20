@@ -507,3 +507,9 @@ LIBSSH_4_11_0    # Released
         sshsig_verify;
 } LIBSSH_4_10_0;
 
+LIBSSH_AFTER_4_11_0
+{
+    global:
+        ssh_bind_config_parse_string;
+} LIBSSH_4_11_0;
+

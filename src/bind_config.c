@@ -676,7 +676,9 @@ int ssh_bind_config_parse_file(ssh_bind bind, const char *filename)
     return 0;
 }
 
-/* @brief Parse configuration string and set the options to the given bind session
+/**
+ * @brief Parse configuration string and set the options to the given bind
+ * session
  *
  * @params[in] bind      The ssh bind session
  * @params[in] input     Null terminated string containing the configuration
@@ -713,21 +715,29 @@ int ssh_bind_config_parse_string(ssh_bind bind, const char *input)
         }
         if (c == NULL) {
             /* should not happen, would mean a string without trailing '\0' */
-            SSH_LOG(SSH_LOG_WARN, "No trailing '\\0' in config string");
+            ssh_set_error(bind,
+                          SSH_FATAL,
+                          "No trailing '\\0' in config string");
             return SSH_ERROR;
         }
         line_len = c - line_start;
         if (line_len > MAX_LINE_SIZE - 1) {
-            SSH_LOG(SSH_LOG_WARN,
-                    "Line %u too long: %zu characters",
-                    line_num,
-                    line_len);
+            ssh_set_error(bind,
+                          SSH_FATAL,
+                          "Line %u too long: %zu characters",
+                          line_num,
+                          line_len);
             return SSH_ERROR;
         }
         memcpy(line, line_start, line_len);
         line[line_len] = '\0';
         SSH_LOG(SSH_LOG_DEBUG, "Line %u: %s", line_num, line);
-        rv = ssh_bind_config_parse_line(bind, line, line_num, &parser_flags, seen, 0);
+        rv = ssh_bind_config_parse_line(bind,
+                                        line,
+                                        line_num,
+                                        &parser_flags,
+                                        seen,
+                                        0);
         if (rv < 0) {
             return SSH_ERROR;
         }

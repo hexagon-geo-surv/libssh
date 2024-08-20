@@ -108,6 +108,14 @@ static struct argp_option options[] = {
         .group = 0
     },
     {
+        .name  = "option",
+        .key   = 'o',
+        .arg   = "OPTION",
+        .flags = 0,
+        .doc   = "Set server configuration option [-o OptionName=Value]",
+        .group = 0
+    },
+    {
         .name  = "user",
         .key   = 'u',
         .arg   = "USERNAME",
@@ -158,6 +166,9 @@ parse_opt(int key, char *arg, struct argp_state *state)
     case 'a':
         strncpy(authorizedkeys, arg, DEF_STR_SIZE - 1);
         break;
+    case 'o':
+        ssh_bind_config_parse_string(sshbind, arg);
+        break;
     case 'u':
         strncpy(username, arg, sizeof(username) - 1);
         break;
@@ -194,7 +205,7 @@ parse_opt(int argc, char **argv, ssh_bind sshbind)
 {
     int key;
 
-    while((key = getopt(argc, argv, "a:e:k:p:P:r:u:v")) != -1) {
+    while((key = getopt(argc, argv, "a:e:k:o:p:P:r:u:v")) != -1) {
         if (key == 'p') {
             ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDPORT_STR, optarg);
         } else if (key == 'k') {
@@ -205,6 +216,8 @@ parse_opt(int argc, char **argv, ssh_bind sshbind)
             ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HOSTKEY, optarg);
         } else if (key == 'a') {
             strncpy(authorizedkeys, optarg, DEF_STR_SIZE-1);
+        } else if (key == 'o') {
+            ssh_bind_config_parse_string(sshbind, optarg);
         } else if (key == 'u') {
             strncpy(username, optarg, sizeof(username) - 1);
         } else if (key == 'P') {
@@ -222,6 +235,7 @@ parse_opt(int argc, char **argv, ssh_bind sshbind)
                "libssh %s -- a Secure Shell protocol implementation\n"
                "\n"
                "  -a, --authorizedkeys=FILE  Set the authorized keys file.\n"
+               "  -o, --option=OPTION        Set server configuration option (e.g., -o OptionName=Value).\n"
                "  -e, --ecdsakey=FILE        Set the ecdsa key (deprecated alias for 'k').\n"
                "  -k, --hostkey=FILE         Set a host key.  Can be used multiple times.\n"
                "                             Implies no default keys.\n"

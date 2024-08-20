@@ -102,6 +102,8 @@ LIBSSH_API int ssh_bind_options_set(ssh_bind sshbind,
 LIBSSH_API int ssh_bind_options_parse_config(ssh_bind sshbind,
     const char *filename);
 
+LIBSSH_API int ssh_bind_config_parse_string(ssh_bind bind, const char *input);
+
 /**
  * @brief Start listening to the socket.
  *

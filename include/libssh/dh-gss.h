@@ -30,6 +30,7 @@ int ssh_client_gss_dh_init(ssh_session session);
 void ssh_server_gss_dh_init(ssh_session session);
 int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet);
 void ssh_client_gss_dh_remove_callbacks(ssh_session session);
+void ssh_client_gss_dh_remove_callback_hostkey(ssh_session session);
 
 #endif /* WITH_GSSAPI */
 #endif /* DH_GSS_H_ */

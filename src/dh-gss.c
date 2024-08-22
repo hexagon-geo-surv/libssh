@@ -49,6 +49,19 @@ static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callbacks = {
     .user = NULL
 };
 
+static SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey);
+
+static ssh_packet_callback gss_dh_client_callback_hostkey[]= {
+    ssh_packet_client_gss_dh_hostkey
+};
+
+static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callback_hostkey = {
+    .start = SSH2_MSG_KEXGSS_HOSTKEY,
+    .n_callbacks = 1,
+    .callbacks = gss_dh_client_callback_hostkey,
+    .user = NULL
+};
+
 /** @internal
  * @brief Starts gssapi key exchange
  */
@@ -131,6 +144,7 @@ int ssh_client_gss_dh_init(ssh_session session){
 
     /* register the packet callbacks */
     ssh_packet_set_callbacks(session, &ssh_gss_dh_client_callbacks);
+    ssh_packet_set_callbacks(session, &ssh_gss_dh_client_callback_hostkey);
     session->dh_handshake_state = DH_STATE_INIT_SENT;
 
     rc = ssh_packet_send(session);
@@ -146,6 +160,11 @@ error:
 void ssh_client_gss_dh_remove_callbacks(ssh_session session)
 {
     ssh_packet_remove_callbacks(session, &ssh_gss_dh_client_callbacks);
+}
+
+void ssh_client_gss_dh_remove_callback_hostkey(ssh_session session)
+{
+    ssh_packet_remove_callbacks(session, &ssh_gss_dh_client_callback_hostkey);
 }
 
 SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply){
@@ -211,6 +230,35 @@ error:
     return SSH_PACKET_USED;
 }
 
+SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey) {
+    ssh_string pubkey_blob = NULL;
+    int rc;
+
+    (void)type;
+    (void)user;
+
+    ssh_client_gss_dh_remove_callback_hostkey(session);
+
+    rc = ssh_buffer_unpack(packet,
+                           "S",
+                           &pubkey_blob);
+    if (rc == SSH_ERROR) {
+        ssh_set_error(session, SSH_FATAL, "Invalid SSH2_MSG_KEXGSS_HOSTKEY packet");
+        goto error;
+    }
+
+    rc = ssh_dh_import_next_pubkey_blob(session, pubkey_blob);
+    SSH_STRING_FREE(pubkey_blob);
+    if (rc != 0) {
+        goto error;
+    }
+
+    return SSH_PACKET_USED;
+error:
+    ssh_dh_cleanup(session->next_crypto);
+    session->session_state=SSH_SESSION_STATE_ERROR;
+    return SSH_PACKET_USED;
+}
 
 #ifdef WITH_SERVER
 
@@ -256,6 +304,7 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
     gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
     ssh_string otoken = NULL;
+    ssh_string server_pubkey_blob = NULL;
     OM_uint32 maj_stat, min_stat;
     gss_name_t client_name = GSS_C_NO_NAME;
     OM_uint32 ret_flags=0;
@@ -307,6 +356,28 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         ssh_set_error(session, SSH_FATAL, "Could not create a session id");
         goto error;
     }
+
+    rc = ssh_dh_get_next_server_publickey_blob(session, &server_pubkey_blob);
+    if (rc != SSH_OK) {
+        goto error;
+    }
+    rc = ssh_buffer_pack(session->out_buffer,
+                         "bS",
+                         SSH2_MSG_KEXGSS_HOSTKEY,
+                         server_pubkey_blob);
+    if(rc != SSH_OK) {
+        ssh_set_error_oom(session);
+        ssh_buffer_reinit(session->out_buffer);
+        goto error;
+    }
+
+    rc = ssh_packet_send(session);
+    if (rc == SSH_ERROR) {
+        goto error;
+    }
+    SSH_LOG(SSH_LOG_DEBUG, "Sent SSH2_MSG_KEXGSS_HOSTKEY");
+    SSH_STRING_FREE(server_pubkey_blob);
+
     rc = ssh_dh_keypair_get_keys(crypto->dh_ctx, DH_SERVER_KEYPAIR,
                                  NULL, &server_pubkey);
     if (rc != SSH_OK){
@@ -414,6 +485,7 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
 
     return SSH_OK;
 error:
+    SSH_STRING_FREE(server_pubkey_blob);
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     bignum_safe_free(server_pubkey);
 #endif

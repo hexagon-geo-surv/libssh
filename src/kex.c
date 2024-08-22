@@ -1480,7 +1480,7 @@ int ssh_make_sessionid(ssh_session session)
     }
 
     if (session->server) {
-        if (ssh_kex_is_gss(session->next_crypto)) {
+        if (server_pubkey_blob == NULL && ssh_kex_is_gss(session->next_crypto)) {
             ssh_string_free(server_pubkey_blob);
             server_pubkey_blob = ssh_string_new(0);
         }

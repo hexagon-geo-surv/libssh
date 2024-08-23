@@ -796,6 +796,8 @@ int ssh_set_client_kex(ssh_session session)
     const char *wanted = NULL;
     int ok;
     int i;
+    bool gssapi_null_alg = false;
+    char *hostkeys = NULL;
 
     /* Skip if already set, for example for the rekey or when we do the guessing
      * it could have been already used to make some protocol decisions. */
@@ -831,6 +833,9 @@ int ssh_set_client_kex(ssh_session session)
         /* Prefix the default algorithms with gsskex algs */
         session->opts.wanted_methods[SSH_KEX] =
             ssh_prefix_without_duplicates(default_methods[SSH_KEX], gssapi_algs);
+
+        gssapi_null_alg = true;
+
         SAFE_FREE(gssapi_algs);
     }
 #endif
@@ -846,6 +851,15 @@ int ssh_set_client_kex(ssh_session session)
             if (client->methods[i] == NULL) {
                 ssh_set_error_oom(session);
                 return SSH_ERROR;
+            }
+            if (gssapi_null_alg) {
+                hostkeys = ssh_append_without_duplicates(client->methods[i], "null");
+                if (hostkeys == NULL) {
+                    ssh_set_error_oom(session);
+                    return SSH_ERROR;
+                }
+                SAFE_FREE(client->methods[i]);
+                client->methods[i] = hostkeys;
             }
             continue;
         }

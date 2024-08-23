@@ -657,6 +657,8 @@ void torture_setup_socket_dir(void **state)
 
     snprintf(s->srv_config, len, "%s/%s", p, TORTURE_SSHD_CONFIG);
 
+    s->disable_hostkeys = false;
+
     setenv("SOCKET_WRAPPER_DIR", p, 1);
     setenv("SOCKET_WRAPPER_DEFAULT_IFACE", "170", 1);
     env = getenv("TORTURE_GENERATE_PCAP");
@@ -974,6 +976,16 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         torture_write_file(ecdsa_hostkey,
                            torture_get_testkey(SSH_KEYTYPE_ECDSA_P521, 0));
         torture_write_file(trusted_ca_pubkey, torture_rsa_certauth_pub);
+    }
+    if (s->disable_hostkeys) {
+        char ss[1000] = {0};
+        rc = snprintf(ss, sizeof(ss), "rm %s/sshd/ssh_host_ecdsa_key %s/sshd/ssh_host_ed25519_key %s/sshd/ssh_host_rsa_key", s->socket_dir, s->socket_dir, s->socket_dir);
+        if (rc < 0 || rc >= (int)sizeof(ss)) {
+            fail_msg("snprintf failed");
+        }
+
+        rc = system(ss);
+        assert_int_equal(rc, SSH_OK);
     }
 
     sftp_server = getenv("TORTURE_SFTP_SERVER");

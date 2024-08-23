@@ -75,6 +75,11 @@ int main(int argc, char **argv)
         goto out;
     }
 
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, "gss-group14-sha256-");
+    if (rc < 0) {
+        goto out;
+    }
+
     rc = ssh_connect(session);
     if (rc != SSH_OK) {
         fprintf(stderr, "Connection failed : %s\n", ssh_get_error(session));

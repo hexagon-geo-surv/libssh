@@ -80,6 +80,7 @@ struct torture_state {
     char *srv1_pidfile;
     char *srv1_config;
     bool srv_pam;
+    bool disable_hostkeys;
     char *srv_additional_config;
     struct {
         ssh_session session;

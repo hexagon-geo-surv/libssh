@@ -83,6 +83,11 @@ workflow:
 .tumbleweed:
   extends: .tests
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    # torture_gssapi_key_exchange_null is excluded because of a bug (https://issues.redhat.com/browse/RHEL-55740)
+    - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"
 
 .centos:
   extends: .tests
@@ -504,6 +509,11 @@ fedora/abidiff:
 ubuntu/openssl_3.0.x/x86_64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$UBUNTU_BUILD
   extends: .tests
+  script:
+    # torture_gssapi_key_exchange_null is excluded because of a bug (https://issues.redhat.com/browse/RHEL-55740)
+    - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"
 
 
 ###############################################################################

@@ -2456,7 +2456,7 @@ pending:
 }
 
 /**
- * @brief Try to authenticate through the "gssapi-with-keyex" method.
+ * @brief Try to authenticate through the "gssapi-keyex" method.
  *
  * @param[in] session The ssh session to use.
  *
@@ -2503,7 +2503,7 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     } else if (rc == SSH_ERROR) {
         return SSH_AUTH_ERROR;
     }
-    SSH_LOG(SSH_LOG_DEBUG, "Authenticating with gssapi-with-keyex");
+    SSH_LOG(SSH_LOG_DEBUG, "Authenticating with gssapi-keyex");
 
     session->auth.current_method = SSH_AUTH_METHOD_GSSAPI_KEYEX;
     session->auth.state = SSH_AUTH_STATE_NONE;

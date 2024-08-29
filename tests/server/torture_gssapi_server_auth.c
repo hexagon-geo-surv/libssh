@@ -452,5 +452,11 @@ torture_run_tests(void)
                                 teardown_default_server);
     ssh_finalize();
 
-    return rc;
+    /* pthread_exit() won't return anything so error should be returned prior */
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* Required for freeing memory allocated by GSSAPI */
+    pthread_exit(NULL);
 }

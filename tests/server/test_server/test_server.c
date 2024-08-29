@@ -145,9 +145,8 @@ int run_server(struct server_state_st *state)
     }
 
     if (state->host_key == NULL && state->rsa_key == NULL &&
-        state->ecdsa_key == NULL && state->ed25519_key) {
+        state->ecdsa_key == NULL && state->ed25519_key == NULL) {
         fprintf(stderr, "Missing host key\n");
-        goto out;
     }
 
     sshbind = ssh_bind_new();
@@ -211,7 +210,7 @@ int run_server(struct server_state_st *state)
                                   state->gssapi_key_exchange_algs);
         if (rc != 0) {
             fprintf(stderr,
-                    "Error setting GSSAPI key exchange: %s\n",
+                    "Error setting GSSAPI key exchange algorithms: %s\n",
                     ssh_get_error(sshbind));
             goto out;
         }

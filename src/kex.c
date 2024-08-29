@@ -811,7 +811,7 @@ int ssh_set_client_kex(ssh_session session)
         return SSH_ERROR;
     }
 #ifdef WITH_GSSAPI
-    if (session->opts.gssapi_key_exchange) {
+    if (session->opts.gssapi_key_exchange && !ssh_fips_mode()) {
         char *gssapi_algs = NULL;
 
         ok = ssh_gssapi_init(session);
@@ -825,7 +825,7 @@ int ssh_set_client_kex(ssh_session session)
             return SSH_ERROR;
         }
 
-        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs ? session->opts.gssapi_key_exchange_algs : GSSAPI_KEY_EXCHANGE_SUPPORTED);
+        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs);
         if (gssapi_algs == NULL) {
             return SSH_ERROR;
         }
@@ -1488,15 +1488,15 @@ int ssh_make_sessionid(ssh_session session)
         goto error;
     }
 
-    if (server_pubkey_blob == NULL && session->opts.gssapi_key_exchange) {
-        ssh_string_free(server_pubkey_blob);
-        server_pubkey_blob = ssh_string_new(0);
-    }
-
-    if (session->server) {
-        if (server_pubkey_blob == NULL && ssh_kex_is_gss(session->next_crypto)) {
-            ssh_string_free(server_pubkey_blob);
+    if (server_pubkey_blob == NULL) {
+        if ((session->server && ssh_kex_is_gss(session->next_crypto)) ||
+             session->opts.gssapi_key_exchange) {
             server_pubkey_blob = ssh_string_new(0);
+            if (server_pubkey_blob == NULL) {
+                ssh_set_error_oom(session);
+                rc = SSH_ERROR;
+                goto error;
+            }
         }
     }
 

@@ -83,6 +83,11 @@ torture_gssapi_key_exchange(void **state)
     int rc;
     bool t = true;
 
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
     /* Valid */
     torture_setup_kdc_server(
         state,
@@ -97,7 +102,7 @@ torture_gssapi_key_exchange(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
     torture_teardown_kdc_server(state);
 }
 
@@ -108,6 +113,11 @@ torture_gssapi_key_exchange_no_tgt(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     /* Don't run kinit */
     torture_setup_kdc_server(
@@ -124,7 +134,7 @@ torture_gssapi_key_exchange_no_tgt(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
     assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
@@ -139,6 +149,11 @@ torture_gssapi_key_exchange_gss_group14_sha256(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     /* Valid */
     torture_setup_kdc_server(
@@ -157,7 +172,7 @@ torture_gssapi_key_exchange_gss_group14_sha256(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
 
@@ -171,6 +186,11 @@ torture_gssapi_key_exchange_gss_group16_sha512(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     /* Valid */
     torture_setup_kdc_server(
@@ -189,7 +209,7 @@ torture_gssapi_key_exchange_gss_group16_sha512(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_true(session->current_crypto->kex_type == SSH_GSS_KEX_DH_GROUP16_SHA512);
 
@@ -203,6 +223,11 @@ torture_gssapi_key_exchange_auth(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     /* Valid */
     torture_setup_kdc_server(
@@ -218,7 +243,7 @@ torture_gssapi_key_exchange_auth(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     rc = ssh_userauth_gssapi_keyex(session);
     assert_int_equal(rc, SSH_AUTH_SUCCESS);
@@ -233,6 +258,11 @@ torture_gssapi_key_exchange_no_auth(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool f = false;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     /* Valid */
     torture_setup_kdc_server(
@@ -249,7 +279,7 @@ torture_gssapi_key_exchange_no_auth(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     /* Still try to do "gssapi-keyex" auth */
     rc = ssh_userauth_gssapi_keyex(session);
@@ -289,5 +319,11 @@ torture_run_tests(void)
     rc = cmocka_run_group_tests(tests, sshd_setup, sshd_teardown);
     ssh_finalize();
 
-    pthread_exit((void *)&rc);
+    /* pthread_exit() won't return anything so error should be returned prior */
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* Required for freeing memory allocated by GSSAPI */
+    pthread_exit(NULL);
 }

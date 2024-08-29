@@ -286,6 +286,11 @@ torture_gssapi_server_key_exchange(void **state)
     int rc;
     bool t = true;
 
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
     assert_non_null(tss);
 
     s = tss->state;
@@ -322,6 +327,11 @@ torture_gssapi_server_key_exchange_no_tgt(void **state)
     int rc;
     bool t = true;
 
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
     assert_non_null(tss);
 
     s = tss->state;
@@ -345,7 +355,7 @@ torture_gssapi_server_key_exchange_no_tgt(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
     assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
@@ -361,6 +371,11 @@ torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
     ssh_session session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     assert_non_null(tss);
 
@@ -387,7 +402,7 @@ torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
 
@@ -402,6 +417,11 @@ torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
     ssh_session session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     assert_non_null(tss);
 
@@ -428,7 +448,7 @@ torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(session, rc);
 
     assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
 
@@ -443,6 +463,11 @@ torture_gssapi_server_key_exchange_auth(void **state)
     ssh_session session;
     int rc;
     bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     assert_non_null(tss);
 
@@ -482,6 +507,11 @@ torture_gssapi_server_key_exchange_no_auth(void **state)
     ssh_session session = NULL;
     int rc;
     bool f = false;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     assert_non_null(tss);
 
@@ -547,5 +577,11 @@ torture_run_tests(void)
                                 teardown_default_server);
     ssh_finalize();
 
-    pthread_exit((void *)&rc);
+    /* pthread_exit() won't return anything so error should be returned prior */
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* Required for freeing memory allocated by GSSAPI */
+    pthread_exit(NULL);
 }

@@ -160,6 +160,13 @@ ssh_session ssh_new(void)
         goto err;
     }
 
+#ifdef WITH_GSSAPI
+    session->opts.gssapi_key_exchange_algs = strdup(GSSAPI_KEY_EXCHANGE_SUPPORTED);
+    if (session->opts.gssapi_key_exchange_algs == NULL) {
+        goto err;
+    }
+#endif /* WITH_GSSAPI */
+
     id = strdup("%d/id_ed25519");
     if (id == NULL) {
         goto err;

@@ -19,21 +19,23 @@ sshd_setup(void **state)
     s = *state;
     s->disable_hostkeys = true;
 
-    /* Temporary kerberos server */
-    torture_setup_kdc_server(
-        state,
-        "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
-        "kadmin.local addprinc -pw bar alice \n"
-        "kadmin.local list_principals",
+    if (!ssh_fips_mode()) {
+        /* Temporary kerberos server */
+        torture_setup_kdc_server(
+            state,
+            "kadmin.local addprinc -randkey host/server.libssh.site \n"
+            "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+            "kadmin.local addprinc -pw bar alice \n"
+            "kadmin.local list_principals",
 
-        "echo bar | kinit alice");
+            "echo bar | kinit alice");
 
-    torture_update_sshd_config(state,
-                               "GSSAPIAuthentication yes\n"
-                               "GSSAPIKeyExchange yes\n");
+        torture_update_sshd_config(state,
+                                "GSSAPIAuthentication yes\n"
+                                "GSSAPIKeyExchange yes\n");
 
-    torture_teardown_kdc_server(state);
+        torture_teardown_kdc_server(state);
+    }
     return 0;
 }
 
@@ -98,6 +100,11 @@ torture_gssapi_key_exchange_null(void **state)
     int rc;
     bool t = true;
 
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
     /* Valid */
     torture_setup_kdc_server(
         state,
@@ -112,7 +119,10 @@ torture_gssapi_key_exchange_null(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
-    assert_int_equal(rc, 0);
+    assert_ssh_return_code(s->ssh.session, rc);
+
+    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS], "null");
+
     torture_teardown_kdc_server(state);
 }
 
@@ -132,5 +142,11 @@ torture_run_tests(void)
     rc = cmocka_run_group_tests(tests, sshd_setup, sshd_teardown);
     ssh_finalize();
 
-    pthread_exit((void *)&rc);
+    /* pthread_exit() won't return anything so error should be returned prior */
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* Required for freeing memory allocated by GSSAPI */
+    pthread_exit(NULL);
 }

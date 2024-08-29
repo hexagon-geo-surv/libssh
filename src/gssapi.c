@@ -727,6 +727,10 @@ ssh_gssapi_check_client_config(ssh_session session)
 
     for (i = 0; i < supported->count; ++i){
         gssapi = calloc(1, sizeof(struct ssh_gssapi_struct));
+        if (gssapi == NULL) {
+            ssh_set_error_oom(session);
+            return SSH_ERROR;
+        }
         gssapi->server_creds = GSS_C_NO_CREDENTIAL;
         gssapi->client_creds = GSS_C_NO_CREDENTIAL;
         gssapi->ctx = GSS_C_NO_CONTEXT;
@@ -786,7 +790,7 @@ ssh_gssapi_check_client_config(ssh_session session)
         SSH_LOG(SSH_LOG_DEBUG, "Supported mech %zu: %s", i, ptr);
         free(ptr);
 
-        /* If any one is configured then return successfully */
+        /* If atleast one mechanism is configured then return successfully */
         ret = SSH_OK;
 
 end:

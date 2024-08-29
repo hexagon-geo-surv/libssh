@@ -338,11 +338,6 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         goto error;
     }
 
-    rc = ssh_get_key_params(session, &privkey, &digest);
-    if (rc != SSH_OK) {
-        goto error;
-    }
-
     rc = ssh_dh_compute_shared_secret(crypto->dh_ctx,
                                       DH_SERVER_KEYPAIR, DH_CLIENT_KEYPAIR,
                                       &crypto->shared_secret);
@@ -351,32 +346,39 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         ssh_set_error(session, SSH_FATAL, "Could not generate shared secret");
         goto error;
     }
+
+    /* Also imports next_crypto->server_pubkey
+     * Can give error when using null hostkey */
+    ssh_get_key_params(session, &privkey, &digest);
+
     rc = ssh_make_sessionid(session);
     if (rc != SSH_OK) {
         ssh_set_error(session, SSH_FATAL, "Could not create a session id");
         goto error;
     }
 
-    rc = ssh_dh_get_next_server_publickey_blob(session, &server_pubkey_blob);
-    if (rc != SSH_OK) {
-        goto error;
-    }
-    rc = ssh_buffer_pack(session->out_buffer,
-                         "bS",
-                         SSH2_MSG_KEXGSS_HOSTKEY,
-                         server_pubkey_blob);
-    if(rc != SSH_OK) {
-        ssh_set_error_oom(session);
-        ssh_buffer_reinit(session->out_buffer);
-        goto error;
-    }
+    if (strncmp(crypto->kex_methods[SSH_HOSTKEYS], "null", 4) != 0) {
+        rc = ssh_dh_get_next_server_publickey_blob(session, &server_pubkey_blob);
+        if (rc != SSH_OK) {
+            goto error;
+        }
+        rc = ssh_buffer_pack(session->out_buffer,
+                             "bS",
+                             SSH2_MSG_KEXGSS_HOSTKEY,
+                             server_pubkey_blob);
+        if(rc != SSH_OK) {
+            ssh_set_error_oom(session);
+            ssh_buffer_reinit(session->out_buffer);
+            goto error;
+        }
 
-    rc = ssh_packet_send(session);
-    if (rc == SSH_ERROR) {
-        goto error;
+        rc = ssh_packet_send(session);
+        if (rc == SSH_ERROR) {
+            goto error;
+        }
+        SSH_LOG(SSH_LOG_DEBUG, "Sent SSH2_MSG_KEXGSS_HOSTKEY");
+        SSH_STRING_FREE(server_pubkey_blob);
     }
-    SSH_LOG(SSH_LOG_DEBUG, "Sent SSH2_MSG_KEXGSS_HOSTKEY");
-    SSH_STRING_FREE(server_pubkey_blob);
 
     rc = ssh_dh_keypair_get_keys(crypto->dh_ctx, DH_SERVER_KEYPAIR,
                                  NULL, &server_pubkey);

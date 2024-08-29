@@ -819,9 +819,9 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         "Port 22\n"
         "ListenAddress %s\n"
         "ListenAddress %s\n"
-        "HostKey %s\n" /* ed25519 HostKey */
-        "HostKey %s\n" /* RSA HostKey */
-        "HostKey %s\n" /* ECDSA HostKey */
+        "%s %s\n" /* ed25519 HostKey */
+        "%s %s\n" /* RSA HostKey */
+        "%s %s\n" /* ECDSA HostKey */
         "\n"
         "TrustedUserCAKeys %s\n"
         "\n"
@@ -860,8 +860,8 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         "Port 22\n"
         "ListenAddress %s\n"
         "ListenAddress %s\n"
-        "HostKey %s\n" /* RSA HostKey */
-        "HostKey %s\n" /* ECDSA HostKey */
+        "%s %s\n" /* RSA HostKey */
+        "%s %s\n" /* ECDSA HostKey */
         "\n"
         "TrustedUserCAKeys %s\n" /* Trusted CA */
         "\n"
@@ -977,16 +977,6 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
                            torture_get_testkey(SSH_KEYTYPE_ECDSA_P521, 0));
         torture_write_file(trusted_ca_pubkey, torture_rsa_certauth_pub);
     }
-    if (s->disable_hostkeys) {
-        char ss[1000] = {0};
-        rc = snprintf(ss, sizeof(ss), "rm %s/sshd/ssh_host_ecdsa_key %s/sshd/ssh_host_ed25519_key %s/sshd/ssh_host_rsa_key", s->socket_dir, s->socket_dir, s->socket_dir);
-        if (rc < 0 || rc >= (int)sizeof(ss)) {
-            fail_msg("snprintf failed");
-        }
-
-        rc = system(ss);
-        assert_int_equal(rc, SSH_OK);
-    }
 
     sftp_server = getenv("TORTURE_SFTP_SERVER");
     if (sftp_server == NULL) {
@@ -1009,8 +999,22 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
                  fips_config_string,
                  second_sshd ? TORTURE_SSHD_SRV1_IPV4 : TORTURE_SSHD_SRV_IPV4,
                  second_sshd ? TORTURE_SSHD_SRV1_IPV6 : TORTURE_SSHD_SRV_IPV6,
-                 rsa_hostkey,
-                 ecdsa_hostkey,
+                 "HostKey", rsa_hostkey,
+                 "HostKey", ecdsa_hostkey,
+                 trusted_ca_pubkey,
+                 sftp_server,
+                 usepam,
+                 additional_config,
+                 second_sshd ? s->srv1_pidfile : s->srv_pidfile);
+    } else if (s->disable_hostkeys) {
+        snprintf(sshd_config,
+                 sizeof(sshd_config),
+                 config_string,
+                 second_sshd ? TORTURE_SSHD_SRV1_IPV4 : TORTURE_SSHD_SRV_IPV4,
+                 second_sshd ? TORTURE_SSHD_SRV1_IPV6 : TORTURE_SSHD_SRV_IPV6,
+                 "", "",
+                 "", "",
+                 "", "",
                  trusted_ca_pubkey,
                  sftp_server,
                  usepam,
@@ -1022,9 +1026,9 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
                  config_string,
                  second_sshd ? TORTURE_SSHD_SRV1_IPV4 : TORTURE_SSHD_SRV_IPV4,
                  second_sshd ? TORTURE_SSHD_SRV1_IPV6 : TORTURE_SSHD_SRV_IPV6,
-                 ed25519_hostkey,
-                 rsa_hostkey,
-                 ecdsa_hostkey,
+                 "HostKey", ed25519_hostkey,
+                 "HostKey", rsa_hostkey,
+                 "HostKey", ecdsa_hostkey,
                  trusted_ca_pubkey,
                  sftp_server,
                  usepam,

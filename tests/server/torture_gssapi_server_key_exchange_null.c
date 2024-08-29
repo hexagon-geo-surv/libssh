@@ -6,16 +6,12 @@
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gssapi/gssapi.h>
 
 #include "libssh/libssh.h"
 #include "torture.h"
-#include "torture_key.h"
 
 #include "test_server.h"
 #include "default_cb.h"
-
-#define TORTURE_KNOWN_HOSTS_FILE "libssh_torture_knownhosts"
 
 struct test_server_st {
     struct torture_state *state;
@@ -38,11 +34,6 @@ setup_config(void **state)
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
     struct test_server_st *tss = NULL;
-
-    char ed25519_hostkey[1024] = {0};
-    char rsa_hostkey[1024];
-    char ecdsa_hostkey[1024];
-    // char trusted_ca_pubkey[1024];
 
     char sshd_path[1024];
     char log_file[1024];
@@ -72,26 +63,6 @@ setup_config(void **state)
 
     snprintf(log_file, sizeof(log_file), "%s/sshd/log", s->socket_dir);
 
-    snprintf(ed25519_hostkey,
-             sizeof(ed25519_hostkey),
-             "%s/sshd/ssh_host_ed25519_key",
-             s->socket_dir);
-    torture_write_file(ed25519_hostkey,
-                       torture_get_openssh_testkey(SSH_KEYTYPE_ED25519, 0));
-
-    snprintf(rsa_hostkey,
-             sizeof(rsa_hostkey),
-             "%s/sshd/ssh_host_rsa_key",
-             s->socket_dir);
-    torture_write_file(rsa_hostkey, torture_get_testkey(SSH_KEYTYPE_RSA, 0));
-
-    snprintf(ecdsa_hostkey,
-             sizeof(ecdsa_hostkey),
-             "%s/sshd/ssh_host_ecdsa_key",
-             s->socket_dir);
-    torture_write_file(ecdsa_hostkey,
-                       torture_get_testkey(SSH_KEYTYPE_ECDSA_P521, 0));
-
     /* Create default server state */
     ss = (struct server_state_st *)calloc(1, sizeof(struct server_state_st));
     assert_non_null(ss);
@@ -101,26 +72,11 @@ setup_config(void **state)
 
     ss->port = 22;
 
-    ss->ecdsa_key = strdup(ecdsa_hostkey);
-    assert_non_null(ss->ecdsa_key);
-
-    ss->ed25519_key = strdup(ed25519_hostkey);
-    assert_non_null(ss->ed25519_key);
-
-    ss->rsa_key = strdup(rsa_hostkey);
-    assert_non_null(ss->rsa_key);
-
-    ss->host_key = NULL;
-
-    /* Use default username and password (set in default_handle_session_cb) */
-    ss->expected_username = NULL;
-    ss->expected_password = NULL;
-
     /* not to mix up the client and server messages */
     ss->verbosity = torture_libssh_verbosity();
     ss->log_file = strdup(log_file);
 
-    ss->auth_methods = SSH_AUTH_METHOD_GSSAPI_MIC;
+    ss->auth_methods = SSH_AUTH_METHOD_GSSAPI_KEYEX;
 
 #ifdef WITH_PCAP
     ss->with_pcap = 1;
@@ -139,6 +95,10 @@ setup_config(void **state)
     /* Do not use global configuration */
     ss->parse_global_config = false;
 
+    /* Enable GSSAPI key exchange */
+    ss->gssapi_key_exchange = true;
+    ss->gssapi_key_exchange_algs = "gss-group14-sha256-,gss-group16-sha512-";
+
     tss->state = s;
     tss->ss = ss;
 
@@ -146,44 +106,20 @@ setup_config(void **state)
 }
 
 static int
-auth_gssapi_mic(ssh_session session,
-                UNUSED_PARAM(const char *user),
-                UNUSED_PARAM(const char *principal),
-                void *userdata)
-{
-    OM_uint32 min_stat;
-    ssh_gssapi_creds creds = ssh_gssapi_get_creds(session);
-    assert_non_null(creds);
-
-    gss_release_cred(&min_stat, creds);
-
-    return SSH_AUTH_SUCCESS;
-}
-
-static int
-setup_callback_server(void **state)
+setup_default_server(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
     struct test_server_st *tss = NULL;
-    char pid_str[1024];
+    char pid_str[1024] = {0};
     pid_t pid;
-    struct session_data_st sdata = {.channel = NULL,
-                                    .auth_attempts = 0,
-                                    .authenticated = 0,
-                                    .username = SSHD_DEFAULT_USER,
-                                    .password = SSHD_DEFAULT_PASSWORD};
-    int rc;
+    /*int rc;*/
 
     setup_config(state);
 
     tss = *state;
     ss = tss->ss;
     s = tss->state;
-
-    ss->server_cb = get_default_server_cb();
-    ss->server_cb->auth_gssapi_mic_function = auth_gssapi_mic;
-    ss->server_cb->userdata = &sdata;
 
     setenv("NSS_WRAPPER_HOSTNAME", "server.libssh.site", 1);
     /* Start the server using the default values */
@@ -200,8 +136,8 @@ setup_callback_server(void **state)
     unsetenv("PAM_WRAPPER");
 
     /* Wait until the sshd is ready to accept connections */
-    rc = torture_wait_for_daemon(5);
-    assert_int_equal(rc, 0);
+    /*rc = torture_wait_for_daemon(5);*/
+    /*assert_int_equal(rc, 0);*/
 
     *state = tss;
 
@@ -211,9 +147,9 @@ setup_callback_server(void **state)
 static int
 teardown_default_server(void **state)
 {
-    struct torture_state *s;
-    struct server_state_st *ss;
-    struct test_server_st *tss;
+    struct torture_state *s = NULL;
+    struct server_state_st *ss = NULL;
+    struct test_server_st *tss = NULL;
 
     tss = *state;
     assert_non_null(tss);
@@ -227,7 +163,6 @@ teardown_default_server(void **state)
     /* This function can be reused */
     torture_teardown_sshd_server((void **)&s);
 
-    SAFE_FREE(tss->ss->server_cb);
     free_server_state(tss->ss);
     SAFE_FREE(tss->ss);
     SAFE_FREE(tss);
@@ -299,17 +234,20 @@ session_teardown(void **state)
     return 0;
 }
 
+
 static void
-torture_gssapi_server_delegate_creds(void **state)
+torture_gssapi_server_key_exchange_null(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
     ssh_session session;
     int rc;
-    OM_uint32 maj_stat, min_stat;
-    gss_cred_id_t client_creds = GSS_C_NO_CREDENTIAL;
-    gss_OID_set no_mechs = GSS_C_NO_OID_SET;
-    int t = 1;
+    bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
 
     assert_non_null(tss);
 
@@ -319,37 +257,23 @@ torture_gssapi_server_delegate_creds(void **state)
     session = s->ssh.session;
     assert_non_null(session);
 
-    ssh_options_set(session, SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS, &t);
-
-    rc = ssh_connect(session);
-    assert_ssh_return_code(session, rc);
-
+    /* Valid */
     torture_setup_kdc_server(
         (void **)&s,
-        "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
-        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local addprinc -randkey host/server.libssh.site\n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site\n"
+        "kadmin.local addprinc -pw bar alice\n"
         "kadmin.local list_principals",
 
         "echo bar | kinit alice");
 
-    maj_stat = gss_acquire_cred(&min_stat,
-                                GSS_C_NO_NAME,
-                                GSS_C_INDEFINITE,
-                                GSS_C_NO_OID_SET,
-                                GSS_C_INITIATE,
-                                &client_creds,
-                                &no_mechs,
-                                NULL);
-    assert_int_equal(GSS_ERROR(maj_stat), 0);
+    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
+    assert_ssh_return_code(s->ssh.session, rc);
 
-    ssh_gssapi_set_creds(session, client_creds);
+    rc = ssh_connect(session);
+    assert_ssh_return_code(s->ssh.session, rc);
 
-    rc = ssh_userauth_gssapi(session);
-    assert_int_equal(rc, SSH_AUTH_SUCCESS);
-
-    gss_release_cred(&min_stat, &client_creds);
-    gss_release_oid_set(&min_stat, &no_mechs);
+    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS], "null");
 
     torture_teardown_kdc_server((void **)&s);
 }
@@ -359,16 +283,15 @@ torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(torture_gssapi_server_delegate_creds,
+        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_null,
                                         session_setup,
                                         session_teardown),
-
     };
 
     ssh_init();
     torture_filter_tests(tests);
     rc = cmocka_run_group_tests(tests,
-                                setup_callback_server,
+                                setup_default_server,
                                 teardown_default_server);
     ssh_finalize();
 

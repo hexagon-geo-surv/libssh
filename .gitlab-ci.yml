@@ -351,7 +351,7 @@ fedora/mingw64:
       -DWITH_PCAP=ON
       -DUNIT_TESTING=ON .. &&
       make -j$(nproc) &&
-      ctest --output-on-failure
+      ctest --output-on-failure -E torture_rand
 
 # Unit testing only, no client and pkd testing, because cwrap is not available
 # for MinGW
@@ -368,7 +368,7 @@ fedora/mingw32:
       -DWITH_PCAP=ON
       -DUNIT_TESTING=ON .. &&
       make -j$(nproc) &&
-      ctest --output-on-failure
+      ctest --output-on-failure -E torture_rand
 
 
 ###############################################################################

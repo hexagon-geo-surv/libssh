@@ -480,7 +480,11 @@ static int add_hostbound_pubkey(ssh_session session)
     int rc;
     ssh_string server_pubkey_s = NULL;
 
-    if (session == NULL || session->current_crypto == NULL ||
+    if (session == NULL) {
+        return SSH_ERROR;
+    }
+
+    if (session->current_crypto == NULL ||
         session->current_crypto->server_pubkey == NULL) {
         ssh_set_error(session,
                       SSH_FATAL,

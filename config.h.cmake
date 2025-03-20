@@ -87,6 +87,9 @@
 /* Define to 1 if you have elliptic curve cryptography in openssl */
 #cmakedefine HAVE_OPENSSL_ECC 1
 
+/* Define to 1 if mbedTLS supports curve25519 */
+#cmakedefine HAVE_MBEDTLS_CURVE25519 1
+
 /* Define to 1 if you have elliptic curve cryptography in gcrypt */
 #cmakedefine HAVE_GCRYPT_ECC 1
 

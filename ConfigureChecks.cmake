@@ -236,6 +236,20 @@ if (MBEDTLS_FOUND)
     set(CMAKE_REQUIRED_INCLUDES "${MBEDTLS_INCLUDE_DIR}/mbedtls")
     check_include_file(chacha20.h HAVE_MBEDTLS_CHACHA20_H)
     check_include_file(poly1305.h HAVE_MBEDTLS_POLY1305_H)
+
+
+    set(CMAKE_REQUIRED_INCLUDES "${MBEDTLS_INCLUDE_DIR}")
+    check_c_source_compiles("
+        #include <mbedtls/ecp.h>
+        int main() {
+            #if defined(MBEDTLS_ECP_DP_CURVE25519_ENABLED)
+            return 0;
+            #else
+            #error \"X25519 not supported\"
+            #endif
+        }
+    " HAVE_MBEDTLS_CURVE25519)
+
     if (WITH_BLOWFISH_CIPHER)
         check_include_file(blowfish.h HAVE_BLOWFISH)
     endif()

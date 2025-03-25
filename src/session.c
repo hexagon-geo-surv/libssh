@@ -429,30 +429,30 @@ const char* ssh_get_kex_algo(ssh_session session) {
     }
 
     switch (session->current_crypto->kex_type) {
-        case SSH_KEX_DH_GROUP1_SHA1:
-            return "diffie-hellman-group1-sha1";
-        case SSH_KEX_DH_GROUP14_SHA1:
-            return "diffie-hellman-group14-sha1";
-        case SSH_KEX_DH_GROUP14_SHA256:
-            return "diffie-hellman-group14-sha256";
-        case SSH_KEX_DH_GROUP16_SHA512:
-            return "diffie-hellman-group16-sha512";
-        case SSH_KEX_DH_GROUP18_SHA512:
-            return "diffie-hellman-group18-sha512";
-        case SSH_KEX_ECDH_SHA2_NISTP256:
-            return "ecdh-sha2-nistp256";
-        case SSH_KEX_ECDH_SHA2_NISTP384:
-            return "ecdh-sha2-nistp384";
-        case SSH_KEX_ECDH_SHA2_NISTP521:
-            return "ecdh-sha2-nistp521";
-        case SSH_KEX_CURVE25519_SHA256:
-           return "curve25519-sha256";
-        case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
-            return "curve25519-sha256@libssh.org";
-        case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
-            return "sntrup761x25519-sha512@openssh.com";
-        default:
-            break;
+    case SSH_KEX_DH_GROUP1_SHA1:
+        return "diffie-hellman-group1-sha1";
+    case SSH_KEX_DH_GROUP14_SHA1:
+        return "diffie-hellman-group14-sha1";
+    case SSH_KEX_DH_GROUP14_SHA256:
+        return "diffie-hellman-group14-sha256";
+    case SSH_KEX_DH_GROUP16_SHA512:
+        return "diffie-hellman-group16-sha512";
+    case SSH_KEX_DH_GROUP18_SHA512:
+        return "diffie-hellman-group18-sha512";
+    case SSH_KEX_ECDH_SHA2_NISTP256:
+        return "ecdh-sha2-nistp256";
+    case SSH_KEX_ECDH_SHA2_NISTP384:
+        return "ecdh-sha2-nistp384";
+    case SSH_KEX_ECDH_SHA2_NISTP521:
+        return "ecdh-sha2-nistp521";
+    case SSH_KEX_CURVE25519_SHA256:
+        return "curve25519-sha256";
+    case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
+        return "curve25519-sha256@libssh.org";
+    case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
+        return "sntrup761x25519-sha512@openssh.com";
+    default:
+        break;
     }
 
     return NULL;

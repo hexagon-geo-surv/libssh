@@ -275,38 +275,39 @@ static const char *ssh_kex_descriptions[] = {
   NULL
 };
 
-const char *ssh_kex_get_default_methods(uint32_t algo)
+const char *ssh_kex_get_default_methods(enum ssh_kex_types_e type)
 {
-    if (algo >= SSH_KEX_METHODS) {
+    if (type >= SSH_KEX_METHODS) {
         return NULL;
     }
 
-    return default_methods[algo];
+    return default_methods[type];
 }
-
-const char *ssh_kex_get_supported_method(uint32_t algo)
+const char *ssh_kex_get_supported_method(enum ssh_kex_types_e type)
 {
-    if (algo >= SSH_KEX_METHODS) {
+    if (type >= SSH_KEX_METHODS) {
         return NULL;
     }
 
-    return supported_methods[algo];
+    return supported_methods[type];
 }
 
-const char *ssh_kex_get_description(uint32_t algo) {
-  if (algo >= SSH_KEX_METHODS) {
-    return NULL;
-  }
+const char *ssh_kex_get_description(enum ssh_kex_types_e type)
+{
+    if (type >= SSH_KEX_METHODS) {
+        return NULL;
+    }
 
-  return ssh_kex_descriptions[algo];
+    return ssh_kex_descriptions[type];
 }
 
-const char *ssh_kex_get_fips_methods(uint32_t algo) {
-  if (algo >= SSH_KEX_METHODS) {
-    return NULL;
-  }
+const char *ssh_kex_get_fips_methods(enum ssh_kex_types_e type)
+{
+    if (type >= SSH_KEX_METHODS) {
+        return NULL;
+    }
 
-  return fips_methods[algo];
+    return fips_methods[type];
 }
 
 /**

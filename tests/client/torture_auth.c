@@ -72,7 +72,7 @@ static int session_setup(void **state)
     assert_ssh_return_code(s->ssh.session, rc);
 
     /* Enable all hostkeys */
-    all_keytypes = ssh_kex_get_supported_method(SSH_HOSTKEYS);
+    all_keytypes = ssh_get_supported_methods(SSH_HOSTKEYS);
     rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES, all_keytypes);
     assert_ssh_return_code(s->ssh.session, rc);
 

@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     }
 
     /* Enable all supported algorithms */
-    hostkeys = ssh_kex_get_supported_method(SSH_HOSTKEYS);
+    hostkeys = ssh_get_supported_methods(SSH_HOSTKEYS);
     rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, hostkeys);
     if (rc < 0) {
         goto out;

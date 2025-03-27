@@ -875,6 +875,7 @@ LIBSSH_API const char* ssh_get_cipher_in(ssh_session session);
 LIBSSH_API const char* ssh_get_cipher_out(ssh_session session);
 LIBSSH_API const char* ssh_get_hmac_in(ssh_session session);
 LIBSSH_API const char* ssh_get_hmac_out(ssh_session session);
+LIBSSH_API const char *ssh_get_supported_methods(enum ssh_kex_types_e type);
 
 LIBSSH_API ssh_buffer ssh_buffer_new(void);
 LIBSSH_API void ssh_buffer_free(ssh_buffer buffer);

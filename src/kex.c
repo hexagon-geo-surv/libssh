@@ -311,6 +311,25 @@ const char *ssh_kex_get_fips_methods(enum ssh_kex_types_e type)
 }
 
 /**
+ * @brief Get a list of supported algorithms of a given type. This respects the
+ * FIPS mode status.
+ *
+ * @param[in] type The type of the algorithm to query (SSH_KEX, SSH_MAC_C_S,
+ * ...).
+ *
+ * @return The list of supported methods as comma-separated string, or NULL for
+ * unknown type.
+ */
+const char *ssh_get_supported_methods(enum ssh_kex_types_e type)
+{
+    if (ssh_fips_mode()) {
+        return ssh_kex_get_fips_methods(type);
+    } else {
+        return ssh_kex_get_supported_method(type);
+    }
+}
+
+/**
  * @internal
  * @brief returns whether the first client key exchange algorithm or
  *        hostkey type matches its server counterpart

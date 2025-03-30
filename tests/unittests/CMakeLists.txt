@@ -102,6 +102,7 @@ if (UNIX AND NOT WIN32)
             torture_unit_server
             torture_server_x11
             torture_forwarded_tcpip_callback
+            torture_server_direct_tcpip
         )
     endif (WITH_SERVER)
 endif (UNIX AND NOT WIN32)

@@ -205,19 +205,17 @@ static int ssh_execute_server_request(ssh_session session, ssh_message msg)
                 }
 
                 return SSH_OK;
-            } else if (msg->channel_request_open.type ==
-                           SSH_CHANNEL_DIRECT_TCPIP &&
-                       ssh_callbacks_exists(
-                           session->server_callbacks,
-                           channel_open_request_direct_tcpip_function)) {
-                channel = session->server_callbacks
-                              ->channel_open_request_direct_tcpip_function(
-                                  session,
-                                  msg->channel_request_open.destination,
-                                  msg->channel_request_open.destination_port,
-                                  msg->channel_request_open.originator,
-                                  msg->channel_request_open.originator_port,
-                                  session->server_callbacks->userdata);
+#define CB channel_open_request_direct_tcpip_function
+            } else if (msg->channel_request_open.type == SSH_CHANNEL_DIRECT_TCPIP &&
+                       ssh_callbacks_exists(session->server_callbacks, CB)) {
+                struct ssh_channel_request_open *rq = &msg->channel_request_open;
+                channel = session->server_callbacks->CB(session,
+                                                        rq->destination,
+                                                        rq->destination_port,
+                                                        rq->originator,
+                                                        rq->originator_port,
+                                                        session->server_callbacks->userdata);
+#undef CB
                 if (channel != NULL) {
                     rc = ssh_message_channel_request_open_reply_accept_channel(
                         msg,

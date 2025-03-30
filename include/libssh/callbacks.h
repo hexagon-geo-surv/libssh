@@ -325,6 +325,28 @@ typedef int (*ssh_gssapi_accept_sec_ctx_callback) (ssh_session session,
 typedef int (*ssh_gssapi_verify_mic_callback) (ssh_session session,
 		ssh_string mic, void *mic_buffer, size_t mic_buffer_size, void *userdata);
 
+/**
+ * @brief Handles an SSH new channel open "direct-tcpip" request. This
+ * happens when the client forwards an incoming TCP connection on a port it
+ * wants to forward to the destination. This is a server-side API
+ * @param session current session handler
+ * @param destination_address the address that the TCP connection connected to
+ * @param destination_port the port that the TCP connection connected to
+ * @param originator_address the originator IP address
+ * @param originator_port the originator port
+ * @param userdata Userdata to be passed to the callback function.
+ * @returns a valid ssh_channel handle if the request is to be allowed
+ * @returns NULL if the request should not be allowed
+ * @warning The channel pointer returned by this callback must be closed by the
+ * application.
+ */
+typedef ssh_channel (*ssh_channel_open_request_direct_tcpip_callback)(
+    ssh_session session,
+    const char *destination_address,
+    int destination_port,
+    const char *originator_address,
+    int originator_port,
+    void *userdata);
 
 /**
  * This structure can be used to implement a libssh server, with appropriate callbacks.
@@ -375,6 +397,12 @@ struct ssh_server_callbacks_struct {
   /* This function will be called when a MIC needs to be verified.
    */
   ssh_gssapi_verify_mic_callback gssapi_verify_mic_function;
+  /**
+   * This function will be called when an incoming "direct-tcpip"
+   * request is received.
+   */
+  ssh_channel_open_request_direct_tcpip_callback
+      channel_open_request_direct_tcpip_function;
 };
 typedef struct ssh_server_callbacks_struct *ssh_server_callbacks;
 

@@ -100,6 +100,7 @@ if (UNIX AND NOT WIN32)
         set(LIBSSH_THREAD_UNIT_TESTS
             ${LIBSSH_THREAD_UNIT_TESTS}
             torture_unit_server
+            torture_server_x11
         )
     endif (WITH_SERVER)
 endif (UNIX AND NOT WIN32)

@@ -1,3 +1,5 @@
+#include "config.h"
+
 #define LIBSSH_STATIC
 
 #include <errno.h>
@@ -6,8 +8,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <libssh/libssh.h>
 #include "torture.h"
+#include "torture_key.h"
+#include <libssh/libssh.h>
 
 #define TEST_SERVER_PORT 2222
 

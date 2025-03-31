@@ -101,6 +101,7 @@ if (UNIX AND NOT WIN32)
             ${LIBSSH_THREAD_UNIT_TESTS}
             torture_unit_server
             torture_server_x11
+            torture_forwarded_tcpip_callback
         )
     endif (WITH_SERVER)
 endif (UNIX AND NOT WIN32)

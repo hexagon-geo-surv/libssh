@@ -488,4 +488,6 @@ LIBSSH_AFTER_4_10_0
         sftp_get_users_groups_by_id;
         sftp_name_id_map_free;
         sftp_name_id_map_new;
+        ssh_get_supported_methods;
 } LIBSSH_4_10_0;
+

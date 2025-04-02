@@ -130,6 +130,8 @@ struct ssh_crypto_struct {
 #ifdef HAVE_CURVE25519
 #ifdef HAVE_LIBCRYPTO
     EVP_PKEY *curve25519_privkey;
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_sexp_t curve25519_privkey;
 #else
     ssh_curve25519_privkey curve25519_privkey;
 #endif

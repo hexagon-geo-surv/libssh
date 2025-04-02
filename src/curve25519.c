@@ -45,6 +45,8 @@
 #include "mbedcrypto-compat.h"
 #include <mbedtls/ecdh.h>
 #include <mbedtls/error.h>
+#elif defined(HAVE_GCRYPT_CURVE25519)
+#include <gcrypt.h>
 #endif
 
 static SSH_PACKET_CALLBACK(ssh_packet_client_curve25519_reply);
@@ -62,21 +64,31 @@ static struct ssh_packet_callbacks_struct ssh_curve25519_client_callbacks = {
 
 int ssh_curve25519_init(ssh_session session)
 {
-    int rc;
     ssh_curve25519_pubkey *pubkey_loc = NULL;
 
 #ifdef HAVE_LIBCRYPTO
+    int rc;
     EVP_PKEY_CTX *pctx = NULL;
     EVP_PKEY *pkey = NULL;
     size_t pubkey_len = CURVE25519_PUBKEY_SIZE;
 
 #elif defined(HAVE_MBEDTLS_CURVE25519)
+    int rc;
     mbedtls_ecdh_context ecdh_ctx;
     mbedtls_ctr_drbg_context *ctr_drbg = NULL;
     char error_buf[128];
     int ret = SSH_ERROR;
 
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_error_t gcry_err;
+    gcry_sexp_t param = NULL, keypair_sexp = NULL;
+    ssh_string privkey = NULL, pubkey = NULL;
+    char *pubkey_data = NULL;
+    int ret = SSH_ERROR;
+#else
+    int rc;
 #endif
+
     if (session->server) {
         pubkey_loc = &session->next_crypto->curve25519_server_pubkey;
     } else {
@@ -205,6 +217,64 @@ out:
     mbedtls_ecdh_free(&ecdh_ctx);
     return ret;
 
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_err =
+        gcry_sexp_build(&param, NULL, "(genkey (ecdh (curve Curve25519)))");
+    if (gcry_err != GPG_ERR_NO_ERROR) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to create keypair sexp: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    gcry_err = gcry_pk_genkey(&keypair_sexp, param);
+    if (gcry_err != GPG_ERR_NO_ERROR) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to generate keypair: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    /* Extract the public key */
+    pubkey = ssh_sexp_extract_mpi(keypair_sexp,
+                                  "q",
+                                  GCRYMPI_FMT_USG,
+                                  GCRYMPI_FMT_STD);
+    if (pubkey == NULL) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to extract public key: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    /* Store the public key in the session */
+    /* The first byte should be 0x40 indicating that the point is compressed, so
+     * we skip storing it */
+    pubkey_data = (char *)ssh_string_data(pubkey);
+    if (ssh_string_len(pubkey) != CURVE25519_PUBKEY_SIZE + 1 ||
+        pubkey_data[0] != 0x40) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Invalid public key with length: %zu",
+                ssh_string_len(pubkey));
+        goto out;
+    }
+
+    memcpy(*pubkey_loc, pubkey_data + 1, CURVE25519_PUBKEY_SIZE);
+
+    /* Store the private key */
+    session->next_crypto->curve25519_privkey = keypair_sexp;
+    keypair_sexp = NULL;
+    ret = SSH_OK;
+
+out:
+    ssh_string_burn(privkey);
+    SSH_STRING_FREE(privkey);
+    ssh_string_burn(pubkey);
+    SSH_STRING_FREE(pubkey);
+    gcry_sexp_release(param);
+    gcry_sexp_release(keypair_sexp);
+    return ret;
+
 #else
     rc = ssh_get_random(session->next_crypto->curve25519_privkey,
                         CURVE25519_PRIVKEY_SIZE, 1);
@@ -272,6 +342,14 @@ int ssh_curve25519_create_k(ssh_session session, ssh_curve25519_pubkey k)
     mbedtls_ecdh_context ecdh_ctx;
     mbedtls_ctr_drbg_context *ctr_drbg = NULL;
     char error_buf[128];
+
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_error_t gcry_err;
+    gcry_sexp_t pubkey_sexp = NULL, privkey_data_sexp = NULL,
+                result_sexp = NULL;
+    ssh_string shared_secret = NULL, privkey = NULL;
+    char *shared_secret_data = NULL;
+    int ret = SSH_ERROR;
 
 #endif
     if (session->server) {
@@ -450,6 +528,88 @@ out:
 
 out:
     mbedtls_ecdh_free(&ecdh_ctx);
+    if (ret == SSH_ERROR) {
+        return ret;
+    }
+
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_err = gcry_sexp_build(
+        &pubkey_sexp,
+        NULL,
+        "(key-data(public-key (ecdh (curve Curve25519) (q %b))))",
+        CURVE25519_PUBKEY_SIZE,
+        *peer_pubkey_loc);
+    if (gcry_err != GPG_ERR_NO_ERROR) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to create peer public key sexp: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    privkey = ssh_sexp_extract_mpi(session->next_crypto->curve25519_privkey,
+                                   "d",
+                                   GCRYMPI_FMT_USG,
+                                   GCRYMPI_FMT_STD);
+    if (privkey == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to extract private key");
+        goto out;
+    }
+
+    gcry_err = gcry_sexp_build(&privkey_data_sexp,
+                               NULL,
+                               "(data(flags raw)(value %b))",
+                               ssh_string_len(privkey),
+                               ssh_string_data(privkey));
+    if (gcry_err != GPG_ERR_NO_ERROR) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to create private key sexp: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    gcry_err = gcry_pk_encrypt(&result_sexp, privkey_data_sexp, pubkey_sexp);
+    if (gcry_err != GPG_ERR_NO_ERROR) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to compute shared secret: %s",
+                gcry_strerror(gcry_err));
+        goto out;
+    }
+
+    shared_secret = ssh_sexp_extract_mpi(result_sexp,
+                                         "s",
+                                         GCRYMPI_FMT_USG,
+                                         GCRYMPI_FMT_USG);
+    if (shared_secret == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to extract shared secret");
+        goto out;
+    }
+
+    /* Copy the shared secret to the output buffer */
+    /* The first byte should be 0x40 indicating that it is a compressed point,
+     * so we skip it */
+    shared_secret_data = (char *)ssh_string_data(shared_secret);
+    if (ssh_string_len(shared_secret) != CURVE25519_PUBKEY_SIZE + 1 ||
+        shared_secret_data[0] != 0x40) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Invalid shared secret with length: %zu",
+                ssh_string_len(shared_secret));
+        goto out;
+    }
+
+    memcpy(k, shared_secret_data + 1, CURVE25519_PUBKEY_SIZE);
+
+    ret = SSH_OK;
+    gcry_sexp_release(session->next_crypto->curve25519_privkey);
+    session->next_crypto->curve25519_privkey = NULL;
+
+out:
+    ssh_string_burn(shared_secret);
+    SSH_STRING_FREE(shared_secret);
+    ssh_string_burn(privkey);
+    SSH_STRING_FREE(privkey);
+    gcry_sexp_release(privkey_data_sexp);
+    gcry_sexp_release(pubkey_sexp);
+    gcry_sexp_release(result_sexp);
     if (ret == SSH_ERROR) {
         return ret;
     }

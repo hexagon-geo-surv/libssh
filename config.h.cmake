@@ -102,6 +102,9 @@
 /* Define to 1 if you have gcrypt with ChaCha20/Poly1305 support */
 #cmakedefine HAVE_GCRYPT_CHACHA_POLY 1
 
+/* Define to 1 if you have gcrypt with curve25519 support */
+#cmakedefine HAVE_GCRYPT_CURVE25519
+
 /*************************** FUNCTIONS ***************************/
 
 /* Define to 1 if you have the `EVP_chacha20' function. */

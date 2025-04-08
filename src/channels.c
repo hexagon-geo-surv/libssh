@@ -1728,7 +1728,7 @@ int ssh_channel_is_open(ssh_channel channel)
  */
 int ssh_channel_is_closed(ssh_channel channel)
 {
-    if (channel == NULL) {
+    if (channel == NULL || channel->session == NULL) {
         return SSH_ERROR;
     }
     return (channel->state != SSH_CHANNEL_STATE_OPEN || channel->session->alive == 0);

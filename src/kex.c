@@ -1375,6 +1375,7 @@ int ssh_make_sessionid(ssh_session session)
 
     buf = ssh_buffer_new();
     if (buf == NULL) {
+        ssh_set_error_oom(session);
         return rc;
     }
 
@@ -1383,6 +1384,9 @@ int ssh_make_sessionid(ssh_session session)
                          session->clientbanner,
                          session->serverbanner);
     if (rc == SSH_ERROR) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Failed to pack client and server banner");
         goto error;
     }
 
@@ -1396,6 +1400,9 @@ int ssh_make_sessionid(ssh_session session)
 
     rc = ssh_dh_get_next_server_publickey_blob(session, &server_pubkey_blob);
     if (rc != SSH_OK) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Failed to get next server pubkey blob");
         goto error;
     }
 
@@ -1410,6 +1417,9 @@ int ssh_make_sessionid(ssh_session session)
                          server_pubkey_blob);
     SSH_STRING_FREE(server_pubkey_blob);
     if (rc != SSH_OK){
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Failed to pack hashes and pubkey blob");
         goto error;
     }
 
@@ -1434,6 +1444,7 @@ int ssh_make_sessionid(ssh_session session)
                              client_pubkey,
                              server_pubkey);
         if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to pack DH pubkeys");
             goto error;
         }
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -1469,6 +1480,7 @@ int ssh_make_sessionid(ssh_session session)
                     client_pubkey,
                     server_pubkey);
         if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to pack DH GEX params");
             goto error;
         }
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -1491,6 +1503,7 @@ int ssh_make_sessionid(ssh_session session)
                              session->next_crypto->ecdh_client_pubkey,
                              session->next_crypto->ecdh_server_pubkey);
         if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to pack ECDH pubkeys");
             goto error;
         }
         break;
@@ -1506,6 +1519,9 @@ int ssh_make_sessionid(ssh_session session)
                              (size_t)CURVE25519_PUBKEY_SIZE, session->next_crypto->curve25519_server_pubkey);
 
         if (rc != SSH_OK) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Failed to pack Curve25519 pubkeys");
             goto error;
         }
         break;
@@ -1526,6 +1542,9 @@ int ssh_make_sessionid(ssh_session session)
                              session->next_crypto->curve25519_server_pubkey);
 
         if (rc != SSH_OK) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Failed to pack SNTRU Prime params");
             goto error;
         }
         break;
@@ -1540,6 +1559,7 @@ int ssh_make_sessionid(ssh_session session)
         rc = ssh_buffer_pack(buf, "B", session->next_crypto->shared_secret);
     }
     if (rc != SSH_OK) {
+        ssh_set_error(session, SSH_FATAL, "Failed to pack shared secret");
         goto error;
     }
 

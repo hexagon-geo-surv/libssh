@@ -80,8 +80,9 @@ if (UNIX AND NOT WIN32)
                 ${LIBSSH_UNIT_TESTS}
                 torture_pki_ed25519_uri
             )
+            list(APPEND TORTURE_UNIT_ENVIRONMENT
+                 PKCS11_PROVIDER_DEBUG=file:/tmp/p11prov-debug.log)
         endif()
-        list(APPEND TORTURE_UNIT_ENVIRONMENT PKCS11_PROVIDER_DEBUG=file:/tmp/p11prov-debug.log)
     endif()
 
     if (HAVE_ECC)

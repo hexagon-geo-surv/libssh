@@ -1622,7 +1622,8 @@ static int channel_write_common(ssh_channel channel,
     rc = ssh_buffer_pack(session->out_buffer,
                          "dP",
                          effectivelen,
-                         (size_t)effectivelen, data);
+                         (size_t)effectivelen,
+                         data);
     if (rc != SSH_OK) {
         ssh_set_error_oom(session);
         goto error;
@@ -1998,7 +1999,8 @@ int ssh_channel_request_pty_size_modes(ssh_channel channel, const char *terminal
                        0, /* pix */
                        0, /* pix */
                        (uint32_t)modes_len,
-                       modes_len, modes);
+                       (size_t)modes_len,
+                       modes);
 
   if (rc != SSH_OK) {
     ssh_set_error_oom(session);

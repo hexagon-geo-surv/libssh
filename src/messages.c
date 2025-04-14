@@ -786,7 +786,7 @@ static ssh_buffer ssh_msg_userauth_build_digest(ssh_session session,
 
     rc = ssh_buffer_pack(buffer,
                          "dPbsssbsS",
-                         crypto->session_id_len, /* session ID string */
+                         (uint32_t)crypto->session_id_len, /* session ID string */
                          crypto->session_id_len,
                          crypto->session_id,
                          SSH2_MSG_USERAUTH_REQUEST, /* type */

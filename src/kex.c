@@ -1077,7 +1077,7 @@ int ssh_send_kex(ssh_session session)
     rc = ssh_buffer_pack(session->out_buffer,
                          "bP",
                          SSH2_MSG_KEXINIT,
-                         16,
+                         (size_t)16,
                          kex->cookie); /* cookie */
     if (rc != SSH_OK)
         goto error;
@@ -1409,10 +1409,10 @@ int ssh_make_sessionid(ssh_session session)
     rc = ssh_buffer_pack(buf,
                          "dPdPS",
                          ssh_buffer_get_len(client_hash),
-                         ssh_buffer_get_len(client_hash),
+                         (size_t)ssh_buffer_get_len(client_hash),
                          ssh_buffer_get(client_hash),
                          ssh_buffer_get_len(server_hash),
-                         ssh_buffer_get_len(server_hash),
+                         (size_t)ssh_buffer_get_len(server_hash),
                          ssh_buffer_get(server_hash),
                          server_pubkey_blob);
     SSH_STRING_FREE(server_pubkey_blob);
@@ -1514,9 +1514,11 @@ int ssh_make_sessionid(ssh_session session)
         rc = ssh_buffer_pack(buf,
                              "dPdP",
                              CURVE25519_PUBKEY_SIZE,
-                             (size_t)CURVE25519_PUBKEY_SIZE, session->next_crypto->curve25519_client_pubkey,
+                             (size_t)CURVE25519_PUBKEY_SIZE,
+                             session->next_crypto->curve25519_client_pubkey,
                              CURVE25519_PUBKEY_SIZE,
-                             (size_t)CURVE25519_PUBKEY_SIZE, session->next_crypto->curve25519_server_pubkey);
+                             (size_t)CURVE25519_PUBKEY_SIZE,
+                             session->next_crypto->curve25519_server_pubkey);
 
         if (rc != SSH_OK) {
             ssh_set_error(session,

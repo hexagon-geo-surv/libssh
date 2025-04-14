@@ -552,7 +552,8 @@ ssh_string ssh_pki_openssh_privkey_export(const ssh_key privkey,
                          "ddPs",
                          rnd, /* checkint 1 & 2 */
                          rnd,
-                         ssh_string_len(blob), ssh_string_data(blob),
+                         ssh_string_len(blob),
+                         ssh_string_data(blob),
                          "" /* comment */);
     if (rc == SSH_ERROR){
         goto error;
@@ -621,15 +622,17 @@ ssh_string ssh_pki_openssh_privkey_export(const ssh_key privkey,
 
     rc = ssh_buffer_pack(buffer,
                          "PssSdSdP",
-                         (size_t)strlen(OPENSSH_AUTH_MAGIC) + 1, OPENSSH_AUTH_MAGIC,
+                         strlen(OPENSSH_AUTH_MAGIC) + 1,
+                         OPENSSH_AUTH_MAGIC,
                          to_encrypt ? "aes128-cbc" : "none", /* ciphername */
-                         to_encrypt ? "bcrypt" : "none", /* kdfname */
-                         kdf_options, /* kdfoptions */
-                         (uint32_t) 1, /* nkeys */
+                         to_encrypt ? "bcrypt" : "none",     /* kdfname */
+                         kdf_options,                        /* kdfoptions */
+                         (uint32_t)1,                        /* nkeys */
                          pubkey_s,
-                         (uint32_t)ssh_buffer_get_len(privkey_buffer),
+                         ssh_buffer_get_len(privkey_buffer),
                          /* rest of buffer is a string */
-                         (size_t)ssh_buffer_get_len(privkey_buffer), ssh_buffer_get(privkey_buffer));
+                         (size_t)ssh_buffer_get_len(privkey_buffer),
+                         ssh_buffer_get(privkey_buffer));
     if (rc != SSH_OK) {
         goto error;
     }

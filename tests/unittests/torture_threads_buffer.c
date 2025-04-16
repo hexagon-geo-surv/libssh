@@ -119,6 +119,8 @@ static void *thread_growing_buffer_shifting(void *threadid)
     buffer = ssh_buffer_new();
     if (buffer == NULL) {
         pthread_exit((void *)-1);
+        /* dummy analyzers ... */
+        return NULL;
     }
     ssh_buffer_set_secure(buffer);
 

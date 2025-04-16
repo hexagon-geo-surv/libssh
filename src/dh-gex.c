@@ -416,6 +416,9 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
             do {
                 firstbyte = getc(moduli);
             } while(firstbyte != '\n' && firstbyte != EOF);
+            if (firstbyte == EOF) {
+                break;
+            }
             continue;
         }
         if (firstbyte == EOF) {
@@ -439,6 +442,9 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
             do {
                 firstbyte = getc(moduli);
             } while(firstbyte != '\n' && firstbyte != EOF);
+            if (firstbyte == EOF) {
+                break;
+            }
             continue;
         }
 

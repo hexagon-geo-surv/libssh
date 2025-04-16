@@ -1121,6 +1121,7 @@ process_opendir(sftp_client_message client_msg)
         sftp_reply_handle(client_msg, handle_s);
         ssh_string_free(handle_s);
     } else {
+        free(h);
         closedir(dir);
         sftp_reply_status(client_msg, SSH_FX_FAILURE, "No handle available");
     }

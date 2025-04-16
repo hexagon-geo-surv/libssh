@@ -8,7 +8,7 @@
 int main(void) {
   ssh_session session;
   ssh_channel channel;
-  char buffer[1024*1024];
+  char buffer[1024 * 1024] = {0};
   int rc;
   uint64_t total=0;
   uint64_t lastshown=4096;
@@ -47,7 +47,7 @@ int main(void) {
     if(total > LIMIT)
       break;
   }
-    
+
   if (rc < 0) {
     printf("error : %s\n",ssh_get_error(session));
     ssh_channel_close(channel);

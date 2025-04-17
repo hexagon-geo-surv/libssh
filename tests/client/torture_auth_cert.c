@@ -24,15 +24,15 @@
 
 #define LIBSSH_STATIC
 
-#include "torture.h"
 #include "libssh/libssh.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
+#include "torture.h"
 
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <pwd.h>
+#include <sys/types.h>
 
 #include "torture_auth_common.c"
 
@@ -43,7 +43,8 @@ static int sshd_setup(void **state)
     return 0;
 }
 
-static int sshd_teardown(void **state) {
+static int sshd_teardown(void **state)
+{
     torture_teardown_sshd_server(state);
 
     return 0;
@@ -75,11 +76,15 @@ static int session_setup(void **state)
 
     /* Enable all hostkeys */
     all_keytypes = ssh_get_supported_methods(SSH_HOSTKEYS);
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES, all_keytypes);
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES,
+                         all_keytypes);
     assert_ssh_return_code(s->ssh.session, rc);
 
     /* certs have been signed for login as alice */
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_USER,
+                         TORTURE_SSH_USER_ALICE);
     assert_int_equal(rc, SSH_OK);
 
     /* Make sure we do not interfere with another ssh-agent */
@@ -232,14 +237,8 @@ static void torture_auth_cert(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
-    snprintf(doe_ssh_cert,
-             sizeof(doe_ssh_cert),
-             "%s-cert.pub",
-             doe_ssh_key);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+    snprintf(doe_ssh_cert, sizeof(doe_ssh_cert), "%s-cert.pub", doe_ssh_key);
 
     rc = ssh_connect(session);
     assert_int_equal(rc, SSH_OK);
@@ -277,14 +276,8 @@ static void torture_auth_cert_nonblocking(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
-    snprintf(doe_ssh_cert,
-             sizeof(doe_ssh_cert),
-             "%s-cert.pub",
-             doe_ssh_key);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+    snprintf(doe_ssh_cert, sizeof(doe_ssh_cert), "%s-cert.pub", doe_ssh_key);
 
     rc = ssh_connect(session);
     assert_int_equal(rc, SSH_OK);
@@ -405,10 +398,7 @@ static void torture_auth_cert_options_private(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
 
     /* the cert has default naming relative to the private key (*-cert.pub) */
     rc = ssh_options_set(session, SSH_OPTIONS_IDENTITY, doe_ssh_key);
@@ -436,10 +426,7 @@ static void torture_auth_cert_options_private_nonblocking(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
 
     /* the cert has default naming relative to the private key (*-cert.pub) */
     rc = ssh_options_set(session, SSH_OPTIONS_IDENTITY, doe_ssh_key);
@@ -471,14 +458,8 @@ static void torture_auth_cert_options_cert(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
-    snprintf(doe_ssh_cert,
-             sizeof(doe_ssh_cert),
-             "%s-cert.pub",
-             doe_ssh_key);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+    snprintf(doe_ssh_cert, sizeof(doe_ssh_cert), "%s-cert.pub", doe_ssh_key);
 
     /* Explicit private key and cert */
     rc = ssh_options_set(session, SSH_OPTIONS_IDENTITY, doe_ssh_key);
@@ -509,14 +490,8 @@ static void torture_auth_cert_options_cert_nonblocking(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
-    snprintf(doe_ssh_cert,
-             sizeof(doe_ssh_cert),
-             "%s-cert.pub",
-             doe_ssh_key);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+    snprintf(doe_ssh_cert, sizeof(doe_ssh_cert), "%s-cert.pub", doe_ssh_key);
 
     /* Explicit private key and cert */
     rc = ssh_options_set(session, SSH_OPTIONS_IDENTITY, doe_ssh_key);
@@ -537,7 +512,8 @@ static void torture_auth_cert_options_cert_nonblocking(void **state)
 
 static void workaround_old_openssh_bug(void **state)
 {
-#if OPENSSH_VERSION_MAJOR < 8 || (OPENSSH_VERSION_MAJOR == 8 && OPENSSH_VERSION_MINOR == 0)
+#if OPENSSH_VERSION_MAJOR < 8 || \
+    (OPENSSH_VERSION_MAJOR == 8 && OPENSSH_VERSION_MINOR == 0)
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
     int rc;
@@ -553,7 +529,8 @@ static void workaround_old_openssh_bug(void **state)
         skip();
     } else {
         /* After the bug is solved, this also should be removed */
-        rc = ssh_options_set(session, SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES,
+        rc = ssh_options_set(session,
+                             SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES,
                              "ssh-rsa-cert-v01@openssh.com");
         assert_int_equal(rc, SSH_OK);
     }
@@ -577,8 +554,7 @@ static void torture_auth_agent_cert_nonblocking(void **state)
     torture_auth_agent_nonblocking(state);
 }
 
-static void
-torture_auth_agent_cert_identities_only(void **state)
+static void torture_auth_agent_cert_identities_only(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -593,21 +569,20 @@ torture_auth_agent_cert_identities_only(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         return;
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -636,8 +611,7 @@ torture_auth_agent_cert_identities_only(void **state)
     assert_ssh_return_code(session, rc);
 }
 
-static void
-torture_auth_agent_cert_identities_only_nonblocking(void **state)
+static void torture_auth_agent_cert_identities_only_nonblocking(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -652,21 +626,20 @@ torture_auth_agent_cert_identities_only_nonblocking(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         return;
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -718,25 +691,24 @@ static void torture_auth_agent_cert_identities_only_explicit(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/my_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/my_rsa", pwd->pw_dir);
     snprintf(doe_ssh_cert,
              sizeof(doe_ssh_cert),
              "%s/.ssh/id_rsa-cert.pub",
              pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         skip();
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -783,25 +755,24 @@ torture_auth_agent_cert_identities_only_nonblocking_explicit(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/my_rsa",
-             pwd->pw_dir);
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/my_rsa", pwd->pw_dir);
     snprintf(doe_ssh_cert,
              sizeof(doe_ssh_cert),
              "%s/.ssh/id_rsa-cert.pub",
              pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         skip();
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -839,8 +810,7 @@ torture_auth_agent_cert_identities_only_nonblocking_explicit(void **state)
     assert_ssh_return_code(session, rc);
 }
 
-static void
-torture_auth_agent_cert_only_identities_only(void **state)
+static void torture_auth_agent_cert_only_identities_only(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -860,16 +830,18 @@ torture_auth_agent_cert_only_identities_only(void **state)
              "%s/.ssh/id_rsa-cert.pub",
              pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         skip();
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -918,16 +890,18 @@ torture_auth_agent_cert_only_identities_only_nonblocking(void **state)
              "%s/.ssh/id_rsa-cert.pub",
              pwd->pw_dir);
 
-    if (!ssh_agent_is_running(session)){
+    if (!ssh_agent_is_running(session)) {
         print_message("*** Agent not running. Test ignored\n");
         skip();
     }
 
-    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &identities_only);
     assert_int_equal(rc, SSH_OK);
 
     /* Remove the default identities */
-    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) != NULL) {
+    while ((id = ssh_list_pop_head(char *, session->opts.identity_non_exp)) !=
+           NULL) {
         SAFE_FREE(id);
     }
 
@@ -963,7 +937,8 @@ torture_auth_agent_cert_only_identities_only_nonblocking(void **state)
     assert_ssh_return_code(session, rc);
 }
 
-int torture_run_tests(void) {
+int torture_run_tests(void)
+{
     int rc;
     struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(torture_auth_cert,
@@ -975,9 +950,10 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_auth_cert_default_non_explicit,
                                         session_setup,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_cert_default_non_explicit_nonblocking,
-                                        session_setup,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_cert_default_non_explicit_nonblocking,
+            session_setup,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_auto_fail,
                                         session_setup_ssh_dir,
                                         session_teardown),
@@ -987,15 +963,17 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_auth_cert_options_private,
                                         session_setup_ssh_dir,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_cert_options_private_nonblocking,
-                                        session_setup_ssh_dir,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_cert_options_private_nonblocking,
+            session_setup_ssh_dir,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_cert_options_cert,
                                         session_setup_ssh_dir,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_cert_options_cert_nonblocking,
-                                        session_setup_ssh_dir,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_cert_options_cert_nonblocking,
+            session_setup_ssh_dir,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_agent_cert,
                                         agent_cert_setup,
                                         agent_teardown),
@@ -1005,21 +983,26 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_auth_agent_cert_identities_only,
                                         agent_cert_setup,
                                         agent_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_agent_cert_identities_only_nonblocking,
-                                        agent_cert_setup,
-                                        agent_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_agent_cert_identities_only_explicit,
-                                        agent_cert_setup_explicit,
-                                        agent_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_agent_cert_identities_only_nonblocking_explicit,
-                                        agent_cert_setup_explicit,
-                                        agent_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_agent_cert_only_identities_only,
-                                        agent_cert_setup,
-                                        agent_teardown),
-        cmocka_unit_test_setup_teardown(torture_auth_agent_cert_only_identities_only_nonblocking,
-                                        agent_cert_setup,
-                                        agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_agent_cert_identities_only_nonblocking,
+            agent_cert_setup,
+            agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_agent_cert_identities_only_explicit,
+            agent_cert_setup_explicit,
+            agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_agent_cert_identities_only_nonblocking_explicit,
+            agent_cert_setup_explicit,
+            agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_agent_cert_only_identities_only,
+            agent_cert_setup,
+            agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_agent_cert_only_identities_only_nonblocking,
+            agent_cert_setup,
+            agent_teardown),
     };
 
     ssh_init();

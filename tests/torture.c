@@ -23,17 +23,17 @@
 
 #include "config.h"
 #include "tests_config.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #ifndef _WIN32
-# include <dirent.h>
-# include <errno.h>
-# include <sys/socket.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/socket.h>
 #endif
 
 #ifdef HAVE_UNISTD_H
@@ -43,10 +43,11 @@
 #define chdir _chdir
 #endif
 
-#include "torture.h"
-#include "torture_key.h"
+#include "libssh/libssh.h"
 #include "libssh/misc.h"
 #include "libssh/token.h"
+#include "torture.h"
+#include "torture_key.h"
 
 #ifdef HAVE_VALGRIND_VALGRIND_H
 #include <valgrind/valgrind.h>
@@ -68,14 +69,14 @@
 #define TORTURE_SSHD1_CONFIG "sshd1/sshd_config"
 #define TORTURE_PCAP_FILE "socket_trace.pcap"
 
-static const char torture_rsa_certauth_pub[]=
-        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCnA2n5vHzZbs/GvRkGloJNV1CXHI"
-        "S5Xnrm05HusUJSWyPq3I1iCMHdYA7oezHa9GCFYbIenaYPy+G6USQRjYQz8SvAZo06"
-        "SFNeJSsa1kAIqxzdPT9kBrRrYK39PZQPsYVfRPqZBdmc+jwrfz97IFEJyXMI47FoTG"
-        "kgEq7eu3z2px/tdIZ34I5Hr5DDBxicZi4jluyRUJHfSPoBxyhF7OkPX4bYkrc691je"
-        "IQDxubl650WYLHgFfad0xTzBIFE6XUb55Dp5AgRdevSoso1Pe0IKFxxMVpP664LCbY"
-        "K06Lv6kcotfFlpvUtR1yx8jToGcSoq5sSzTwvXSHCQQ9ZA1hvF "
-        "torture_certauth_key";
+static const char torture_rsa_certauth_pub[] =
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCnA2n5vHzZbs/GvRkGloJNV1CXHI"
+    "S5Xnrm05HusUJSWyPq3I1iCMHdYA7oezHa9GCFYbIenaYPy+G6USQRjYQz8SvAZo06"
+    "SFNeJSsa1kAIqxzdPT9kBrRrYK39PZQPsYVfRPqZBdmc+jwrfz97IFEJyXMI47FoTG"
+    "kgEq7eu3z2px/tdIZ34I5Hr5DDBxicZi4jluyRUJHfSPoBxyhF7OkPX4bYkrc691je"
+    "IQDxubl650WYLHgFfad0xTzBIFE6XUb55Dp5AgRdevSoso1Pe0IKFxxMVpP664LCbY"
+    "K06Lv6kcotfFlpvUtR1yx8jToGcSoq5sSzTwvXSHCQQ9ZA1hvF "
+    "torture_certauth_key";
 
 static int verbosity = 0;
 static const char *pattern = NULL;
@@ -83,8 +84,8 @@ static const char *pattern = NULL;
 #ifndef _WIN32
 
 /* TODO missing code coverage */
-static int _torture_auth_kbdint(ssh_session session,
-                               const char *password) {
+static int _torture_auth_kbdint(ssh_session session, const char *password)
+{
     const char *prompt;
     char echo;
     int err;
@@ -121,34 +122,35 @@ static int _torture_auth_kbdint(ssh_session session,
     return err;
 }
 
-int torture_rmdirs(const char *path) {
+int torture_rmdirs(const char *path)
+{
     DIR *d;
     struct dirent *dp;
     struct stat sb;
     char *fname;
 
     if ((d = opendir(path)) != NULL) {
-        while(stat(path, &sb) == 0) {
+        while (stat(path, &sb) == 0) {
             /* if we can remove the directory we're done */
             if (rmdir(path) == 0) {
                 break;
             }
             switch (errno) {
-                case ENOTEMPTY:
-                case EEXIST:
-                case EBADF:
-                    break; /* continue */
-                default:
-                    closedir(d);
-                    return 0;
+            case ENOTEMPTY:
+            case EEXIST:
+            case EBADF:
+                break; /* continue */
+            default:
+                closedir(d);
+                return 0;
             }
 
             while ((dp = readdir(d)) != NULL) {
                 size_t len;
                 /* skip '.' and '..' */
                 if (dp->d_name[0] == '.' &&
-                        (dp->d_name[1] == '\0' ||
-                         (dp->d_name[1] == '.' && dp->d_name[2] == '\0'))) {
+                    (dp->d_name[1] == '\0' ||
+                     (dp->d_name[1] == '.' && dp->d_name[2] == '\0'))) {
                     continue;
                 }
 
@@ -188,18 +190,18 @@ int torture_rmdirs(const char *path) {
     return 0;
 }
 
-int torture_isdir(const char *path) {
+int torture_isdir(const char *path)
+{
     struct stat sb;
 
-    if (lstat (path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    if (lstat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
         return 1;
     }
 
     return 0;
 }
 
-static pid_t
-torture_read_pidfile(const char *pidfile)
+static pid_t torture_read_pidfile(const char *pidfile)
 {
     char buf[8] = {0};
     long int tmp;
@@ -256,10 +258,11 @@ int torture_terminate_process(const char *pidfile)
         usleep(25 * 1000);
 #ifdef HAVE_VALGRIND_VALGRIND_H
         if (RUNNING_ON_VALGRIND) {
-            SSH_LOG(SSH_LOG_INFO, "Running within Valgrind, wait one more "
+            SSH_LOG(SSH_LOG_INFO,
+                    "Running within Valgrind, wait one more "
                     "second for the server to clean up.");
             usleep(1000 * 1000);
-         }
+        }
 #endif /* HAVE_VALGRIND_VALGRIND_H */
 
         rc = kill(pid, 0);
@@ -275,7 +278,8 @@ int torture_terminate_process(const char *pidfile)
 
     if (is_running) {
         fprintf(stderr,
-                "WARNING: The process with pid %u is still running!\n", pid);
+                "WARNING: The process with pid %u is still running!\n",
+                pid);
     }
 
     return rc;
@@ -285,7 +289,8 @@ ssh_session torture_ssh_session(struct torture_state *s,
                                 const char *host,
                                 const unsigned int *port,
                                 const char *user,
-                                const char *password) {
+                                const char *password)
+{
     ssh_session session;
     int method;
     int rc;
@@ -316,9 +321,9 @@ ssh_session torture_ssh_session(struct torture_state *s,
     }
 
     if (port != NULL) {
-      if (ssh_options_set(session, SSH_OPTIONS_PORT, port) < 0) {
-        goto failed;
-      }
+        if (ssh_options_set(session, SSH_OPTIONS_PORT, port) < 0) {
+            goto failed;
+        }
     }
 
     if (user != NULL) {
@@ -327,8 +332,8 @@ ssh_session torture_ssh_session(struct torture_state *s,
         }
     }
 
-    if (ssh_options_set(session, SSH_OPTIONS_PROCESS_CONFIG,
-                        &process_config) < 0) {
+    if (ssh_options_set(session, SSH_OPTIONS_PROCESS_CONFIG, &process_config) <
+        0) {
         goto failed;
     }
 
@@ -379,7 +384,8 @@ failed:
 ssh_bind torture_ssh_bind(const char *addr,
                           const unsigned int port,
                           enum ssh_keytypes_e key_type,
-                          const char *private_key_file) {
+                          const char *private_key_file)
+{
     int rc;
     ssh_bind sshbind = NULL;
     enum ssh_bind_options_e opts = -1;
@@ -400,15 +406,15 @@ ssh_bind torture_ssh_bind(const char *addr,
     }
 
     switch (key_type) {
-        case SSH_KEYTYPE_RSA:
-        case SSH_KEYTYPE_ECDSA_P256:
-        case SSH_KEYTYPE_ECDSA_P384:
-        case SSH_KEYTYPE_ECDSA_P521:
-        case SSH_KEYTYPE_ED25519:
-            opts = SSH_BIND_OPTIONS_HOSTKEY;
-            break;
-        default:
-            goto out_free;
+    case SSH_KEYTYPE_RSA:
+    case SSH_KEYTYPE_ECDSA_P256:
+    case SSH_KEYTYPE_ECDSA_P384:
+    case SSH_KEYTYPE_ECDSA_P521:
+    case SSH_KEYTYPE_ED25519:
+        opts = SSH_BIND_OPTIONS_HOSTKEY;
+        break;
+    default:
+        goto out_free;
     }
 
     rc = ssh_bind_options_set(sshbind, opts, private_key_file);
@@ -422,10 +428,10 @@ ssh_bind torture_ssh_bind(const char *addr,
     }
 
     goto out;
- out_free:
+out_free:
     ssh_bind_free(sshbind);
     sshbind = NULL;
- out:
+out:
     return sshbind;
 }
 
@@ -433,7 +439,8 @@ ssh_bind torture_ssh_bind(const char *addr,
 
 #ifdef WITH_SFTP
 
-struct torture_sftp *torture_sftp_session_channel(ssh_session session, ssh_channel channel)
+struct torture_sftp *torture_sftp_session_channel(ssh_session session,
+                                                  ssh_channel channel)
 {
     struct torture_sftp *t;
     char template[] = "/tmp/ssh_torture_XXXXXX";
@@ -482,7 +489,7 @@ struct torture_sftp *torture_sftp_session_channel(ssh_session session, ssh_chann
         goto failed;
     }
     /* useful if TESTUSER is not the local user */
-    chmod(template,0777);
+    chmod(template, 0777);
     t->testdir = strdup(p);
     if (t->testdir == NULL) {
         goto failed;
@@ -505,7 +512,8 @@ struct torture_sftp *torture_sftp_session(ssh_session session)
     return torture_sftp_session_channel(session, NULL);
 }
 
-void torture_sftp_close(struct torture_sftp *t) {
+void torture_sftp_close(struct torture_sftp *t)
+{
     if (t == NULL) {
         return;
     }
@@ -716,13 +724,10 @@ void torture_setup_create_libssh_config(void **state)
 
     assert_non_null(s->socket_dir);
 
-    snprintf(sshd_path,
-             sizeof(sshd_path),
-             "%s/sshd",
-             s->socket_dir);
+    snprintf(sshd_path, sizeof(sshd_path), "%s/sshd", s->socket_dir);
 
     rc = lstat(sshd_path, &sb);
-    if (rc == 0 ) { /* The directory is already in place */
+    if (rc == 0) { /* The directory is already in place */
         written = true;
     }
 
@@ -755,8 +760,8 @@ void torture_setup_create_libssh_config(void **state)
                            torture_get_testkey(SSH_KEYTYPE_ECDSA_P521, 0));
     }
 
-    additional_config = (s->srv_additional_config != NULL ?
-                         s->srv_additional_config : "");
+    additional_config =
+        (s->srv_additional_config != NULL ? s->srv_additional_config : "");
 
     if (ssh_fips_mode()) {
         snprintf(sshd_config,
@@ -796,7 +801,7 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         "/usr/libexec/ssh/sftp-server", /* Tumbleweed 20200829 */
         "/usr/libexec/sftp-server",
         "/usr/libexec/openssh/sftp-server",
-        "/usr/lib/openssh/sftp-server",     /* Debian */
+        "/usr/lib/openssh/sftp-server", /* Debian */
     };
     const char config_string[] =
         "Port 22\n"
@@ -824,7 +829,8 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
 #if OPENSSH_VERSION_MAJOR == 8 && OPENSSH_VERSION_MINOR >= 2
         "CASignatureAlgorithms " OPENSSH_KEYS "\n"
 #endif
-#if (OPENSSH_VERSION_MAJOR == 9 && OPENSSH_VERSION_MINOR >= 8) || OPENSSH_VERSION_MAJOR > 9
+#if (OPENSSH_VERSION_MAJOR == 9 && OPENSSH_VERSION_MINOR >= 8) || \
+    OPENSSH_VERSION_MAJOR > 9
         "PerSourcePenaltyExemptList 127.0.0.21\n"
 #endif
         "Ciphers " OPENSSH_CIPHERS "\n"
@@ -858,7 +864,8 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         "%s\n" /* Here comes UsePam */
         "%s"   /* The space for test-specific options */
         "\n"
-#if (OPENSSH_VERSION_MAJOR == 9 && OPENSSH_VERSION_MINOR >= 8) || OPENSSH_VERSION_MAJOR > 9
+#if (OPENSSH_VERSION_MAJOR == 9 && OPENSSH_VERSION_MINOR >= 8) || \
+    OPENSSH_VERSION_MAJOR > 9
         "PerSourcePenaltyExemptList 127.0.0.21\n"
 #endif
         "Ciphers "
@@ -889,13 +896,11 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
         "AcceptEnv LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT\n"
         "AcceptEnv LC_IDENTIFICATION LC_ALL LC_LIBSSH\n"
         "\n"
-        "PidFile %s\n"; /* PID file */
-    const char usepam_yes[] =
-             "UsePAM yes\n"
-             "KbdInteractiveAuthentication yes\n";
-    const char usepam_no[] =
-             "UsePAM no\n"
-             "KbdInteractiveAuthentication no\n";
+        "PidFile %s\n";
+    const char usepam_yes[] = "UsePAM yes\n"
+                              "KbdInteractiveAuthentication yes\n";
+    const char usepam_no[] = "UsePAM no\n"
+                             "KbdInteractiveAuthentication no\n";
     size_t sftp_sl_size = ARRAY_SIZE(sftp_server_locations);
     const char *sftp_server, *usepam;
     size_t i;
@@ -918,7 +923,7 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
              second_sshd ? "1" : "");
 
     rc = lstat(sshd_path, &sb);
-    if (rc == 0 ) { /* The directory is already in place */
+    if (rc == 0) { /* The directory is already in place */
         written = true;
     }
 
@@ -973,8 +978,8 @@ torture_setup_create_sshd_config(void **state, bool pam, bool second_sshd)
     }
     assert_non_null(sftp_server);
 
-    additional_config = (s->srv_additional_config != NULL ?
-                         s->srv_additional_config : "");
+    additional_config =
+        (s->srv_additional_config != NULL ? s->srv_additional_config : "");
 
     if (ssh_fips_mode()) {
         snprintf(sshd_config,
@@ -1030,8 +1035,7 @@ int torture_wait_for_daemon(unsigned int seconds)
     return 1;
 }
 
-void
-torture_set_kdc_env_str(const char *gss_dir, char *env, size_t size)
+void torture_set_kdc_env_str(const char *gss_dir, char *env, size_t size)
 {
     int rc;
     rc = snprintf(env,
@@ -1050,8 +1054,7 @@ torture_set_kdc_env_str(const char *gss_dir, char *env, size_t size)
     }
 }
 
-void
-torture_set_env_from_str(const char *env)
+void torture_set_env_from_str(const char *env)
 {
     struct ssh_tokens_st *vars = NULL, *var = NULL;
 
@@ -1121,7 +1124,9 @@ void torture_setup_libssh_server(void **state, const char *server_path)
     ld_preload = getenv("LD_PRELOAD");
 
     if (s->srv_additional_config != NULL) {
-        printed = snprintf(extra_options, sizeof(extra_options), " %s ",
+        printed = snprintf(extra_options,
+                           sizeof(extra_options),
+                           " %s ",
                            s->srv_additional_config);
         if (printed < 0 || printed >= (ssize_t)sizeof(extra_options)) {
             fail_msg("Failed to print additional config!");
@@ -1167,21 +1172,29 @@ void torture_setup_libssh_server(void **state, const char *server_path)
     }
 
 #ifdef WITH_TIMEOUT
-    snprintf(timeout_cmd, sizeof(timeout_cmd),
-             "%s %s ", TIMEOUT_EXECUTABLE, "5m");
+    snprintf(timeout_cmd,
+             sizeof(timeout_cmd),
+             "%s %s ",
+             TIMEOUT_EXECUTABLE,
+             "5m");
 #else
     timeout_cmd[0] = '\0';
 #endif
 
     /* Write the start command */
-    printed = snprintf(start_cmd, sizeof(start_cmd),
+    printed = snprintf(start_cmd,
+                       sizeof(start_cmd),
                        "%s"
                        "%s -f%s -v4 -p22 -i%s -C%s%s%s%s%s",
                        timeout_cmd,
-                       server_path, s->pcap_file, s->srv_pidfile,
+                       server_path,
+                       s->pcap_file,
+                       s->srv_pidfile,
                        s->srv_config,
-                       s->log_file ? " -l " : "", s->log_file ? s->log_file : "",
-                       extra_options, TORTURE_SSH_SERVER);
+                       s->log_file ? " -l " : "",
+                       s->log_file ? s->log_file : "",
+                       extra_options,
+                       TORTURE_SSH_SERVER);
     if (printed < 0 || printed >= (ssize_t)sizeof(start_cmd)) {
         fail_msg("Failed to print start command!");
         /* Unreachable */
@@ -1189,7 +1202,7 @@ void torture_setup_libssh_server(void **state, const char *server_path)
     }
 
     pid = fork();
-    switch(pid) {
+    switch (pid) {
     case 0:
         env_tokens = ssh_tokenize(env, ' ');
         if (env_tokens == NULL || env_tokens->tokens == NULL) {
@@ -1206,7 +1219,8 @@ void torture_setup_libssh_server(void **state, const char *server_path)
             __builtin_unreachable();
         }
 
-        execve(arg_tokens->tokens[0], (char **)arg_tokens->tokens,
+        execve(arg_tokens->tokens[0],
+               (char **)arg_tokens->tokens,
                (char **)env_tokens->tokens);
 
         /* execve returns only in case of error */
@@ -1313,10 +1327,9 @@ void torture_setup_sshd_servers(void **state, bool pam)
  * @param[in] kinit_script kinit commands to get the TGT
  *
  */
-void
-torture_setup_kdc_server(void **state,
-                         const char *kadmin_script,
-                         const char *kinit_script)
+void torture_setup_kdc_server(void **state,
+                              const char *kadmin_script,
+                              const char *kinit_script)
 {
     struct torture_state *s = *state;
     int rc;
@@ -1371,8 +1384,7 @@ torture_setup_kdc_server(void **state,
  * @param[in] state A pointer to a pointer to an initialized torture_state
  *                  structure
  */
-void
-torture_teardown_kdc_server(void **state)
+void torture_teardown_kdc_server(void **state)
 {
     struct torture_state *s = *state;
     int rc;
@@ -1411,7 +1423,9 @@ void torture_teardown_socket_dir(void **state)
     int rc;
 
     if (env != NULL && env[0] == '1') {
-        fprintf(stderr, "[ TORTURE  ] >>> Skipping cleanup of %s\n", s->socket_dir);
+        fprintf(stderr,
+                "[ TORTURE  ] >>> Skipping cleanup of %s\n",
+                s->socket_dir);
     } else {
         rc = torture_rmdirs(s->socket_dir);
         if (rc < 0) {
@@ -1430,8 +1444,7 @@ void torture_teardown_socket_dir(void **state)
     torture_free_state(s);
 }
 
-static int
-torture_reload_sshd_server(void **state)
+static int torture_reload_sshd_server(void **state)
 {
     struct torture_state *s = *state;
     int rc;
@@ -1447,8 +1460,7 @@ torture_reload_sshd_server(void **state)
  * Note, that this still uses the default configuration options specified
  * in this file and overwrites options previously specified by this function.
  */
-int
-torture_update_sshd_config(void **state, const char *config)
+int torture_update_sshd_config(void **state, const char *config)
 {
     struct torture_state *s = *state;
     int rc;
@@ -1467,7 +1479,6 @@ torture_update_sshd_config(void **state, const char *config)
 
     return SSH_OK;
 }
-
 
 void torture_teardown_sshd_server(void **state)
 {
@@ -1712,14 +1723,12 @@ static int recursive_rm_dir_content(const char *path)
         /* Empty directory */
         if (last_error == ERROR_FILE_NOT_FOUND) {
             rc = 0;
-        }
-        else {
+        } else {
             /*TODO print error message?*/
             rc = last_error;
         }
         goto end;
-    }
-    else {
+    } else {
         do {
             rc = strcmp(file_data.cFileName, ".");
             if (rc == 0) {
@@ -1753,15 +1762,14 @@ static int recursive_rm_dir_content(const char *path)
                     rc = last_error;
                     goto end;
                 }
-            }
-            else {
+            } else {
                 rc = remove(file_path);
                 if (rc) {
                     goto end;
                 }
             }
 
-        } while(FindNextFile(file_handle, &file_data));
+        } while (FindNextFile(file_handle, &file_data));
 
         FindClose(file_handle);
     }
@@ -1888,19 +1896,21 @@ end:
     return rc;
 }
 
-int torture_libssh_verbosity(void){
-  return verbosity;
+int torture_libssh_verbosity(void)
+{
+    return verbosity;
 }
 
 void _torture_filter_tests(struct CMUnitTest *tests, size_t ntests)
 {
-    (void) tests;
-    (void) ntests;
+    (void)tests;
+    (void)ntests;
 
     return;
 }
 
-void torture_write_file(const char *filename, const char *data){
+void torture_write_file(const char *filename, const char *data)
+{
     int fd;
     int rc;
 
@@ -1932,7 +1942,7 @@ void torture_unsetenv(const char *variable)
     rc = _putenv_s(variable, "");
 #else
     rc = unsetenv(variable);
-#endif  // WIN32
+#endif // WIN32
     assert_return_code(rc, errno);
 }
 
@@ -1949,7 +1959,7 @@ void torture_setenv(const char *variable, const char *value)
 #else
     rc = setenv(variable, value, 1);
     assert_return_code(rc, errno);
-#endif  // WIN32
+#endif // WIN32
 }
 
 #if defined(HAVE_WEAK_ATTRIBUTE) && defined(TORTURE_SHARED)
@@ -1961,15 +1971,16 @@ __attribute__((weak)) int torture_run_tests(void)
 }
 #endif /* defined(HAVE_WEAK_ATTRIBUTE) && defined(TORTURE_SHARED) */
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     struct argument_s arguments;
     char *env = getenv("LIBSSH_VERBOSITY");
 
-    arguments.verbose=0;
-    arguments.pattern=NULL;
+    arguments.verbose = 0;
+    arguments.pattern = NULL;
     torture_cmdline_parse(argc, argv, &arguments);
-    verbosity=arguments.verbose;
-    pattern=arguments.pattern;
+    verbosity = arguments.verbose;
+    pattern = arguments.pattern;
 
     if (verbosity == 0 && env != NULL && env[0] != '\0') {
         if (env[0] > '0' && env[0] < '9') {

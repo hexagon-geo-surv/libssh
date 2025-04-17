@@ -24,11 +24,11 @@
 #ifndef _TORTURE_H
 #define _TORTURE_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "libssh/priv.h"
 #include "libssh/server.h"
@@ -36,13 +36,12 @@
 
 #include <cmocka.h>
 
-#include "torture_cmocka.h"
 #include "tests_config.h"
+#include "torture_cmocka.h"
 
 #ifndef assert_return_code
 /* hack for older versions of cmocka */
-#define assert_return_code(code, errno) \
-    assert_true(code >= 0)
+#define assert_return_code(code, errno) assert_true(code >= 0)
 #endif /* assert_return_code */
 
 #define TORTURE_SSH_SERVER "127.0.0.10"
@@ -55,8 +54,8 @@
 
 /* Used by main to communicate with parse_opt. */
 struct argument_s {
-  const char *pattern;
-  int verbose;
+    const char *pattern;
+    int verbose;
 };
 
 struct torture_sftp {
@@ -114,12 +113,14 @@ ssh_bind torture_ssh_bind(const char *addr,
                           const char *private_key_file);
 
 struct torture_sftp *torture_sftp_session(ssh_session session);
-struct torture_sftp *torture_sftp_session_channel(ssh_session session, ssh_channel channel);
+struct torture_sftp *torture_sftp_session_channel(ssh_session session,
+                                                  ssh_channel channel);
 void torture_sftp_close(struct torture_sftp *t);
 
 void torture_write_file(const char *filename, const char *data);
 
-#define torture_filter_tests(tests) _torture_filter_tests(tests, sizeof(tests) / sizeof(tests)[0])
+#define torture_filter_tests(tests) \
+    _torture_filter_tests(tests, sizeof(tests) / sizeof(tests)[0])
 void _torture_filter_tests(struct CMUnitTest *tests, size_t ntests);
 
 const char *torture_server_address(int domain);
@@ -180,8 +181,9 @@ char *torture_create_temp_file(const char *template);
 char *torture_get_current_working_dir(void);
 int torture_change_dir(char *path);
 
-void torture_setenv(char const* variable, char const* value);
-void torture_unsetenv(char const* variable);
+void torture_setenv(char const *variable, char const *value);
+void torture_unsetenv(char const *variable);
+
 int torture_setup_ssh_agent(struct torture_state *s, const char *add_key);
 int torture_cleanup_ssh_agent(void);
 

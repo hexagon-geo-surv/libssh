@@ -237,6 +237,7 @@ static pid_t torture_read_pidfile(const char *pidfile)
 
 int torture_terminate_process(const char *pidfile)
 {
+#ifndef WIN32
     ssize_t rc;
     pid_t pid;
     int is_running = 1;
@@ -283,6 +284,10 @@ int torture_terminate_process(const char *pidfile)
     }
 
     return rc;
+#else
+    (void)pidfile;
+    return -1; /* Stub implementation for Windows */
+#endif
 }
 
 ssh_session torture_ssh_session(struct torture_state *s,

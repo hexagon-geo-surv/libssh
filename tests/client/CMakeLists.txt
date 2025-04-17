@@ -4,12 +4,13 @@ find_package(socket_wrapper)
 
 set(LIBSSH_CLIENT_TESTS
     torture_algorithms
+    torture_auth
+    torture_auth_cert
+    torture_auth_agent_forwarding
     torture_client_callbacks
     torture_client_config
     torture_connect
     torture_hostkey
-    torture_auth
-    torture_auth_cert
     torture_rekey
     torture_forward
     torture_knownhosts

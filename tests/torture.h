@@ -64,6 +64,12 @@ struct torture_sftp {
     char *testdir;
 };
 
+struct torture_ssh {
+    ssh_session session;
+    void *cb_state;  /* For storing callback state */
+    void *callbacks; /* For storing callbacks */
+};
+
 struct torture_state {
     char *socket_dir;
     char *gss_dir;
@@ -78,6 +84,7 @@ struct torture_state {
     struct {
         ssh_session session;
         struct torture_sftp *tsftp;
+        struct torture_ssh ssh;
     } ssh;
 #ifdef WITH_PCAP
     ssh_pcap_file plain_pcap;

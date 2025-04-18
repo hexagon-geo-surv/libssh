@@ -175,6 +175,13 @@ if (WITH_GCRYPT)
             chachapoly.c
         )
     endif (NOT HAVE_GCRYPT_CHACHA_POLY)
+
+    if (HAVE_GCRYPT_CURVE25519)
+        set(libssh_SRCS
+            ${libssh_SRCS}
+            curve25519_gcrypt.c
+        )
+    endif(HAVE_GCRYPT_CURVE25519)
 elseif (WITH_MBEDTLS)
     set(libssh_SRCS
         ${libssh_SRCS}
@@ -201,13 +208,19 @@ elseif (WITH_MBEDTLS)
             chachapoly.c
            )
     endif()
-
+    if (HAVE_MBEDTLS_CURVE25519)
+        set(libssh_SRCS
+            ${libssh_SRCS}
+            curve25519_mbedcrypto.c
+        )
+    endif(HAVE_MBEDTLS_CURVE25519)
 else (WITH_GCRYPT)
     set(libssh_SRCS
         ${libssh_SRCS}
         threads/libcrypto.c
         pki_crypto.c
         ecdh_crypto.c
+        curve25519_crypto.c
         getrandom_crypto.c
         md_crypto.c
         libcrypto.c
@@ -264,9 +277,10 @@ if (WITH_GSSAPI AND GSSAPI_FOUND)
 endif (WITH_GSSAPI AND GSSAPI_FOUND)
 
 if (NOT WITH_NACL)
-    if (NOT HAVE_LIBCRYPTO)
+    if (NOT (HAVE_LIBCRYPTO OR HAVE_MBEDTLS_CURVE25519 OR HAVE_GCRYPT_CURVE25519))
         set(libssh_SRCS
             ${libssh_SRCS}
+            curve25519_fallback.c
             external/curve25519_ref.c
            )
     endif()

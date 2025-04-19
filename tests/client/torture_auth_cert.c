@@ -119,11 +119,8 @@ static int session_teardown(void **state)
 static int agent_setup(void **state)
 {
     struct torture_state *s = *state;
-    char ssh_agent_cmd[4096];
-    char ssh_agent_sock[1024];
-    char ssh_agent_pidfile[1024];
-    char ssh_key_add[1024];
     struct passwd *pwd;
+    char key_path[1024];
     int rc;
 
     rc = session_setup(state);
@@ -134,45 +131,18 @@ static int agent_setup(void **state)
     pwd = getpwnam("doe");
     assert_non_null(pwd);
 
-    snprintf(ssh_agent_sock,
-             sizeof(ssh_agent_sock),
-             "%s/agent.sock",
-             s->socket_dir);
+    snprintf(key_path, sizeof(key_path), "%s/.ssh/id_rsa", pwd->pw_dir);
 
-    snprintf(ssh_agent_pidfile,
-             sizeof(ssh_agent_pidfile),
-             "%s/agent.pid",
-             s->socket_dir);
-
-    /* Production ready code!!! */
-    snprintf(ssh_agent_cmd,
-             sizeof(ssh_agent_cmd),
-             "eval `ssh-agent -a %s`; echo $SSH_AGENT_PID > %s",
-             ssh_agent_sock, ssh_agent_pidfile);
-
-    /* run ssh-agent and ssh-add as the normal user */
-    unsetenv("UID_WRAPPER_ROOT");
-
-    rc = system(ssh_agent_cmd);
-    assert_return_code(rc, errno);
-
-    setenv("SSH_AUTH_SOCK", ssh_agent_sock, 1);
-    setenv("TORTURE_SSH_AGENT_PIDFILE", ssh_agent_pidfile, 1);
-
-    snprintf(ssh_key_add,
-             sizeof(ssh_key_add),
-             "ssh-add %s/.ssh/id_rsa",
-             pwd->pw_dir);
-
-    rc = system(ssh_key_add);
-    assert_return_code(rc, errno);
+    /* run ssh-agent and add the key */
+    rc = torture_setup_ssh_agent(s, key_path);
+    assert_int_equal(rc, 0);
 
     return 0;
 }
 
 static int agent_cert_setup(void **state)
 {
-    char doe_alt_ssh_key[1024];
+    char ssh_key_cmd[1024];
     struct passwd *pwd;
     int rc;
 
@@ -185,20 +155,56 @@ static int agent_cert_setup(void **state)
     assert_non_null(pwd);
 
     /* remove all keys, load alternative key + cert */
-    snprintf(doe_alt_ssh_key,
-             sizeof(doe_alt_ssh_key),
+    snprintf(ssh_key_cmd,
+             sizeof(ssh_key_cmd),
              "ssh-add -D && ssh-add %s/.ssh/id_rsa",
              pwd->pw_dir);
 
-    rc = system(doe_alt_ssh_key);
+    rc = system(ssh_key_cmd);
     assert_return_code(rc, errno);
+
+    return 0;
+}
+
+static int agent_cert_setup_explicit(void **state)
+{
+    char orig_doe_ssh_key[1024];
+    char doe_ssh_key[1024];
+    char keydata[2048];
+    struct passwd *pwd = NULL;
+    int fd;
+    int rc;
+
+    rc = agent_cert_setup(state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    pwd = getpwnam("doe");
+    assert_non_null(pwd);
+
+    snprintf(orig_doe_ssh_key,
+             sizeof(orig_doe_ssh_key),
+             "%s/.ssh/id_rsa",
+             pwd->pw_dir);
+
+    snprintf(doe_ssh_key, sizeof(doe_ssh_key), "%s/.ssh/my_rsa", pwd->pw_dir);
+
+    /* move the private key away from the default location the certificate can
+     * not be loaded automatically */
+    fd = open(orig_doe_ssh_key, O_RDONLY);
+    assert_true(fd > 0);
+    rc = read(fd, keydata, sizeof(keydata));
+    assert_true(rc > 0);
+    keydata[rc] = '\0';
+    close(fd);
+    torture_write_file(doe_ssh_key, keydata);
 
     return 0;
 }
 
 static int agent_teardown(void **state)
 {
-    const char *ssh_agent_pidfile;
     int rc;
 
     rc = session_teardown(state);
@@ -206,17 +212,8 @@ static int agent_teardown(void **state)
         return rc;
     }
 
-    ssh_agent_pidfile = getenv("TORTURE_SSH_AGENT_PIDFILE");
-    assert_non_null(ssh_agent_pidfile);
-
-    /* kill agent pid */
-    rc = torture_terminate_process(ssh_agent_pidfile);
-    assert_return_code(rc, errno);
-
-    unlink(ssh_agent_pidfile);
-
-    unsetenv("TORTURE_SSH_AGENT_PIDFILE");
-    unsetenv("SSH_AUTH_SOCK");
+    rc = torture_cleanup_ssh_agent();
+    assert_int_equal(rc, 0);
 
     return 0;
 }
@@ -705,45 +702,7 @@ torture_auth_agent_cert_identities_only_nonblocking(void **state)
     assert_ssh_return_code(session, rc);
 }
 
-static int agent_cert_setup_explicit(void **state)
-{
-    char orig_doe_ssh_key[1024];
-    char doe_ssh_key[1024];
-    char keydata[2048];
-    struct passwd *pwd = NULL;
-    int fd ;
-    int rc;
-
-    agent_cert_setup(state);
-
-    pwd = getpwnam("doe");
-    assert_non_null(pwd);
-
-    snprintf(orig_doe_ssh_key,
-             sizeof(orig_doe_ssh_key),
-             "%s/.ssh/id_rsa",
-             pwd->pw_dir);
-
-    snprintf(doe_ssh_key,
-             sizeof(doe_ssh_key),
-             "%s/.ssh/my_rsa",
-             pwd->pw_dir);
-
-    /* move the private key away from the default location the certificate can
-     * not be loaded automatically */
-    fd = open(orig_doe_ssh_key, O_RDONLY);
-    assert_true(fd > 0);
-    rc = read(fd, keydata, sizeof(keydata));
-    assert_true(rc > 0);
-    keydata[rc] = '\0';
-    close(fd);
-    torture_write_file(doe_ssh_key, keydata);
-
-    return 0;
-}
-
-static void
-torture_auth_agent_cert_identities_only_explicit(void **state)
+static void torture_auth_agent_cert_identities_only_explicit(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;

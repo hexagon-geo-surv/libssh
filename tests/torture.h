@@ -182,5 +182,7 @@ int torture_change_dir(char *path);
 
 void torture_setenv(char const* variable, char const* value);
 void torture_unsetenv(char const* variable);
+int torture_setup_ssh_agent(struct torture_state *s, const char *add_key);
+int torture_cleanup_ssh_agent(void);
 
 #endif /* _TORTURE_H */

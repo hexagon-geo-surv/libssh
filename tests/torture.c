@@ -1983,3 +1983,108 @@ int main(int argc, char **argv) {
 
     return torture_run_tests();
 }
+
+/**
+ * @brief Setup an SSH agent for testing
+ *
+ * This function starts an SSH agent, exports the environment variables,
+ * and optionally adds an SSH key to the agent.
+ *
+ * @param s             The torture state
+ * @param add_key       Path to the key to add to the agent, or NULL to skip
+ *
+ * @return              0 on success, -1 on error
+ */
+int torture_setup_ssh_agent(struct torture_state *s, const char *add_key)
+{
+#ifndef WIN32
+    int rc;
+    char ssh_agent_cmd[4096];
+    char ssh_agent_sock[1024];
+    char ssh_agent_pidfile[1024];
+    char long_cmd[2048];
+
+    /* Setup SSH agent */
+    snprintf(ssh_agent_sock,
+             sizeof(ssh_agent_sock),
+             "%s/agent.sock",
+             s->socket_dir);
+
+    snprintf(ssh_agent_pidfile,
+             sizeof(ssh_agent_pidfile),
+             "%s/agent.pid",
+             s->socket_dir);
+
+    /* Create command to start SSH agent with our custom socket */
+    snprintf(ssh_agent_cmd,
+             sizeof(ssh_agent_cmd),
+             "eval `ssh-agent -a %s`; echo $SSH_AGENT_PID > %s",
+             ssh_agent_sock,
+             ssh_agent_pidfile);
+
+    /* Run ssh-agent as the normal user */
+    torture_unsetenv("UID_WRAPPER_ROOT");
+
+    rc = system(ssh_agent_cmd);
+    if (rc != 0) {
+        return -1;
+    }
+
+    /* Set environment variables for SSH agent */
+    torture_setenv("SSH_AUTH_SOCK", ssh_agent_sock);
+    torture_setenv("TORTURE_SSH_AGENT_PIDFILE", ssh_agent_pidfile);
+
+    /* Add key to the agent if specified */
+    if (add_key != NULL) {
+        snprintf(long_cmd, sizeof(long_cmd), "ssh-add %s", add_key);
+        rc = system(long_cmd);
+        if (rc != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+#else
+    /* On Windows, we don't set up an SSH agent */
+    (void)s;
+    (void)add_key;
+
+    /* Return failure to make it explicit that agent forwarding isn't supported
+     * on Windows */
+    return -1;
+#endif
+}
+
+/**
+ * @brief Teardown an SSH agent
+ *
+ * This function kills the SSH agent process and cleans up environment
+ * variables.
+ *
+ * @return              0 on success, -1 on error
+ */
+int torture_cleanup_ssh_agent(void)
+{
+#ifndef WIN32
+    const char *ssh_agent_pidfile;
+    int rc;
+
+    ssh_agent_pidfile = getenv("TORTURE_SSH_AGENT_PIDFILE");
+    if (ssh_agent_pidfile == NULL) {
+        return 0;
+    }
+
+    rc = torture_terminate_process(ssh_agent_pidfile);
+    if (rc != 0) {
+        return -1;
+    }
+
+    torture_unsetenv("TORTURE_SSH_AGENT_PIDFILE");
+    torture_unsetenv("SSH_AUTH_SOCK");
+
+    return 0;
+#else
+    /* On Windows, we don't start an SSH agent, so nothing to clean up */
+    return -1;
+#endif
+}

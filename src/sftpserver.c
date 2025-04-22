@@ -702,7 +702,7 @@ void *sftp_handle(sftp_session sftp, ssh_string handle)
 
     memcpy(&val, ssh_string_data(handle), sizeof(uint32_t));
 
-    if (val > SFTP_HANDLES) {
+    if (val >= SFTP_HANDLES) {
         return NULL;
     }
 

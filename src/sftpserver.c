@@ -926,6 +926,7 @@ process_open(sftp_client_message client_msg)
         sftp_reply_handle(client_msg, handle_s);
         ssh_string_free(handle_s);
     } else {
+        free(h);
         close(fd);
         SSH_LOG(SSH_LOG_PROTOCOL, "Failed to allocate handle");
         sftp_reply_status(client_msg, SSH_FX_FAILURE,

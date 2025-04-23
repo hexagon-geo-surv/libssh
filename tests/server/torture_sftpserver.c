@@ -1187,6 +1187,61 @@ static void torture_server_sftp_handle_overrun(void **state)
     assert_int_equal(rc, SSH_OK);
 }
 
+static void torture_server_sftp_payload_overrun(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    char name[128] = {0};
+    sftp_session sftp = NULL;
+    sftp_file handle = NULL;
+    ssh_buffer buffer = NULL;
+    uint32_t id, bad_payload_len = 0x7ffffffc;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    sftp = tsftp->sftp;
+    assert_non_null(sftp);
+
+    /* Open a file for writing */
+    snprintf(name, sizeof(name), "%s/file", tsftp->testdir);
+    handle = sftp_open(sftp, name, O_WRONLY | O_CREAT, 0700);
+    assert_non_null(handle);
+
+    /* Craft an malicious SFTP packet trying to write to the file with
+     * payload_length overrun */
+    buffer = ssh_buffer_new();
+    id = sftp_get_new_id(sftp);
+    assert_non_null(buffer);
+
+    rc = ssh_buffer_pack(buffer,
+                         "dbdSqd",
+                         bad_payload_len,
+                         SSH_FXP_WRITE,
+                         id,
+                         handle->handle,
+                         (uint64_t)0,
+                         (uint32_t)0);
+    assert_int_equal(rc, SSH_OK);
+    rc = ssh_channel_write(sftp->channel,
+                           ssh_buffer_get(buffer),
+                           ssh_buffer_get_len(buffer));
+    assert_int_equal(rc, 29);
+    SSH_BUFFER_FREE(buffer);
+
+    /* We do not get answer for this malformed packet -- just kill the
+     * connection */
+    ssh_string_free(handle->handle);
+    free(handle);
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -1218,6 +1273,9 @@ int torture_run_tests(void) {
                                         session_setup_sftp,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_handle_overrun,
+                                        session_setup_sftp,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_server_sftp_payload_overrun,
                                         session_setup_sftp,
                                         session_teardown),
     };

@@ -1838,13 +1838,13 @@ sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),
 
     if (sftpp == NULL) {
         SSH_LOG(SSH_LOG_WARNING, "NULL userdata passed to callback");
-        return -1;
+        return SSH_ERROR;
     }
     sftp = *sftpp;
 
     decode_len = sftp_decode_channel_data_to_packet(sftp, data, len);
-    if (decode_len == -1)
-        return -1;
+    if (decode_len == SSH_ERROR)
+        return SSH_ERROR;
 
     msg = sftp_get_client_message_from_packet(sftp);
     rc = process_client_message(msg);

@@ -7,8 +7,8 @@
 
 int main(void)
 {
-    ssh_session session;
-    ssh_channel channel;
+    ssh_session session = NULL;
+    ssh_channel channel = NULL;
     char buffer[1024 * 1024] = {0};
     int rc;
     uint64_t total = 0;

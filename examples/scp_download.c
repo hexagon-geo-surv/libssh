@@ -113,7 +113,7 @@ static int fetch_files(ssh_session session)
     int size;
     char buffer[BUF_SIZE];
     int mode;
-    char *filename;
+    char *filename = NULL;
     int r;
     ssh_scp scp = ssh_scp_new(session,
                               SSH_SCP_READ | SSH_SCP_RECURSIVE,
@@ -179,7 +179,7 @@ end:
 
 int main(int argc, char **argv)
 {
-    ssh_session session;
+    ssh_session session = NULL;
     if (opts(argc, argv) < 0)
         return EXIT_FAILURE;
     session = connect_ssh(host, NULL, verbosity);

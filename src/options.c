@@ -67,7 +67,7 @@
  */
 int ssh_options_copy(ssh_session src, ssh_session *dest)
 {
-    ssh_session new;
+    ssh_session new = NULL;
     struct ssh_iterator *it = NULL;
     struct ssh_list *list = NULL;
     char *id = NULL;
@@ -652,8 +652,8 @@ int ssh_options_set_algo(ssh_session session,
 int ssh_options_set(ssh_session session, enum ssh_options_e type,
                     const void *value)
 {
-    const char *v;
-    char *p, *q;
+    const char *v = NULL;
+    char *p = NULL, *q = NULL;
     long int i;
     unsigned int u;
     int rc;
@@ -1517,7 +1517,7 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
  */
 int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
 {
-    char* src = NULL;
+    char *src = NULL;
 
     if (session == NULL) {
         return SSH_ERROR;
@@ -1539,7 +1539,7 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
             break;
 
         case SSH_OPTIONS_IDENTITY: {
-            struct ssh_iterator *it;
+            struct ssh_iterator *it = NULL;
             it = ssh_list_get_iterator(session->opts.identity);
             if (it == NULL) {
                 it = ssh_list_get_iterator(session->opts.identity_non_exp);
@@ -1823,9 +1823,9 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
  */
 int ssh_options_parse_config(ssh_session session, const char *filename)
 {
-    char *expanded_filename;
+    char *expanded_filename = NULL;
     int r;
-    FILE *fp;
+    FILE *fp = NULL;
 
     if (session == NULL) {
         return -1;
@@ -1884,7 +1884,7 @@ out:
 
 int ssh_options_apply(ssh_session session)
 {
-    char *tmp;
+    char *tmp = NULL;
     int rc;
 
     if (session->opts.sshdir == NULL) {
@@ -2233,8 +2233,8 @@ ssh_bind_options_set(ssh_bind sshbind,
                      const void *value)
 {
     bool allowed;
-    char *p, *q;
-    const char *v;
+    char *p = NULL, *q = NULL;
+    const char *v = NULL;
     int i, rc;
     char **wanted_methods = sshbind->wanted_methods;
 
@@ -2608,7 +2608,7 @@ static char *ssh_bind_options_expand_escape(ssh_bind sshbind, const char *s)
     char *buf = NULL;
     char *r = NULL;
     char *x = NULL;
-    const char *p;
+    const char *p = NULL;
     size_t i, l;
 
     r = ssh_path_expand_tilde(s);
@@ -2714,7 +2714,7 @@ static char *ssh_bind_options_expand_escape(ssh_bind sshbind, const char *s)
 int ssh_bind_options_parse_config(ssh_bind sshbind, const char *filename)
 {
     int rc = 0;
-    char *expanded_filename;
+    char *expanded_filename = NULL;
 
     if (sshbind == NULL) {
         return -1;

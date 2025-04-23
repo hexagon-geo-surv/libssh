@@ -149,7 +149,7 @@ static void cipher_free(struct ssh_cipher_struct *cipher) {
 
 struct ssh_crypto_struct *crypto_new(void)
 {
-    struct ssh_crypto_struct *crypto;
+    struct ssh_crypto_struct *crypto = NULL;
 
     crypto = calloc(1, sizeof(struct ssh_crypto_struct));
     if (crypto == NULL) {

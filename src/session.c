@@ -59,7 +59,7 @@
  */
 ssh_session ssh_new(void)
 {
-    ssh_session session;
+    ssh_session session = NULL;
     char *id = NULL;
     int rc;
 
@@ -294,7 +294,7 @@ void ssh_free(ssh_session session)
 
   /* options */
   if (session->opts.identity) {
-      char *id;
+      char *id = NULL;
 
       for (id = ssh_list_pop_head(char *, session->opts.identity);
            id != NULL;
@@ -305,7 +305,7 @@ void ssh_free(ssh_session session)
   }
 
   if (session->opts.identity_non_exp) {
-      char *id;
+      char *id = NULL;
 
       for (id = ssh_list_pop_head(char *, session->opts.identity_non_exp);
            id != NULL;
@@ -1228,7 +1228,7 @@ int ssh_get_publickey_hash(const ssh_key key,
                            unsigned char **hash,
                            size_t *hlen)
 {
-    ssh_string blob;
+    ssh_string blob = NULL;
     unsigned char *h = NULL;
     int rc;
 
@@ -1239,7 +1239,7 @@ int ssh_get_publickey_hash(const ssh_key key,
 
     switch (type) {
     case SSH_PUBLICKEY_HASH_SHA1: {
-        SHACTX ctx;
+        SHACTX ctx = NULL;
 
         h = calloc(1, SHA_DIGEST_LEN);
         if (h == NULL) {
@@ -1270,7 +1270,7 @@ int ssh_get_publickey_hash(const ssh_key key,
         break;
     }
     case SSH_PUBLICKEY_HASH_SHA256: {
-        SHA256CTX ctx;
+        SHA256CTX ctx = NULL;
 
         h = calloc(1, SHA256_DIGEST_LEN);
         if (h == NULL) {
@@ -1301,7 +1301,7 @@ int ssh_get_publickey_hash(const ssh_key key,
         break;
     }
     case SSH_PUBLICKEY_HASH_MD5: {
-        MD5CTX ctx;
+        MD5CTX ctx = NULL;
 
         /* In FIPS mode, we cannot use MD5 */
         if (ssh_fips_mode()) {

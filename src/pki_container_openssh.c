@@ -234,12 +234,12 @@ ssh_pki_openssh_import(const char *text_key,
                        bool private)
 {
     const char *ptr = text_key;
-    const char *end;
-    char *base64;
+    const char *end = NULL;
+    char *base64 = NULL;
     int cmp;
     int rc;
     int i;
-    ssh_buffer buffer = NULL, privkey_buffer=NULL;
+    ssh_buffer buffer = NULL, privkey_buffer = NULL;
     char *magic = NULL, *ciphername = NULL, *kdfname = NULL;
     uint32_t nkeys = 0, checkint1 = 0, checkint2 = 0xFFFF;
     ssh_string kdfoptions = NULL;
@@ -507,14 +507,14 @@ ssh_string ssh_pki_openssh_privkey_export(const ssh_key privkey,
 {
     ssh_buffer buffer = NULL;
     ssh_string str = NULL, blob = NULL;
-    ssh_string pubkey_s=NULL;
+    ssh_string pubkey_s = NULL;
     ssh_buffer privkey_buffer = NULL;
     uint32_t rnd;
     uint32_t rounds = 16;
-    ssh_string salt=NULL;
-    ssh_string kdf_options=NULL;
+    ssh_string salt = NULL;
+    ssh_string kdf_options = NULL;
     int to_encrypt=0;
-    unsigned char *b64;
+    unsigned char *b64 = NULL;
     uint32_t str_len, len;
     uint8_t padding = 1;
     int ok;

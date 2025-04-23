@@ -195,8 +195,9 @@ static int ssh_userauth_get_response(ssh_session session)
  *
  * This banner should be shown to user prior to authentication
  */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_banner) {
-    ssh_string banner;
+SSH_PACKET_CALLBACK(ssh_packet_userauth_banner)
+{
+    ssh_string banner = NULL;
     (void)type;
     (void)user;
 
@@ -1783,7 +1784,7 @@ int ssh_userauth_agent_pubkey(ssh_session session,
                               const char *username,
                               ssh_public_key publickey)
 {
-    ssh_key key;
+    ssh_key key = NULL;
     int rc;
 
     key = ssh_key_new();

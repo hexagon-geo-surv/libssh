@@ -31,11 +31,13 @@
 #include <errno.h>
 #include <pwd.h>
 
-#include "torture.h"
-#include "torture_key.h"
+#include "libssh/buffer.h"
 #include "libssh/libssh.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
+#include "libssh/sftp_priv.h"
+#include "torture.h"
+#include "torture_key.h"
 
 #include "test_server.h"
 #include "default_cb.h"
@@ -1124,6 +1126,66 @@ static void torture_server_sftp_handles_exhaustion(void **state)
     }
 }
 
+static void torture_server_sftp_handle_overrun(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    char name[128] = {0};
+    sftp_session sftp = NULL;
+    sftp_file handle = NULL;
+    ssh_buffer buffer = NULL;
+    uint32_t id, bad_handle = SFTP_HANDLES, bad_handle_len = 4;
+    sftp_message msg = NULL;
+    sftp_status_message status = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    sftp = tsftp->sftp;
+    assert_non_null(sftp);
+
+    /* Initialize the sftp handles by opening first file */
+    snprintf(name, sizeof(name), "%s/file", tsftp->testdir);
+    handle = sftp_open(sftp, name, O_WRONLY | O_CREAT, 0700);
+    assert_non_null(handle);
+
+    /* Craft an malicious SFTP packet trying to access handle 256
+     * (SFTP_HANDLES) */
+    buffer = ssh_buffer_new();
+    id = sftp_get_new_id(sftp);
+    assert_non_null(buffer);
+
+    rc = ssh_buffer_pack(buffer,
+                         "ddPqd",
+                         id,
+                         (uint32_t)bad_handle_len,
+                         (size_t)bad_handle_len,
+                         &bad_handle, /* a 32b int as ssh_string */
+                         (uint64_t)0,
+                         (uint32_t)1024);
+    assert_int_equal(rc, SSH_OK);
+    rc = sftp_packet_write(sftp, SSH_FXP_READ, buffer);
+    SSH_BUFFER_FREE(buffer);
+    assert_int_equal(rc, 29);
+
+    rc = sftp_recv_response_msg(sftp, id, true, &msg);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(msg->packet_type, SSH_FXP_STATUS);
+    status = parse_status_msg(msg);
+    sftp_message_free(msg);
+    assert_int_equal(status->status, SSH_FX_INVALID_HANDLE);
+    status_msg_free(status);
+
+    rc = sftp_close(handle);
+    assert_int_equal(rc, SSH_OK);
+}
 
 int torture_run_tests(void) {
     int rc;
@@ -1153,6 +1215,9 @@ int torture_run_tests(void) {
                                         session_setup_sftp,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_handles_exhaustion,
+                                        session_setup_sftp,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_server_sftp_handle_overrun,
                                         session_setup_sftp,
                                         session_teardown),
     };

@@ -346,8 +346,8 @@ void sftp_client_message_free(sftp_client_message msg)
 int
 sftp_reply_name(sftp_client_message msg, const char *name, sftp_attributes attr)
 {
-    ssh_buffer out;
-    ssh_string file;
+    ssh_buffer out = NULL;
+    ssh_string file = NULL;
 
     out = ssh_buffer_new();
     if (out == NULL) {
@@ -428,7 +428,7 @@ int
 sftp_reply_names_add(sftp_client_message msg, const char *file,
                      const char *longname, sftp_attributes attr)
 {
-    ssh_string name;
+    ssh_string name = NULL;
 
     name = ssh_string_from_char(file);
     if (name == NULL) {
@@ -498,8 +498,8 @@ int sftp_reply_names(sftp_client_message msg)
 int
 sftp_reply_status(sftp_client_message msg, uint32_t status, const char *message)
 {
-    ssh_buffer out;
-    ssh_string s;
+    ssh_buffer out = NULL;
+    ssh_string s = NULL;
 
     out = ssh_buffer_new();
     if (out == NULL) {
@@ -655,7 +655,7 @@ int sftp_reply_version(sftp_client_message client_msg)
  */
 ssh_string sftp_handle_alloc(sftp_session sftp, void *info)
 {
-    ssh_string ret;
+    ssh_string ret = NULL;
     uint32_t val;
     uint32_t i;
 
@@ -1546,7 +1546,7 @@ process_readlink(sftp_client_message client_msg)
     const char *filename = sftp_client_message_get_filename(client_msg);
     char buf[PATH_MAX];
     int len = -1;
-    const char *err_msg;
+    const char *err_msg = NULL;
     int status = SSH_FX_OK;
 
     SSH_LOG(SSH_LOG_PROTOCOL, "Processing readlink %s", filename);

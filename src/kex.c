@@ -313,7 +313,7 @@ static int cmp_first_kex_algo(const char *client_str,
     size_t client_kex_len;
     size_t server_kex_len;
 
-    char *colon;
+    char *colon = NULL;
 
     int is_wrong = 1;
 
@@ -751,7 +751,7 @@ char *ssh_client_select_hostkeys(ssh_session session)
 int ssh_set_client_kex(ssh_session session)
 {
     struct ssh_kex_struct *client = &session->next_crypto->client_kex;
-    const char *wanted;
+    const char *wanted = NULL;
     int ok;
     int i;
 

@@ -785,7 +785,7 @@ ssh_session_set_disconnect_message(ssh_session session, const char *message)
 void
 ssh_disconnect(ssh_session session)
 {
-    struct ssh_iterator *it;
+    struct ssh_iterator *it = NULL;
     int rc;
 
     if (session == NULL) {

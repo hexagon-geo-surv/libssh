@@ -211,7 +211,7 @@ local_parse_file(ssh_session session,
                  unsigned int depth,
                  bool global)
 {
-    FILE *f;
+    FILE *f = NULL;
     char line[MAX_LINE_SIZE] = {0};
     unsigned int count = 0;
     int rv;
@@ -1462,7 +1462,7 @@ int ssh_config_parse_file(ssh_session session, const char *filename)
 {
     char line[MAX_LINE_SIZE] = {0};
     unsigned int count = 0;
-    FILE *f;
+    FILE *f = NULL;
     int parsing, rv;
     bool global = 0;
 

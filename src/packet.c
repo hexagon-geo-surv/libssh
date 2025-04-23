@@ -1428,8 +1428,8 @@ error:
 static void ssh_packet_socket_controlflow_callback(int code, void *userdata)
 {
     ssh_session session = userdata;
-    struct ssh_iterator *it;
-    ssh_channel channel;
+    struct ssh_iterator *it = NULL;
+    ssh_channel channel = NULL;
 
     if (code == SSH_SOCKET_FLOW_WRITEWONTBLOCK) {
         SSH_LOG(SSH_LOG_TRACE, "sending channel_write_wontblock callback");
@@ -1890,7 +1890,7 @@ int ssh_packet_send(ssh_session session)
 
     /* We finished the key exchange so we can try to send our queue now */
     if (rc == SSH_OK && type == SSH2_MSG_NEWKEYS) {
-        struct ssh_iterator *it;
+        struct ssh_iterator *it = NULL;
 
         if (session->flags & SSH_SESSION_FLAG_KEX_STRICT) {
             /* reset packet sequence number when running in strict kex mode */

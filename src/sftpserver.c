@@ -952,7 +952,7 @@ process_read(sftp_client_message client_msg)
                     ssh_string_len(handle));
 
     h = sftp_handle(sftp, handle);
-    if (h->type == SFTP_FILE_HANDLE) {
+    if (h != NULL && h->type == SFTP_FILE_HANDLE) {
         fd = h->fd;
     }
 
@@ -1010,7 +1010,7 @@ process_write(sftp_client_message client_msg)
                     ssh_string_len(handle));
 
     h = sftp_handle(sftp, handle);
-    if (h->type == SFTP_FILE_HANDLE) {
+    if (h != NULL && h->type == SFTP_FILE_HANDLE) {
         fd = h->fd;
     }
     if (fd < 0) {
@@ -1055,7 +1055,11 @@ process_close(sftp_client_message client_msg)
                     ssh_string_len(handle));
 
     h = sftp_handle(sftp, handle);
-    if (h->type == SFTP_FILE_HANDLE) {
+    if (h == NULL) {
+        SSH_LOG(SSH_LOG_PROTOCOL, "invalid handle");
+        sftp_reply_status(client_msg, SSH_FX_INVALID_HANDLE, "Invalid handle");
+        return SSH_OK;
+    } else if (h->type == SFTP_FILE_HANDLE) {
         int fd = h->fd;
         close(fd);
         ret = SSH_OK;
@@ -1223,7 +1227,7 @@ process_readdir(sftp_client_message client_msg)
                     ssh_string_len(handle));
 
     h = sftp_handle(sftp, client_msg->handle);
-    if (h->type == SFTP_DIR_HANDLE) {
+    if (h != NULL && h->type == SFTP_DIR_HANDLE) {
         dir = h->dirp;
         handle_name = h->name;
     }

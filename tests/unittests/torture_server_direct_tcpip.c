@@ -13,8 +13,9 @@
 
 #include <libssh/libssh.h>
 
+#define TEST_SERVER_HOST "127.0.0.1"
 #define TEST_SERVER_PORT 2222
-#define TEST_DEST_HOST "localhost"
+#define TEST_DEST_HOST "127.0.0.1"
 #define TEST_DEST_PORT 12345
 #define TEST_ORIG_HOST "127.0.0.1"
 #define TEST_ORIG_PORT 54321
@@ -81,7 +82,8 @@ static void *client_thread(void *arg)
     ssh_channel channel = NULL;
     bool should_accept = *(bool *)arg;
 
-    session = torture_ssh_session(NULL, "localhost", &test_port, "foo", "bar");
+    session =
+        torture_ssh_session(NULL, TEST_SERVER_HOST, &test_port, "foo", "bar");
     assert_non_null(session);
 
     channel = ssh_channel_new(session);
@@ -124,7 +126,7 @@ static int auth_password_accept(ssh_session session,
 struct channel_data {
     /* Whether the callback should accept the channel open request */
     bool should_accept;
-    
+
     int req_seen;
     char *dest_host;
     uint32_t dest_port;
@@ -177,7 +179,7 @@ static void torture_ssh_channel_direct_tcpip(void **state, int should_accept)
     ssh_callbacks_init(&server_cb);
 
     /* Create server */
-    sshbind = torture_ssh_bind("localhost",
+    sshbind = torture_ssh_bind(TEST_SERVER_HOST,
                                TEST_SERVER_PORT,
                                h->key_type,
                                h->hostkey_path);

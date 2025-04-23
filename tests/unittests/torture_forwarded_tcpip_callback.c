@@ -13,8 +13,9 @@
 
 #include <libssh/libssh.h>
 
+#define TEST_SERVER_HOST "127.0.0.1"
 #define TEST_SERVER_PORT 2222
-#define TEST_DEST_HOST "localhost"
+#define TEST_DEST_HOST "127.0.0.1"
 #define TEST_DEST_PORT 12345
 #define TEST_ORIG_HOST "127.0.0.1"
 #define TEST_ORIG_PORT 54321
@@ -121,7 +122,7 @@ static void *server_thread(void *arg)
     ssh_callbacks_init(&server_cb);
 
     /* Create server */
-    sshbind = torture_ssh_bind("localhost",
+    sshbind = torture_ssh_bind(TEST_SERVER_HOST,
                                TEST_SERVER_PORT,
                                h->key_type,
                                h->hostkey_path);
@@ -264,7 +265,7 @@ static void torture_forwarded_tcpip_callback(void **state, bool should_accept)
     pthread_mutex_unlock(&server_mutex);
 
     session =
-        torture_ssh_session(NULL, "localhost", &server_port, "foo", "bar");
+        torture_ssh_session(NULL, "127.0.0.1", &server_port, "foo", "bar");
     assert_non_null(session);
 
     rc = ssh_set_callbacks(session, &client_cb);

@@ -574,6 +574,18 @@ static void torture_pubkey_hash(void **state)
     }
 }
 
+static void torture_openssh_banner_version(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+
+    int openssh_version = ssh_get_openssh_version(session);
+    int cmake_openssh_version = SSH_VERSION_INT(OPENSSH_VERSION_MAJOR, OPENSSH_VERSION_MINOR, 0);
+
+    assert_int_equal(openssh_version, cmake_openssh_version);
+}
+
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -617,6 +629,9 @@ int torture_run_tests(void) {
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_pubkey_hash,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_openssh_banner_version,
                                         session_setup,
                                         session_teardown),
     };

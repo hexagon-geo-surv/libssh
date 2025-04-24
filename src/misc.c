@@ -430,22 +430,22 @@ int ssh_is_ipaddr(const char *str)
 
 char *ssh_lowercase(const char* str)
 {
-  char *new, *p;
+    char *new, *p;
 
-  if (str == NULL) {
-    return NULL;
-  }
+    if (str == NULL) {
+        return NULL;
+    }
 
-  new = strdup(str);
-  if (new == NULL) {
-    return NULL;
-  }
+    new = strdup(str);
+    if (new == NULL) {
+        return NULL;
+    }
 
-  for (p = new; *p; p++) {
-    *p = tolower(*p);
-  }
+    for (p = new; *p; p++) {
+        *p = tolower(*p);
+    }
 
-  return new;
+    return new;
 }
 
 char *ssh_hostport(const char *host, int port)
@@ -865,32 +865,32 @@ int ssh_list_prepend(struct ssh_list *list, const void *data)
 
 void ssh_list_remove(struct ssh_list *list, struct ssh_iterator *iterator)
 {
-  struct ssh_iterator *ptr, *prev;
+    struct ssh_iterator *ptr, *prev;
 
-  if (list == NULL) {
-      return;
-  }
+    if (list == NULL) {
+        return;
+    }
 
-  prev=NULL;
-  ptr=list->root;
-  while(ptr && ptr != iterator){
-    prev=ptr;
-    ptr=ptr->next;
-  }
-  if(!ptr){
-    /* we did not find the element */
-    return;
-  }
-  /* unlink it */
-  if(prev)
-    prev->next=ptr->next;
-  /* if iterator was the head */
-  if(list->root == iterator)
-    list->root=iterator->next;
-  /* if iterator was the tail */
-  if(list->end == iterator)
-    list->end = prev;
-  SAFE_FREE(iterator);
+    prev = NULL;
+    ptr = list->root;
+    while (ptr && ptr != iterator) {
+        prev = ptr;
+        ptr = ptr->next;
+    }
+    if (!ptr) {
+        /* we did not find the element */
+        return;
+    }
+    /* unlink it */
+    if (prev)
+        prev->next = ptr->next;
+    /* if iterator was the head */
+    if (list->root == iterator)
+        list->root = iterator->next;
+    /* if iterator was the tail */
+    if (list->end == iterator)
+        list->end = prev;
+    SAFE_FREE(iterator);
 }
 
 /**

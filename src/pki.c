@@ -2311,42 +2311,43 @@ int ssh_pki_export_pubkey_file(const ssh_key key,
  *
  * @returns SSH_OK on success, SSH_ERROR otherwise.
  **/
-int ssh_pki_copy_cert_to_privkey(const ssh_key certkey, ssh_key privkey) {
-  ssh_buffer cert_buffer;
-  int rc, cmp;
+int ssh_pki_copy_cert_to_privkey(const ssh_key certkey, ssh_key privkey)
+{
+    ssh_buffer cert_buffer;
+    int rc, cmp;
 
-  if (certkey == NULL || privkey == NULL) {
-      return SSH_ERROR;
-  }
+    if (certkey == NULL || privkey == NULL) {
+        return SSH_ERROR;
+    }
 
-  if (privkey->cert != NULL) {
-      return SSH_ERROR;
-  }
+    if (privkey->cert != NULL) {
+        return SSH_ERROR;
+    }
 
-  if (certkey->cert == NULL) {
-      return SSH_ERROR;
-  }
+    if (certkey->cert == NULL) {
+        return SSH_ERROR;
+    }
 
-  /* make sure the public keys match */
-  cmp = ssh_key_cmp(certkey, privkey, SSH_KEY_CMP_PUBLIC);
-  if (cmp != 0) {
-    return SSH_ERROR;
-  }
+    /* make sure the public keys match */
+    cmp = ssh_key_cmp(certkey, privkey, SSH_KEY_CMP_PUBLIC);
+    if (cmp != 0) {
+        return SSH_ERROR;
+    }
 
-  cert_buffer = ssh_buffer_new();
-  if (cert_buffer == NULL) {
-      return SSH_ERROR;
-  }
+    cert_buffer = ssh_buffer_new();
+    if (cert_buffer == NULL) {
+        return SSH_ERROR;
+    }
 
-  rc = ssh_buffer_add_buffer(cert_buffer, certkey->cert);
-  if (rc != 0) {
-      SSH_BUFFER_FREE(cert_buffer);
-      return SSH_ERROR;
-  }
+    rc = ssh_buffer_add_buffer(cert_buffer, certkey->cert);
+    if (rc != 0) {
+        SSH_BUFFER_FREE(cert_buffer);
+        return SSH_ERROR;
+    }
 
-  privkey->cert = cert_buffer;
-  privkey->cert_type = certkey->type;
-  return SSH_OK;
+    privkey->cert = cert_buffer;
+    privkey->cert_type = certkey->type;
+    return SSH_OK;
 }
 
 int ssh_pki_export_signature_blob(const ssh_signature sig,

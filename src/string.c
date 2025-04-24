@@ -84,15 +84,16 @@ struct ssh_string_struct *ssh_string_new(size_t size)
  *
  * @return         0 on success, < 0 on error.
  */
-int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
-  if ((s == NULL) || (data == NULL) ||
-      (len == 0) || (len > ssh_string_len(s))) {
-    return -1;
-  }
+int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len)
+{
+    if ((s == NULL) || (data == NULL) || (len == 0) ||
+        (len > ssh_string_len(s))) {
+        return -1;
+    }
 
-  memcpy(s->data, data, len);
+    memcpy(s->data, data, len);
 
-  return 0;
+    return 0;
 }
 
 /**
@@ -105,25 +106,26 @@ int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
  *
  * @note The null byte is not copied nor counted in the output string.
  */
-struct ssh_string_struct *ssh_string_from_char(const char *what) {
-  struct ssh_string_struct *ptr;
-  size_t len;
+struct ssh_string_struct *ssh_string_from_char(const char *what)
+{
+    struct ssh_string_struct *ptr;
+    size_t len;
 
-  if(what == NULL) {
-      errno = EINVAL;
-      return NULL;
-  }
+    if (what == NULL) {
+        errno = EINVAL;
+        return NULL;
+    }
 
-  len = strlen(what);
+    len = strlen(what);
 
-  ptr = ssh_string_new(len);
-  if (ptr == NULL) {
-    return NULL;
-  }
+    ptr = ssh_string_new(len);
+    if (ptr == NULL) {
+        return NULL;
+    }
 
-  memcpy(ptr->data, what, len);
+    memcpy(ptr->data, what, len);
 
-  return ptr;
+    return ptr;
 }
 
 /**
@@ -133,7 +135,8 @@ struct ssh_string_struct *ssh_string_from_char(const char *what) {
  *
  * @return The size of the content of the string, 0 on error.
  */
-size_t ssh_string_len(struct ssh_string_struct *s) {
+size_t ssh_string_len(struct ssh_string_struct *s)
+{
     size_t size;
 
     if (s == NULL) {
@@ -164,7 +167,7 @@ const char *ssh_string_get_char(struct ssh_string_struct *s)
     }
     s->data[ssh_string_len(s)] = '\0';
 
-    return (const char *) s->data;
+    return (const char *)s->data;
 }
 
 /**
@@ -178,27 +181,28 @@ const char *ssh_string_get_char(struct ssh_string_struct *s)
  * @note If the input SSH string contains zeroes, some parts of the output
  * string may not be readable with regular libc functions.
  */
-char *ssh_string_to_char(struct ssh_string_struct *s) {
-  size_t len;
-  char *new;
+char *ssh_string_to_char(struct ssh_string_struct *s)
+{
+    size_t len;
+    char *new;
 
-  if (s == NULL) {
-      return NULL;
-  }
+    if (s == NULL) {
+        return NULL;
+    }
 
-  len = ssh_string_len(s);
-  if (len + 1 < len) {
-    return NULL;
-  }
+    len = ssh_string_len(s);
+    if (len + 1 < len) {
+        return NULL;
+    }
 
-  new = malloc(len + 1);
-  if (new == NULL) {
-    return NULL;
-  }
-  memcpy(new, s->data, len);
-  new[len] = '\0';
+    new = malloc(len + 1);
+    if (new == NULL) {
+        return NULL;
+    }
+    memcpy(new, s->data, len);
+    new[len] = '\0';
 
-  return new;
+    return new;
 }
 
 /**
@@ -206,7 +210,8 @@ char *ssh_string_to_char(struct ssh_string_struct *s) {
  *
  * @param[in] s         The string to delete.
  */
-void ssh_string_free_char(char *s) {
+void ssh_string_free_char(char *s)
+{
     SAFE_FREE(s);
 }
 
@@ -218,27 +223,28 @@ void ssh_string_free_char(char *s) {
  *
  * @return              Newly allocated copy of the string, NULL on error.
  */
-struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s) {
-  struct ssh_string_struct *new;
-  size_t len;
+struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s)
+{
+    struct ssh_string_struct *new;
+    size_t len;
 
-  if (s == NULL) {
-      return NULL;
-  }
+    if (s == NULL) {
+        return NULL;
+    }
 
-  len = ssh_string_len(s);
-  if (len == 0) {
-      return NULL;
-  }
+    len = ssh_string_len(s);
+    if (len == 0) {
+        return NULL;
+    }
 
-  new = ssh_string_new(len);
-  if (new == NULL) {
-    return NULL;
-  }
+    new = ssh_string_new(len);
+    if (new == NULL) {
+        return NULL;
+    }
 
-  memcpy(new->data, s->data, len);
+    memcpy(new->data, s->data, len);
 
-  return new;
+    return new;
 }
 
 /**
@@ -246,7 +252,8 @@ struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s) {
  *
  * @param[in] s         The string to burn.
  */
-void ssh_string_burn(struct ssh_string_struct *s) {
+void ssh_string_burn(struct ssh_string_struct *s)
+{
     if (s == NULL || s->size == 0) {
         return;
     }
@@ -261,12 +268,13 @@ void ssh_string_burn(struct ssh_string_struct *s) {
  *
  * @return              Return the data of the string or NULL on error.
  */
-void *ssh_string_data(struct ssh_string_struct *s) {
-  if (s == NULL) {
-    return NULL;
-  }
+void *ssh_string_data(struct ssh_string_struct *s)
+{
+    if (s == NULL) {
+        return NULL;
+    }
 
-  return s->data;
+    return s->data;
 }
 
 /**
@@ -274,8 +282,9 @@ void *ssh_string_data(struct ssh_string_struct *s) {
  *
  * \param[in] s         The SSH string to delete.
  */
-void ssh_string_free(struct ssh_string_struct *s) {
-  SAFE_FREE(s);
+void ssh_string_free(struct ssh_string_struct *s)
+{
+    SAFE_FREE(s);
 }
 
 /** @} */

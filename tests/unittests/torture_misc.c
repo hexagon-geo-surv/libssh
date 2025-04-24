@@ -334,6 +334,7 @@ static void torture_ssh_analyze_banner(void **state) {
     assert_server_banner_accepted("SSH-2.0-OpenSSH");
     assert_int_equal(0, session->openssh);
 
+
     /* OpenSSH banners: big enough to extract major and minor versions */
     assert_client_banner_accepted("SSH-2.0-OpenSSH_5.9p1");
     assert_int_equal(SSH_VERSION_INT(5, 9, 0), session->openssh);
@@ -372,6 +373,10 @@ static void torture_ssh_analyze_banner(void **state) {
     assert_int_equal(0, session->openssh);
     assert_server_banner_accepted("SSH-2.0-OpenSSH-keyscan");
     assert_int_equal(0, session->openssh);
+
+    /* OpenSSH banners: Double digit in major version */
+    assert_server_banner_accepted("SSH-2.0-OpenSSH_10.0p1");
+    assert_int_equal(SSH_VERSION_INT(10, 0, 0), session->openssh);
 
     ssh_free(session);
 }

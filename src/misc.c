@@ -1397,6 +1397,7 @@ int ssh_analyze_banner(ssh_session session, int server)
         char *tmp = NULL;
         unsigned long int major = 0UL;
         unsigned long int minor = 0UL;
+        int off = 0;
 
         /*
          * The banner is typical:
@@ -1416,8 +1417,9 @@ int ssh_analyze_banner(ssh_session session, int server)
             }
 
             errno = 0;
-            minor = strtoul(openssh + 10, &tmp, 10);
-            if ((tmp == (openssh + 10)) ||
+            off = major >= 10 ? 11 : 10;
+            minor = strtoul(openssh + off, &tmp, 10);
+            if ((tmp == (openssh + off)) ||
                 ((errno == ERANGE) && (major == ULONG_MAX)) ||
                 ((errno != 0) && (major == 0)) ||
                 (minor > 100)) {

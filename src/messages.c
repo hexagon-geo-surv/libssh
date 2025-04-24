@@ -546,30 +546,36 @@ static void ssh_message_queue(ssh_session session, ssh_message message)
  *
  * @returns             The head message or NULL if it doesn't exist.
  */
-ssh_message ssh_message_pop_head(ssh_session session){
-  ssh_message msg=NULL;
-  struct ssh_iterator *i;
-  if(session->ssh_message_list == NULL)
-    return NULL;
-  i=ssh_list_get_iterator(session->ssh_message_list);
-  if(i != NULL){
-    msg=ssh_iterator_value(ssh_message,i);
-    ssh_list_remove(session->ssh_message_list,i);
-  }
-  return msg;
+ssh_message ssh_message_pop_head(ssh_session session)
+{
+    ssh_message msg = NULL;
+    struct ssh_iterator *i;
+
+    if (session->ssh_message_list == NULL)
+        return NULL;
+
+    i = ssh_list_get_iterator(session->ssh_message_list);
+    if (i != NULL) {
+        msg = ssh_iterator_value(ssh_message, i);
+        ssh_list_remove(session->ssh_message_list, i);
+    }
+    return msg;
 }
 
 /* Returns 1 if there is a message available */
-static int ssh_message_termination(void *s){
-  ssh_session session = s;
-  struct ssh_iterator *it;
-  if(session->session_state == SSH_SESSION_STATE_ERROR)
-    return 1;
-  it = ssh_list_get_iterator(session->ssh_message_list);
-  if(!it)
-    return 0;
-  else
-    return 1;
+static int ssh_message_termination(void *s)
+{
+    ssh_session session = s;
+    struct ssh_iterator *it;
+
+    if (session->session_state == SSH_SESSION_STATE_ERROR)
+        return 1;
+
+    it = ssh_list_get_iterator(session->ssh_message_list);
+    if (!it)
+        return 0;
+    else
+        return 1;
 }
 /**
  * @brief Retrieve a SSH message from a SSH session.
@@ -1420,7 +1426,9 @@ end:
  *
  * @returns             SSH_OK on success, SSH_ERROR if an error occurred.
  */
-int ssh_message_channel_request_open_reply_accept_channel(ssh_message msg, ssh_channel chan) {
+int ssh_message_channel_request_open_reply_accept_channel(ssh_message msg,
+                                                          ssh_channel chan)
+{
     ssh_session session;
     int rc;
 
@@ -1471,25 +1479,25 @@ int ssh_message_channel_request_open_reply_accept_channel(ssh_message msg, ssh_c
  *
  * @returns NULL in case of error
  */
-ssh_channel ssh_message_channel_request_open_reply_accept(ssh_message msg) {
-	ssh_channel chan;
-	int rc;
+ssh_channel ssh_message_channel_request_open_reply_accept(ssh_message msg)
+{
+    ssh_channel chan;
+    int rc;
 
-	if (msg == NULL) {
-	    return NULL;
-	}
+    if (msg == NULL) {
+        return NULL;
+    }
 
-	chan = ssh_channel_new(msg->session);
-	if (chan == NULL) {
-		return NULL;
-	}
-	rc = ssh_message_channel_request_open_reply_accept_channel(msg, chan);
-	if (rc < 0) {
-		ssh_channel_free(chan);
-		chan = NULL;
-	}
-	return chan;
-
+    chan = ssh_channel_new(msg->session);
+    if (chan == NULL) {
+        return NULL;
+    }
+    rc = ssh_message_channel_request_open_reply_accept_channel(msg, chan);
+    if (rc < 0) {
+        ssh_channel_free(chan);
+        chan = NULL;
+    }
+    return chan;
 }
 
 /**

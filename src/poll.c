@@ -560,29 +560,30 @@ void ssh_poll_ctx_free(ssh_poll_ctx ctx)
 
 static int ssh_poll_ctx_resize(ssh_poll_ctx ctx, size_t new_size)
 {
-  ssh_poll_handle *pollptrs;
-  ssh_pollfd_t *pollfds;
+    ssh_poll_handle *pollptrs;
+    ssh_pollfd_t *pollfds;
 
-  pollptrs = realloc(ctx->pollptrs, sizeof(ssh_poll_handle) * new_size);
-  if (pollptrs == NULL) {
-    return -1;
-  }
-  ctx->pollptrs = pollptrs;
-
-  pollfds = realloc(ctx->pollfds, sizeof(ssh_pollfd_t) * new_size);
-  if (pollfds == NULL) {
-    pollptrs = realloc(ctx->pollptrs, sizeof(ssh_poll_handle) * ctx->polls_allocated);
+    pollptrs = realloc(ctx->pollptrs, sizeof(ssh_poll_handle) * new_size);
     if (pollptrs == NULL) {
         return -1;
     }
     ctx->pollptrs = pollptrs;
-    return -1;
-  }
 
-  ctx->pollfds = pollfds;
-  ctx->polls_allocated = new_size;
+    pollfds = realloc(ctx->pollfds, sizeof(ssh_pollfd_t) * new_size);
+    if (pollfds == NULL) {
+        pollptrs = realloc(ctx->pollptrs,
+                           sizeof(ssh_poll_handle) * ctx->polls_allocated);
+        if (pollptrs == NULL) {
+            return -1;
+        }
+        ctx->pollptrs = pollptrs;
+        return -1;
+    }
 
-  return 0;
+    ctx->pollfds = pollfds;
+    ctx->polls_allocated = new_size;
+
+    return 0;
 }
 
 /**

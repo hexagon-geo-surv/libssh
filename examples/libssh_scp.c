@@ -119,6 +119,10 @@ static struct location *parse_location(char *loc)
     struct location *location = NULL;
     char *ptr = NULL;
 
+    if (loc == NULL) {
+        return NULL;
+    }
+
     location = malloc(sizeof(struct location));
     if (location == NULL) {
         return NULL;

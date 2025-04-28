@@ -441,7 +441,7 @@ ssh_private_key privatekey_from_file(ssh_session session,
                                      auth_fn,
                                      auth_data,
                                      &key);
-    if (rc == SSH_ERROR) {
+    if (rc != SSH_OK) {
         return NULL;
     }
 

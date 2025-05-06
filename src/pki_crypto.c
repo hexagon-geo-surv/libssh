@@ -1632,6 +1632,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             bignum_safe_free(bn);
             bignum_safe_free(be);
             OSSL_PARAM_free(params);
+            params = NULL;
 #endif /* OPENSSL_VERSION_NUMBER */
             break;
         }
@@ -1803,6 +1804,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
                 bignum_safe_free(bd);
                 OSSL_PARAM_free(params);
+                params = NULL;
 #endif /* OPENSSL_VERSION_NUMBER */
                 break;
             }

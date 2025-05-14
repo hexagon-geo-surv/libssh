@@ -864,7 +864,12 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
     ssh_string type_s = NULL;
     ssh_string e = NULL;
     ssh_string n = NULL;
+    ssh_string p = NULL;
+    ssh_string q = NULL;
+    ssh_string d = NULL;
+    ssh_string iqmp = NULL;
     ssh_string str = NULL;
+    int rc;
 #if MBEDTLS_VERSION_MAJOR > 2
     mbedtls_mpi E = {0};
     mbedtls_mpi N = {0};
@@ -872,12 +877,13 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
     mbedtls_mpi IQMP = {0};
     mbedtls_mpi P = {0};
     mbedtls_mpi Q = {0};
-#endif
-    int rc;
 
-#if MBEDTLS_VERSION_MAJOR > 2
     mbedtls_mpi_init(&E);
     mbedtls_mpi_init(&N);
+    mbedtls_mpi_init(&D);
+    mbedtls_mpi_init(&IQMP);
+    mbedtls_mpi_init(&P);
+    mbedtls_mpi_init(&Q);
 #endif
 
     buffer = ssh_buffer_new();
@@ -957,11 +963,6 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
                 goto fail;
             }
         } else if (type == SSH_KEY_PRIVATE) {
-            ssh_string p = NULL;
-            ssh_string q = NULL;
-            ssh_string d = NULL;
-            ssh_string iqmp = NULL;
-
             rc = ssh_buffer_add_ssh_string(buffer, n);
             if (rc < 0) {
                 goto fail;
@@ -1043,26 +1044,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             if (rc < 0) {
                 goto fail;
             }
-
-            ssh_string_burn(d);
-            SSH_STRING_FREE(d);
-            d = NULL;
-            ssh_string_burn(iqmp);
-            SSH_STRING_FREE(iqmp);
-            iqmp = NULL;
-            ssh_string_burn(p);
-            SSH_STRING_FREE(p);
-            p = NULL;
-            ssh_string_burn(q);
-            SSH_STRING_FREE(q);
-            q = NULL;
         }
-        ssh_string_burn(e);
-        SSH_STRING_FREE(e);
-        e = NULL;
-        ssh_string_burn(n);
-        SSH_STRING_FREE(n);
-        n = NULL;
         break;
     }
     case SSH_KEYTYPE_ECDSA_P256:
@@ -1096,12 +1078,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             goto fail;
         }
 
-        ssh_string_burn(e);
-        SSH_STRING_FREE(e);
-        e = NULL;
-
         if (type == SSH_KEY_PRIVATE) {
-            ssh_string d = NULL;
             d = ssh_make_bignum_string(&key->ecdsa->MBEDTLS_PRIVATE(d));
 
             if (d == NULL) {
@@ -1113,10 +1090,6 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             if (rc < 0) {
                 goto fail;
             }
-
-            ssh_string_burn(d);
-            SSH_STRING_FREE(d);
-            d = NULL;
         } else if (key->type == SSH_KEYTYPE_SK_ECDSA) {
             /* public key can contain certificate sk information */
             rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
@@ -1159,29 +1132,35 @@ makestring:
                          ssh_buffer_get(buffer),
                          ssh_buffer_get_len(buffer));
     if (rc < 0) {
+        ssh_string_burn(str);
+        SSH_STRING_FREE(str);
         goto fail;
     }
 
-    SSH_BUFFER_FREE(buffer);
-#if MBEDTLS_VERSION_MAJOR > 2
-    mbedtls_mpi_free(&N);
-    mbedtls_mpi_free(&E);
-#endif
-    return str;
 fail:
     SSH_BUFFER_FREE(buffer);
-    ssh_string_burn(str);
-    SSH_STRING_FREE(str);
     ssh_string_burn(e);
     SSH_STRING_FREE(e);
     ssh_string_burn(n);
     SSH_STRING_FREE(n);
+    ssh_string_burn(d);
+    SSH_STRING_FREE(d);
+    ssh_string_burn(iqmp);
+    SSH_STRING_FREE(iqmp);
+    ssh_string_burn(p);
+    SSH_STRING_FREE(p);
+    ssh_string_burn(q);
+    SSH_STRING_FREE(q);
 #if MBEDTLS_VERSION_MAJOR > 2
     mbedtls_mpi_free(&N);
     mbedtls_mpi_free(&E);
+    mbedtls_mpi_free(&D);
+    mbedtls_mpi_free(&IQMP);
+    mbedtls_mpi_free(&P);
+    mbedtls_mpi_free(&Q);
 #endif
 
-    return NULL;
+    return str;
 }
 
 ssh_string pki_signature_to_blob(const ssh_signature sig)

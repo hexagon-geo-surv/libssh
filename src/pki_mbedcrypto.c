@@ -930,7 +930,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 #if MBEDTLS_VERSION_MAJOR > 2
         rc = mbedtls_rsa_export(rsa, &N, NULL, NULL, NULL, &E);
         if (rc != 0) {
-            goto fail;
+            goto out;
         }
 
         E_ptr = &E;
@@ -942,24 +942,24 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
         e = ssh_make_bignum_string(E_ptr);
         if (e == NULL) {
-            goto fail;
+            goto out;
         }
 
         n = ssh_make_bignum_string(N_ptr);
         if (n == NULL) {
-            goto fail;
+            goto out;
         }
 
         if (type == SSH_KEY_PUBLIC) {
             /* The N and E parts are swapped in the public key export ! */
             rc = ssh_buffer_add_ssh_string(buffer, e);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, n);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
         } else if (type == SSH_KEY_PRIVATE) {
             mbedtls_mpi *P_ptr = NULL, *Q_ptr = NULL, *D_ptr = NULL;
@@ -967,23 +967,23 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
             rc = ssh_buffer_add_ssh_string(buffer, n);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, e);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
 #if MBEDTLS_VERSION_MAJOR > 2
             rc = mbedtls_rsa_export(rsa, NULL, &P, &Q, &D, NULL);
             if (rc != 0) {
-                goto fail;
+                goto out;
             }
 
             rc = mbedtls_rsa_export_crt(rsa, NULL, NULL, &IQMP);
             if (rc != 0) {
-                goto fail;
+                goto out;
             }
 
             P_ptr = &P;
@@ -999,42 +999,42 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
             p = ssh_make_bignum_string(P_ptr);
             if (p == NULL) {
-                goto fail;
+                goto out;
             }
 
             q = ssh_make_bignum_string(Q_ptr);
             if (q == NULL) {
-                goto fail;
+                goto out;
             }
 
             d = ssh_make_bignum_string(D_ptr);
             if (d == NULL) {
-                goto fail;
+                goto out;
             }
 
             iqmp = ssh_make_bignum_string(IQMP_ptr);
             if (iqmp == NULL) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, d);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, iqmp);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, p);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, q);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
         }
         break;
@@ -1067,7 +1067,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
         rc = ssh_buffer_add_ssh_string(buffer, e);
         if (rc < 0) {
-            goto fail;
+            goto out;
         }
 
         if (type == SSH_KEY_PRIVATE) {
@@ -1080,13 +1080,13 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
             rc = ssh_buffer_add_ssh_string(buffer, d);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
         } else if (key->type == SSH_KEYTYPE_SK_ECDSA) {
             /* public key can contain certificate sk information */
             rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
             if (rc < 0) {
-                goto fail;
+                goto out;
             }
         }
         break;
@@ -1095,29 +1095,29 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
         if (type == SSH_KEY_PUBLIC) {
             rc = pki_ed25519_public_key_to_blob(buffer, key);
             if (rc == SSH_ERROR) {
-                goto fail;
+                goto out;
             }
             /* public key can contain certificate sk information */
             if (key->type == SSH_KEYTYPE_SK_ED25519) {
                 rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
                 if (rc < 0) {
-                    goto fail;
+                    goto out;
                 }
             }
         } else {
             rc = pki_ed25519_private_key_to_blob(buffer, key);
             if (rc == SSH_ERROR) {
-                goto fail;
+                goto out;
             }
         }
         break;
     default:
-        goto fail;
+        goto out;
     }
 makestring:
     str = ssh_string_new(ssh_buffer_get_len(buffer));
     if (str == NULL) {
-        goto fail;
+        goto out;
     }
 
     rc = ssh_string_fill(str,
@@ -1126,10 +1126,9 @@ makestring:
     if (rc < 0) {
         ssh_string_burn(str);
         SSH_STRING_FREE(str);
-        goto fail;
     }
 
-fail:
+out:
     SSH_BUFFER_FREE(buffer);
     ssh_string_burn(e);
     SSH_STRING_FREE(e);

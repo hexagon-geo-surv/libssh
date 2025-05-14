@@ -202,7 +202,8 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    rc = EVP_KDF_ctrl(ctx, EVP_KDF_CTRL_SET_MD,
+    rc = EVP_KDF_ctrl(ctx,
+                      EVP_KDF_CTRL_SET_MD,
                       sshkdf_digest_to_md(crypto->digest_type));
     if (rc != 1) {
         goto out;
@@ -211,8 +212,10 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
     if (rc != 1) {
         goto out;
     }
-    rc = EVP_KDF_ctrl(ctx, EVP_KDF_CTRL_SET_SSHKDF_XCGHASH,
-                      crypto->secret_hash, crypto->digest_len);
+    rc = EVP_KDF_ctrl(ctx,
+                      EVP_KDF_CTRL_SET_SSHKDF_XCGHASH,
+                      crypto->secret_hash,
+                      crypto->digest_len);
     if (rc != 1) {
         goto out;
     }
@@ -220,8 +223,10 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
     if (rc != 1) {
         goto out;
     }
-    rc = EVP_KDF_ctrl(ctx, EVP_KDF_CTRL_SET_SSHKDF_SESSION_ID,
-                      crypto->session_id, crypto->session_id_len);
+    rc = EVP_KDF_ctrl(ctx,
+                      EVP_KDF_CTRL_SET_SSHKDF_SESSION_ID,
+                      crypto->session_id,
+                      crypto->session_id_len);
     if (rc != 1) {
         goto out;
     }
@@ -230,14 +235,18 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
         goto out;
     }
 #else
-    rc = OSSL_PARAM_BLD_push_utf8_string(param_bld, OSSL_KDF_PARAM_DIGEST,
-                                         md, strlen(md));
+    rc = OSSL_PARAM_BLD_push_utf8_string(param_bld,
+                                         OSSL_KDF_PARAM_DIGEST,
+                                         md,
+                                         strlen(md));
     if (rc != 1) {
         rc = -1;
         goto out;
     }
-    rc = OSSL_PARAM_BLD_push_octet_string(param_bld, OSSL_KDF_PARAM_KEY,
-                                          key, key_len);
+    rc = OSSL_PARAM_BLD_push_octet_string(param_bld,
+                                          OSSL_KDF_PARAM_KEY,
+                                          key,
+                                          key_len);
     if (rc != 1) {
         rc = -1;
         goto out;
@@ -258,8 +267,10 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
         rc = -1;
         goto out;
     }
-    rc = OSSL_PARAM_BLD_push_utf8_string(param_bld, OSSL_KDF_PARAM_SSHKDF_TYPE,
-                                         (const char*)&key_type, 1);
+    rc = OSSL_PARAM_BLD_push_utf8_string(param_bld,
+                                         OSSL_KDF_PARAM_SSHKDF_TYPE,
+                                         (const char *)&key_type,
+                                         1);
     if (rc != 1) {
         rc = -1;
         goto out;

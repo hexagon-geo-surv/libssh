@@ -366,7 +366,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
          * */
 
-        if (!session->server) {
+        if (session->client) {
             rc = SSH_PACKET_DENIED;
             break;
         }
@@ -389,6 +389,8 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
       // SSH2_MSG_ECMQV_REPLY:                        // 31
       // SSH2_MSG_KEX_DH_GEX_GROUP:                   // 31
 
+        /* Client only */
+
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_DH
@@ -398,6 +400,11 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * Transitions:
          * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
          * */
+
+        if (session->server) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
 
         if (session->session_state != SSH_SESSION_STATE_DH) {
             rc = SSH_PACKET_DENIED;
@@ -413,15 +420,98 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_KEX_DH_GEX_INIT:                    // 32
-        /* TODO Not filtered */
+        /* Server only */
+
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_DH
+         * - dh_handshake_state == DH_STATE_GROUP_SENT
+         *
+         * Transitions:
+         * - session->dh_handshake_state = DH_STATE_GROUP_SENT
+         * then calls ssh_packet_server_dhgex_init which triggers:
+         * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+         * */
+
+        if (session->client) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        if (session->session_state != SSH_SESSION_STATE_DH) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        /* Only allowed if dh_handshake_state is in initial state */
+        if (session->dh_handshake_state != DH_STATE_GROUP_SENT) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_KEX_DH_GEX_REPLY:                   // 33
-        /* TODO Not filtered */
+
+        /* Client only */
+
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_DH
+         * - dh_handshake_state == DH_STATE_INIT_SENT
+         *
+         * Transitions:
+         * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+         * */
+
+        if (session->server) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        if (session->session_state != SSH_SESSION_STATE_DH) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        if (session->dh_handshake_state != DH_STATE_INIT_SENT) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_KEX_DH_GEX_REQUEST:                 // 34
-        /* TODO Not filtered */
+
+        /* Server only */
+
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_DH
+         * - dh_handshake_state == DH_STATE_INIT
+         *
+         * Transitions:
+         * - session->dh_handshake_state = DH_STATE_INIT_SENT
+         * then calls ssh_packet_server_dhgex_request which triggers:
+         * - session->dh_handshake_state = DH_STATE_GROUP_SENT
+         * */
+
+        if (session->client) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        if (session->session_state != SSH_SESSION_STATE_DH) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
+        /* Only allowed if dh_handshake_state is in initial state */
+        if (session->dh_handshake_state != DH_STATE_INIT) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_REQUEST:                   // 50

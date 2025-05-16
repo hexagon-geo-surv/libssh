@@ -577,9 +577,9 @@ error:
 static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_request);
 static SSH_PACKET_CALLBACK(ssh_packet_server_dhgex_init);
 
-static ssh_packet_callback dhgex_server_callbacks[]= {
-    NULL, /* SSH_MSG_KEX_DH_GEX_REQUEST_OLD */
-    NULL, /* SSH_MSG_KEX_DH_GEX_GROUP */
+static ssh_packet_callback dhgex_server_callbacks[] = {
+    NULL,                           /* SSH_MSG_KEX_DH_GEX_REQUEST_OLD */
+    NULL,                           /* SSH_MSG_KEX_DH_GEX_GROUP */
     ssh_packet_server_dhgex_init,   /* SSH_MSG_KEX_DH_GEX_INIT */
     NULL,                           /* SSH_MSG_KEX_DH_GEX_REPLY */
     ssh_packet_server_dhgex_request /* SSH_MSG_KEX_DH_GEX_REQUEST */

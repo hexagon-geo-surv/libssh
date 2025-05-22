@@ -489,5 +489,7 @@ LIBSSH_AFTER_4_10_0
         sftp_name_id_map_free;
         sftp_name_id_map_new;
         ssh_get_supported_methods;
+        sshsig_sign;
+        sshsig_verify;
 } LIBSSH_4_10_0;
 

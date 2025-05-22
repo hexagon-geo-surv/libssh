@@ -2724,6 +2724,468 @@ ssh_signature pki_do_sign(const ssh_key privkey,
     return pki_sign_data(privkey, hash_type, input, input_len);
 }
 
+/**
+ * @brief Encodes a binary signature blob as an sshsig armored signature
+ *
+ * @param blob       The binary signature blob to encode
+ * @param out_str    Pointer to store the allocated base64 encoded string
+ *                   Must be freed with ssh_string_free_char()
+ *
+ * @return SSH_OK on success, SSH_ERROR on error
+ */
+static int sshsig_armor(ssh_buffer blob, char **out_str)
+{
+    char *b64_data = NULL;
+    char *armored = NULL;
+    const unsigned char *data = NULL;
+    size_t len, b64_len, armored_len, num_lines;
+    size_t i, j;
+
+    if (blob == NULL || out_str == NULL) {
+        return SSH_ERROR;
+    }
+
+    *out_str = NULL;
+
+    data = ssh_buffer_get(blob);
+    len = ssh_buffer_get_len(blob);
+
+    b64_data = (char *)bin_to_base64(data, len);
+    if (b64_data == NULL) {
+        return SSH_ERROR;
+    }
+
+    b64_len = strlen(b64_data);
+
+    /* Calculate space needed: header + data with line breaks + footer */
+    num_lines = (b64_len + SSHSIG_LINE_LENGTH - 1) /
+                SSHSIG_LINE_LENGTH;                    /* Round up division */
+    armored_len = strlen(SSHSIG_BEGIN_SIGNATURE) + 1 + /* header + \n */
+                  b64_len + num_lines +                /* data + line breaks */
+                  strlen(SSHSIG_END_SIGNATURE) + 1;    /* footer + \0 */
+
+    armored = calloc(armored_len, 1);
+    if (armored == NULL) {
+        SAFE_FREE(b64_data);
+        return SSH_ERROR;
+    }
+
+    j = snprintf(armored, armored_len, SSHSIG_BEGIN_SIGNATURE "\n");
+    for (i = 0; i < b64_len; i++) {
+        if (i > 0 && i % SSHSIG_LINE_LENGTH == 0) {
+            armored[j++] = '\n';
+        }
+        armored[j++] = b64_data[i];
+    }
+    armored[j++] = '\n';
+    snprintf(armored + j, armored_len - j, SSHSIG_END_SIGNATURE);
+
+    SAFE_FREE(b64_data);
+
+    *out_str = armored;
+    return SSH_OK;
+}
+
+/**
+ * @brief Dearmor an sshsig signature from ASCII armored format to binary
+ *
+ * @param[in]  signature    The armored sshsig signature string
+ * @param[out] out          Pointer to store the allocated binary buffer
+ *
+ * @return SSH_OK on success, SSH_ERROR on error
+ */
+static int sshsig_dearmor(const char *signature, ssh_buffer *out)
+{
+    const char *begin = NULL;
+    const char *end = NULL;
+    char *clean_b64 = NULL;
+    ssh_buffer decoded_buffer = NULL;
+    int i, j;
+    int rc = SSH_ERROR;
+
+    if (signature == NULL || out == NULL) {
+        return SSH_ERROR;
+    }
+
+    *out = NULL;
+
+    rc = strncmp(signature,
+                 SSHSIG_BEGIN_SIGNATURE,
+                 strlen(SSHSIG_BEGIN_SIGNATURE));
+    if (rc != SSH_OK) {
+        return SSH_ERROR;
+    }
+
+    begin = signature + strlen(SSHSIG_BEGIN_SIGNATURE);
+    while (isspace(*begin)) {
+        begin++;
+    }
+
+    end = strstr(begin, SSHSIG_END_SIGNATURE);
+    if (end == NULL) {
+        return SSH_ERROR;
+    }
+
+    /* Backtrack to find the real end of data */
+    while (end > begin && (isspace(*(end - 1)))) {
+        end--;
+    }
+
+    clean_b64 = calloc(end - begin + 1, 1);
+    if (clean_b64 == NULL) {
+        return SSH_ERROR;
+    }
+
+    for (i = 0, j = 0; begin + i < end; i++) {
+        if (!isspace(begin[i])) {
+            clean_b64[j++] = begin[i];
+        }
+    }
+    clean_b64[j] = '\0';
+
+    decoded_buffer = base64_to_bin(clean_b64);
+    SAFE_FREE(clean_b64);
+
+    if (decoded_buffer == NULL) {
+        return SSH_ERROR;
+    }
+
+    *out = decoded_buffer;
+    return SSH_OK;
+}
+
+/**
+ * @internal
+ * @brief Common helper function to prepare the data in sshsig format
+ *
+ * This function handles the common logic to prepare the sshsig format:
+ * 1. Hash the input data using the specified algorithm
+ * 2. Build the data buffer to sign
+ *
+ * @param data           The raw data to process
+ * @param data_length    The length of the data
+ * @param hash_alg       The hash algorithm to use (sha256 or sha512)
+ * @param sig_namespace  The signature namespace
+ * @param tosign_buf     Pointer to store the allocated to-sign buffer
+ *
+ * @return SSH_OK on success, SSH_ERROR on error
+ */
+static int sshsig_prepare_data(const void *data,
+                               size_t data_length,
+                               const char *hash_alg,
+                               const char *sig_namespace,
+                               ssh_buffer *tosign_buf)
+{
+    ssh_buffer tosign = NULL;
+    ssh_string hash_string = NULL;
+    char hash[SHA512_DIGEST_LEN];
+    size_t hash_len;
+    int rc = SSH_ERROR;
+
+    if (data == NULL || hash_alg == NULL || sig_namespace == NULL ||
+        tosign_buf == NULL) {
+        return SSH_ERROR;
+    }
+
+    *tosign_buf = NULL;
+
+    if (strcmp(hash_alg, "sha256") == 0) {
+        hash_len = SHA256_DIGEST_LEN;
+        rc = sha256(data, data_length, (unsigned char *)hash);
+    } else if (strcmp(hash_alg, "sha512") == 0) {
+        hash_len = SHA512_DIGEST_LEN;
+        rc = sha512(data, data_length, (unsigned char *)hash);
+    } else {
+        goto cleanup;
+    }
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    hash_string = ssh_string_new(hash_len);
+    if (hash_string == NULL) {
+        goto cleanup;
+    }
+
+    rc = ssh_string_fill(hash_string, hash, hash_len);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    tosign = ssh_buffer_new();
+    if (tosign == NULL) {
+        goto cleanup;
+    }
+
+    rc = ssh_buffer_pack(tosign,
+                         "tsssS",
+                         SSHSIG_MAGIC_PREAMBLE,
+                         sig_namespace,
+                         "",
+                         hash_alg,
+                         hash_string);
+
+    if (rc == SSH_OK) {
+        *tosign_buf = tosign;
+        tosign = NULL;
+    }
+
+cleanup:
+    SSH_BUFFER_FREE(tosign);
+    SSH_STRING_FREE(hash_string);
+
+    return rc;
+}
+
+/**
+ * @brief Signs data in sshsig compatible format
+ *
+ * @param data            The data to sign
+ * @param data_length     The length of the data
+ * @param privkey         The private key to sign with
+ * @param hash_alg        The hash algorithm to use (SSHSIG_DIGEST_SHA2_256 or
+ *                        SSHSIG_DIGEST_SHA2_512)
+ * @param sig_namespace   The signature namespace (e.g. "file", "email", etc.)
+ * @param signature       Pointer to store the allocated signature string in the
+ *                        armored format. Must be freed with
+ *                        ssh_string_free_char()
+ *
+ * @return SSH_OK on success, SSH_ERROR on error
+ */
+int sshsig_sign(const void *data,
+                size_t data_length,
+                ssh_key privkey,
+                const char *sig_namespace,
+                enum sshsig_digest_e hash_alg,
+                char **signature)
+{
+    ssh_buffer tosign = NULL;
+    ssh_buffer signature_blob = NULL;
+    ssh_signature sig = NULL;
+    ssh_string sig_string = NULL;
+    ssh_string pub_blob = NULL;
+    enum ssh_digest_e digest_type;
+    const char *hash_alg_str = NULL;
+    int rc = SSH_ERROR;
+
+    if (privkey == NULL || data == NULL || sig_namespace == NULL ||
+        signature == NULL) {
+        return SSH_ERROR;
+    }
+
+    if (strlen(sig_namespace) == 0) {
+        return SSH_ERROR;
+    }
+
+    *signature = NULL;
+
+    if (hash_alg == SSHSIG_DIGEST_SHA2_256) {
+        hash_alg_str = "sha256";
+    } else if (hash_alg == SSHSIG_DIGEST_SHA2_512) {
+        hash_alg_str = "sha512";
+    } else {
+        return SSH_ERROR;
+    }
+
+    rc = sshsig_prepare_data(data,
+                             data_length,
+                             hash_alg_str,
+                             sig_namespace,
+                             &tosign);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    digest_type = key_type_to_hash(ssh_key_type_plain(privkey->type));
+    sig = pki_sign_data(privkey,
+                        digest_type,
+                        ssh_buffer_get(tosign),
+                        ssh_buffer_get_len(tosign));
+    if (sig == NULL) {
+        goto cleanup;
+    }
+
+    rc = ssh_pki_export_pubkey_blob(privkey, &pub_blob);
+    if (rc != SSH_OK || pub_blob == NULL) {
+        goto cleanup;
+    }
+
+    rc = ssh_pki_export_signature_blob(sig, &sig_string);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    signature_blob = ssh_buffer_new();
+    if (signature_blob == NULL) {
+        goto cleanup;
+    }
+    rc = ssh_buffer_pack(signature_blob,
+                         "tdSsssS",
+                         SSHSIG_MAGIC_PREAMBLE,
+                         SSHSIG_VERSION,
+                         pub_blob,
+                         sig_namespace,
+                         "",
+                         hash_alg_str,
+                         sig_string);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    rc = sshsig_armor(signature_blob, signature);
+
+cleanup:
+    SSH_BUFFER_FREE(tosign);
+    SSH_BUFFER_FREE(signature_blob);
+    SSH_SIGNATURE_FREE(sig);
+    SSH_STRING_FREE(sig_string);
+    SSH_STRING_FREE(pub_blob);
+
+    return rc;
+}
+
+/**
+ * @brief Verifies an sshsig formatted signature against data
+ *
+ * @param data           The data to verify
+ * @param data_length    The length of the data
+ * @param signature      The armored sshsig signature
+ * @param sig_namespace  The expected signature namespace
+ * @param sign_key       If not NULL, returns the allocated public key that was
+ *                       used for signing this data. Must be freed with
+ *                       ssh_key_free(). Note that this is an output parameter
+ *                       and is not checked against "allowed signers". The
+ *                       caller needs to compare it with expected signer key
+ *                       using ssh_key_cmp().
+ *
+ * @return SSH_OK on success, SSH_ERROR on verification failure
+ */
+int sshsig_verify(const void *data,
+                  size_t data_length,
+                  const char *signature,
+                  const char *sig_namespace,
+                  ssh_key *sign_key)
+{
+    ssh_buffer sig_buf = NULL;
+    ssh_buffer tosign = NULL;
+    ssh_key key = NULL;
+    char *hash_alg_str = NULL;
+    ssh_string sig_data = NULL;
+    ssh_string sig_namespace_str = NULL;
+    ssh_string reserved_str = NULL;
+    ssh_string pubkey_blob = NULL;
+    int rc = SSH_ERROR;
+    ssh_signature signature_obj = NULL;
+    uint32_t sig_version;
+
+    if (sign_key != NULL) {
+        *sign_key = NULL;
+    }
+
+    if (signature == NULL || data == NULL || sig_namespace == NULL) {
+        return SSH_ERROR;
+    }
+
+    if (strlen(sig_namespace) == 0) {
+        return SSH_ERROR;
+    }
+
+    rc = sshsig_dearmor(signature, &sig_buf);
+    if (rc != SSH_OK) {
+        return SSH_ERROR;
+    }
+
+    if (ssh_buffer_get_len(sig_buf) < SSHSIG_MAGIC_PREAMBLE_LEN ||
+        memcmp(ssh_buffer_get(sig_buf),
+               SSHSIG_MAGIC_PREAMBLE,
+               SSHSIG_MAGIC_PREAMBLE_LEN) != 0) {
+        SSH_BUFFER_FREE(sig_buf);
+        return SSH_ERROR;
+    }
+
+    ssh_buffer_pass_bytes(sig_buf, SSHSIG_MAGIC_PREAMBLE_LEN);
+    rc = ssh_buffer_unpack(sig_buf,
+                           "dSSSsS",
+                           &sig_version,
+                           &pubkey_blob,
+                           &sig_namespace_str,
+                           &reserved_str,
+                           &hash_alg_str,
+                           &sig_data);
+
+    if (rc != SSH_OK) {
+        SSH_BUFFER_FREE(sig_buf);
+        return SSH_ERROR;
+    }
+
+    if (sig_version != SSHSIG_VERSION) {
+        rc = SSH_ERROR;
+        goto cleanup;
+    }
+
+    rc = ssh_pki_import_pubkey_blob(pubkey_blob, &key);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    if (ssh_string_len(sig_namespace_str) != strlen(sig_namespace) ||
+        memcmp(ssh_string_data(sig_namespace_str),
+               sig_namespace,
+               strlen(sig_namespace)) != 0) {
+        rc = SSH_ERROR;
+        goto cleanup;
+    }
+
+    if (strcmp(hash_alg_str, "sha256") != 0 &&
+        strcmp(hash_alg_str, "sha512") != 0) {
+        rc = SSH_ERROR;
+        goto cleanup;
+    }
+
+    rc = sshsig_prepare_data(data,
+                             data_length,
+                             hash_alg_str,
+                             sig_namespace,
+                             &tosign);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    rc = ssh_pki_import_signature_blob(sig_data, key, &signature_obj);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+
+    rc = pki_verify_data_signature(signature_obj,
+                                   key,
+                                   ssh_buffer_get(tosign),
+                                   ssh_buffer_get_len(tosign));
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    if (strlen(sig_namespace) == 0) {
+        return SSH_ERROR;
+    }
+
+    if (sign_key != NULL) {
+        *sign_key = key;
+        key = NULL; /* Transferred ownership */
+    }
+
+cleanup:
+    SSH_STRING_FREE(pubkey_blob);
+    SSH_STRING_FREE(sig_namespace_str);
+    SSH_STRING_FREE(reserved_str);
+    SSH_STRING_FREE(sig_data);
+    SSH_BUFFER_FREE(tosign);
+    SSH_BUFFER_FREE(sig_buf);
+    SSH_KEY_FREE(key);
+    SAFE_FREE(hash_alg_str);
+    SSH_SIGNATURE_FREE(signature_obj);
+
+    return rc;
+}
+
 /*
  * This function signs the session id as a string then
  * the content of sigbuf */

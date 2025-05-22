@@ -888,6 +888,27 @@ LIBSSH_API void *ssh_buffer_get(ssh_buffer buffer);
 LIBSSH_API uint32_t ssh_buffer_get_len(ssh_buffer buffer);
 LIBSSH_API int ssh_session_set_disconnect_message(ssh_session session, const char *message);
 
+/* SSHSIG hashes data independently from the key used, so we use a new enum
+   to avoid confusion. See
+   https://gitlab.com/jas/ietf-sshsig-format/-/blob/cc70a225cbd695d5a6f20aaebdb4b92b0818e43a/ietf-sshsig-format.md#L137
+ */
+enum sshsig_digest_e {
+    SSHSIG_DIGEST_SHA2_256 = 0,
+    SSHSIG_DIGEST_SHA2_512 = 1,
+};
+
+LIBSSH_API int sshsig_sign(const void *data,
+                           size_t data_length,
+                           ssh_key privkey,
+                           const char *sig_namespace,
+                           enum sshsig_digest_e hash_alg,
+                           char **signature);
+LIBSSH_API int sshsig_verify(const void *data,
+                             size_t data_length,
+                             const char *signature,
+                             const char *sig_namespace,
+                             ssh_key *sign_key);
+
 #ifndef LIBSSH_LEGACY_0_4
 #include "libssh/legacy.h"
 #endif

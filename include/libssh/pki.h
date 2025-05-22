@@ -51,6 +51,15 @@
 #define SSH_KEY_FLAG_PRIVATE 0x0002
 #define SSH_KEY_FLAG_PKCS11_URI 0x0004
 
+/* Constants matching the Lightweight Secure Shell Signature Format */
+/* https://datatracker.ietf.org/doc/draft-josefsson-sshsig-format */
+#define SSHSIG_VERSION            0x01
+#define SSHSIG_MAGIC_PREAMBLE     "SSHSIG"
+#define SSHSIG_MAGIC_PREAMBLE_LEN (sizeof(SSHSIG_MAGIC_PREAMBLE) - 1)
+#define SSHSIG_BEGIN_SIGNATURE    "-----BEGIN SSH SIGNATURE-----"
+#define SSHSIG_END_SIGNATURE      "-----END SSH SIGNATURE-----"
+#define SSHSIG_LINE_LENGTH        76
+
 struct ssh_key_struct {
     enum ssh_keytypes_e type;
     int flags;

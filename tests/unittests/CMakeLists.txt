@@ -47,6 +47,7 @@ if (UNIX AND NOT WIN32)
         torture_pki_rsa
         torture_pki_dsa
         torture_pki_ed25519
+        torture_pki_sshsig
         # requires /dev/null
         torture_channel
     )

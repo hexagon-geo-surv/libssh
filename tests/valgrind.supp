@@ -248,23 +248,9 @@
    Reachable memory from getaddrinfo
    Memcheck:Leak
    match-leak-kinds: reachable
-   fun:malloc
-   fun:UnknownInlinedFun
-   fun:_dl_new_object
-   fun:_dl_map_object_from_fd
-   fun:_dl_map_object
-   fun:dl_open_worker_begin
-   fun:_dl_catch_exception
-   fun:dl_open_worker
-   fun:_dl_catch_exception
-   fun:_dl_open
-   fun:do_dlopen
-   fun:_dl_catch_exception
-   fun:_dl_catch_error
-   fun:dlerror_run
-   fun:__libc_dlopen_mode
-   fun:module_load
+   ...
    fun:__nss_module_get_function
+   ...
    fun:getaddrinfo
    ...
    fun:krb5_sname_to_principal

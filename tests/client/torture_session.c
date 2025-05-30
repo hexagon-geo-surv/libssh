@@ -450,12 +450,13 @@ static void torture_channel_exit_signal(void **state)
     rc = ssh_channel_request_send_signal(channel, "TERM");
     assert_ssh_return_code(session, rc);
 
-    exit_status = ssh_channel_get_exit_state(channel,
-                                             &exit_status,
-                                             &exit_signal,
-                                             &core_dumped);
+    rc = ssh_channel_get_exit_state(channel,
+                                    &exit_status,
+                                    &exit_signal,
+                                    &core_dumped);
+
     assert_ssh_return_code(session, rc);
-    assert_int_equal(exit_status, 0);
+    assert_int_equal(exit_status, (uint32_t)-1);
     assert_string_equal(exit_signal, "TERM");
     SAFE_FREE(exit_signal);
 }

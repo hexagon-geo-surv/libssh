@@ -859,7 +859,7 @@ static int ssh_buffer_pack_allocate_va(struct ssh_buffer_struct *buffer,
             break;
         case 'S':
             string = va_arg(ap, ssh_string);
-            needed_size += 4 + ssh_string_len(string);
+            needed_size += sizeof(uint32_t) + ssh_string_len(string);
             string = NULL;
             break;
         case 's':

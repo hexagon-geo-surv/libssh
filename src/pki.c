@@ -406,6 +406,59 @@ bool ssh_key_size_allowed(ssh_session session, ssh_key key)
 }
 
 /**
+ * @brief Helper function to convert a key type to a hash type.
+ *
+ * @param[in]  type     The type to convert.
+ *
+ * @return              A hash type to be used.
+ *
+ * @warning This helper function is available for use without session (for
+ *          example for signing commits) and might cause interoperability issues
+ *          when used within session! It is recommended to use
+ *          ssh_key_type_to_hash() instead of this helper directly when a
+ *          session is available.
+ *
+ * @note    In order to follow current security best practises for RSA, defaults
+ *          to SHA-2 with SHA-512 digest (RFC8332) instead of the default for
+ *          the SSH protocol (SHA1 with RSA ; RFC 4253).
+ *
+ * @see     ssh_key_type_to_hash()
+ */
+static enum ssh_digest_e key_type_to_hash(enum ssh_keytypes_e type)
+{
+    switch (type) {
+    case SSH_KEYTYPE_RSA_CERT01:
+    case SSH_KEYTYPE_RSA:
+        return SSH_DIGEST_SHA512;
+    case SSH_KEYTYPE_ECDSA_P256_CERT01:
+    case SSH_KEYTYPE_ECDSA_P256:
+        return SSH_DIGEST_SHA256;
+    case SSH_KEYTYPE_ECDSA_P384_CERT01:
+    case SSH_KEYTYPE_ECDSA_P384:
+        return SSH_DIGEST_SHA384;
+    case SSH_KEYTYPE_ECDSA_P521_CERT01:
+    case SSH_KEYTYPE_ECDSA_P521:
+        return SSH_DIGEST_SHA512;
+    case SSH_KEYTYPE_ED25519_CERT01:
+    case SSH_KEYTYPE_ED25519:
+        return SSH_DIGEST_AUTO;
+    case SSH_KEYTYPE_RSA1:
+    case SSH_KEYTYPE_DSS:        /* deprecated */
+    case SSH_KEYTYPE_DSS_CERT01: /* deprecated */
+    case SSH_KEYTYPE_ECDSA:
+    case SSH_KEYTYPE_UNKNOWN:
+    default:
+        SSH_LOG(SSH_LOG_WARN,
+                "Digest algorithm to be used with key type %u "
+                "is not defined",
+                type);
+    }
+
+    /* We should never reach this */
+    return SSH_DIGEST_AUTO;
+}
+
+/**
  * @brief Convert a key type to a hash type. This is usually unambiguous
  * for all the key types, unless the SHA2 extension (RFC 8332) is
  * negotiated during key exchange.
@@ -448,26 +501,8 @@ enum ssh_digest_e ssh_key_type_to_hash(ssh_session session,
         /* Default algorithm for RSA is SHA1 */
         return SSH_DIGEST_SHA1;
 
-    case SSH_KEYTYPE_ECDSA_P256_CERT01:
-    case SSH_KEYTYPE_ECDSA_P256:
-        return SSH_DIGEST_SHA256;
-    case SSH_KEYTYPE_ECDSA_P384_CERT01:
-    case SSH_KEYTYPE_ECDSA_P384:
-        return SSH_DIGEST_SHA384;
-    case SSH_KEYTYPE_ECDSA_P521_CERT01:
-    case SSH_KEYTYPE_ECDSA_P521:
-        return SSH_DIGEST_SHA512;
-    case SSH_KEYTYPE_ED25519_CERT01:
-    case SSH_KEYTYPE_ED25519:
-        return SSH_DIGEST_AUTO;
-    case SSH_KEYTYPE_RSA1:
-    case SSH_KEYTYPE_DSS:   /* deprecated */
-    case SSH_KEYTYPE_DSS_CERT01:    /* deprecated */
-    case SSH_KEYTYPE_ECDSA:
-    case SSH_KEYTYPE_UNKNOWN:
     default:
-        SSH_LOG(SSH_LOG_TRACE, "Digest algorithm to be used with key type %u "
-                "is not defined", type);
+        return key_type_to_hash(type);
     }
 
     /* We should never reach this */

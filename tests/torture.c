@@ -1848,9 +1848,28 @@ __attribute__((weak)) int torture_run_tests(void)
 }
 #endif /* defined(HAVE_WEAK_ATTRIBUTE) && defined(TORTURE_SHARED) */
 
-int main(int argc, char **argv) {
+/**
+ * Finalize the torture context. No-op except for OpenSSL.
+ *
+ * When OpenSSL is built without the at-exit handlers, it won't call the
+ * OPENSSL_cleanup() from destructor or at-exit handler, which means we need to
+ * do it manually in the tests.
+ *
+ * It is never a good idea to call this function from the library context as we
+ * can not be sure the libssh is really the last one using the OpenSSL
+ */
+static void torture_finalize(void)
+{
+#ifdef HAVE_LIBCRYPTO
+    OPENSSL_cleanup();
+#endif
+}
+
+int main(int argc, char **argv)
+{
     struct argument_s arguments;
     char *env = getenv("LIBSSH_VERBOSITY");
+    int rv;
 
     arguments.verbose=0;
     arguments.pattern=NULL;
@@ -1868,5 +1887,9 @@ int main(int argc, char **argv) {
     cmocka_set_test_filter(pattern);
 #endif
 
-    return torture_run_tests();
+    rv = torture_run_tests();
+
+    torture_finalize();
+
+    return rv;
 }

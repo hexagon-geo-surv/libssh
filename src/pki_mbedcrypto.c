@@ -1075,7 +1075,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
             if (d == NULL) {
                 SSH_BUFFER_FREE(buffer);
-                return NULL;
+                goto out;
             }
 
             rc = ssh_buffer_add_ssh_string(buffer, d);

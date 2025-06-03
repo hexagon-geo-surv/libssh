@@ -2276,6 +2276,9 @@ static int pki_signature_from_ecdsa_blob(UNUSED_PARAM(const ssh_key pubkey),
         return SSH_ERROR;
     }
 
+    /* The buffer will contain sensitive information. Make sure it is erased */
+    ssh_buffer_set_secure(buf);
+
     rc = ssh_buffer_add_data(buf,
                              ssh_string_data(sig_blob),
                              (uint32_t)ssh_string_len(sig_blob));

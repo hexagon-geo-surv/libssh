@@ -1848,6 +1848,8 @@ ssh_signature pki_signature_from_blob(const ssh_key pubkey,
                     ssh_signature_free(sig);
                     return NULL;
                 }
+                /* The buffer will contain sensitive information. */
+                ssh_buffer_set_secure(b);
 
                 rc = ssh_buffer_add_data(b,
                                          ssh_string_data(sig_blob),

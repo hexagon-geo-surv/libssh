@@ -357,10 +357,10 @@ int ssh_connector_remove_event(ssh_connector connector);
 #define SAFE_FREE(x) do { if ((x) != NULL) {free(x); x=NULL;} } while(0)
 
 /** Zero a structure */
-#define ZERO_STRUCT(x) memset((char *)&(x), 0, sizeof(x))
+#define ZERO_STRUCT(x) memset(&(x), 0, sizeof(x))
 
 /** Zero a structure given a pointer to the structure */
-#define ZERO_STRUCTP(x) do { if ((x) != NULL) memset((char *)(x), 0, sizeof(*(x))); } while(0)
+#define ZERO_STRUCTP(x) do { if ((x) != NULL) memset((x), 0, sizeof(*(x))); } while(0)
 
 /** Get the size of an array */
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))

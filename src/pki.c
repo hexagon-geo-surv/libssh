@@ -2970,10 +2970,14 @@ int sshsig_sign(const void *data,
 
     if (privkey == NULL || data == NULL || sig_namespace == NULL ||
         signature == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid parameters provided to sshsig_sign");
         return SSH_ERROR;
     }
 
     if (strlen(sig_namespace) == 0) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Invalid parameters provided to sshsig_sign: empty namespace "
+                "string");
         return SSH_ERROR;
     }
 
@@ -2984,6 +2988,7 @@ int sshsig_sign(const void *data,
     } else if (hash_alg == SSHSIG_DIGEST_SHA2_512) {
         hash_alg_str = "sha512";
     } else {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid hash algorithm %d", hash_alg);
         return SSH_ERROR;
     }
 
@@ -2993,6 +2998,7 @@ int sshsig_sign(const void *data,
                              sig_namespace,
                              &tosign);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to prepare data for sshsig signing");
         goto cleanup;
     }
 
@@ -3002,23 +3008,29 @@ int sshsig_sign(const void *data,
                         ssh_buffer_get(tosign),
                         ssh_buffer_get_len(tosign));
     if (sig == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to sign data with private key");
         goto cleanup;
     }
 
     rc = ssh_pki_export_pubkey_blob(privkey, &pub_blob);
     if (rc != SSH_OK || pub_blob == NULL) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to export public key blob from private key");
         goto cleanup;
     }
 
     rc = ssh_pki_export_signature_blob(sig, &sig_string);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to export signature blob");
         goto cleanup;
     }
 
     signature_blob = ssh_buffer_new();
     if (signature_blob == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to allocate signature buffer");
         goto cleanup;
     }
+
     rc = ssh_buffer_pack(signature_blob,
                          "tdSsssS",
                          SSHSIG_MAGIC_PREAMBLE,
@@ -3029,10 +3041,15 @@ int sshsig_sign(const void *data,
                          hash_alg_str,
                          sig_string);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to pack signature blob");
         goto cleanup;
     }
 
     rc = sshsig_armor(signature_blob, signature);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to armor signature blob");
+        goto cleanup;
+    }
 
 cleanup:
     SSH_BUFFER_FREE(tosign);
@@ -3083,15 +3100,20 @@ int sshsig_verify(const void *data,
     }
 
     if (signature == NULL || data == NULL || sig_namespace == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid parameters provided to sshsig_verify");
         return SSH_ERROR;
     }
 
     if (strlen(sig_namespace) == 0) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Invalid parameters provided to sshsig_verify: empty namespace "
+                "string");
         return SSH_ERROR;
     }
 
     rc = sshsig_dearmor(signature, &sig_buf);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to dearmor signature");
         return SSH_ERROR;
     }
 
@@ -3099,6 +3121,7 @@ int sshsig_verify(const void *data,
         memcmp(ssh_buffer_get(sig_buf),
                SSHSIG_MAGIC_PREAMBLE,
                SSHSIG_MAGIC_PREAMBLE_LEN) != 0) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid signature magic preamble");
         SSH_BUFFER_FREE(sig_buf);
         return SSH_ERROR;
     }
@@ -3114,17 +3137,23 @@ int sshsig_verify(const void *data,
                            &sig_data);
 
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to unpack signature buffer");
         SSH_BUFFER_FREE(sig_buf);
         return SSH_ERROR;
     }
 
     if (sig_version != SSHSIG_VERSION) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Unsupported signature version %u, expected %u",
+                sig_version,
+                SSHSIG_VERSION);
         rc = SSH_ERROR;
         goto cleanup;
     }
 
     rc = ssh_pki_import_pubkey_blob(pubkey_blob, &key);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to import public key from signature");
         goto cleanup;
     }
 
@@ -3132,12 +3161,17 @@ int sshsig_verify(const void *data,
         memcmp(ssh_string_data(sig_namespace_str),
                sig_namespace,
                strlen(sig_namespace)) != 0) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Signature namespace mismatch: expected '%s', got '%s'",
+                sig_namespace,
+                ssh_string_get_char(sig_namespace_str));
         rc = SSH_ERROR;
         goto cleanup;
     }
 
     if (strcmp(hash_alg_str, "sha256") != 0 &&
         strcmp(hash_alg_str, "sha512") != 0) {
+        SSH_LOG(SSH_LOG_TRACE, "Unsupported hash algorithm '%s'", hash_alg_str);
         rc = SSH_ERROR;
         goto cleanup;
     }
@@ -3148,11 +3182,14 @@ int sshsig_verify(const void *data,
                              sig_namespace,
                              &tosign);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to prepare data for sshsig verification");
         goto cleanup;
     }
 
     rc = ssh_pki_import_signature_blob(sig_data, key, &signature_obj);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to import signature blob");
         goto cleanup;
     }
 
@@ -3161,9 +3198,13 @@ int sshsig_verify(const void *data,
                                    ssh_buffer_get(tosign),
                                    ssh_buffer_get_len(tosign));
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Signature verification failed");
         goto cleanup;
     }
     if (strlen(sig_namespace) == 0) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Invalid parameters provided to sshsig_verify: empty namespace "
+                "string");
         return SSH_ERROR;
     }
 

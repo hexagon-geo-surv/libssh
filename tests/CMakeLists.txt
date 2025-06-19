@@ -23,6 +23,11 @@ if (NOT WIN32)
         ${TORTURE_LINK_LIBRARIES}
         pthread)
 endif(NOT WIN32)
+if (WITH_GSSAPI AND GSSAPI_FOUND)
+    set(TORTURE_LINK_LIBRARIES
+        ${TORTURE_LINK_LIBRARIES}
+        crypto)
+endif (WITH_GSSAPI AND GSSAPI_FOUND)
 
 # create test library
 add_library(${TORTURE_LIBRARY}

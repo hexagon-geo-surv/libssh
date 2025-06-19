@@ -194,4 +194,6 @@ void torture_unsetenv(char const *variable);
 int torture_setup_ssh_agent(struct torture_state *s, const char *add_key);
 int torture_cleanup_ssh_agent(void);
 
+void torture_finalize(void);
+
 #endif /* _TORTURE_H */

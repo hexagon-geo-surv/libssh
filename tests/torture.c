@@ -53,6 +53,11 @@
 #include <valgrind/valgrind.h>
 #endif
 
+#ifdef WITH_GSSAPI
+/* for OPENSSL_cleanup() of GSSAPI's OpenSSL context */
+#include <openssl/crypto.h>
+#endif
+
 #define TORTURE_SSHD_SRV_IPV4 "127.0.0.10"
 #define TORTURE_SSHD_SRV1_IPV4 "127.0.0.11"
 /* socket wrapper IPv6 prefix  fd00::5357:5fxx */
@@ -1977,18 +1982,21 @@ __attribute__((weak)) int torture_run_tests(void)
 #endif /* defined(HAVE_WEAK_ATTRIBUTE) && defined(TORTURE_SHARED) */
 
 /**
- * Finalize the torture context. No-op except for OpenSSL.
+ * Finalize the torture context. No-op except for OpenSSL or GSSAPI
  *
  * When OpenSSL is built without the at-exit handlers, it won't call the
  * OPENSSL_cleanup() from destructor or at-exit handler, which means we need to
  * do it manually in the tests.
  *
  * It is never a good idea to call this function from the library context as we
- * can not be sure the libssh is really the last one using the OpenSSL
+ * can not be sure the libssh is really the last one using the OpenSSL.
+ *
+ * This needs to be called at the end of the main function or any time before
+ * any forked process (servers) exits.
  */
-static void torture_finalize(void)
+void torture_finalize(void)
 {
-#ifdef HAVE_LIBCRYPTO
+#if defined(HAVE_LIBCRYPTO) || defined(WITH_GSSAPI)
     OPENSSL_cleanup();
 #endif
 }

@@ -66,7 +66,6 @@ int authenticate_kbdint(ssh_session session, const char *password)
                     return SSH_AUTH_ERROR;
                 }
 
-                buffer[sizeof(buffer) - 1] = '\0';
                 if ((p = strchr(buffer, '\n'))) {
                     *p = '\0';
                 }
@@ -75,7 +74,7 @@ int authenticate_kbdint(ssh_session session, const char *password)
                     return SSH_AUTH_ERROR;
                 }
 
-                memset(buffer, 0, strlen(buffer));
+                memset(buffer, 0, sizeof(buffer));
             } else {
                 if (password && strstr(prompt, "Password:")) {
                     answer = password;

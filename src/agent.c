@@ -533,6 +533,7 @@ ssh_string ssh_agent_sign_data(ssh_session session,
      * STRING_SIZE_MAX is (UINT32_MAX >> 8) + 1 */
     rc = ssh_buffer_allocate_size(request, (uint32_t)request_len);
     if (rc < 0) {
+        SSH_STRING_FREE(key_blob);
         SSH_BUFFER_FREE(request);
         return NULL;
     }

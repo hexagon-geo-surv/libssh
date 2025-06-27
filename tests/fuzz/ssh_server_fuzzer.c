@@ -31,6 +31,8 @@
 #include <libssh/callbacks.h>
 #include <libssh/server.h>
 
+#include "nallocinc.c"
+
 static const char kRSAPrivateKeyPEM[] =
     "-----BEGIN RSA PRIVATE KEY-----\n"
     "MIIEowIBAAKCAQEArAOREUWlBXJAKZ5hABYyxnRayDZP1bJeLbPVK+npxemrhHyZ\n"
@@ -118,6 +120,13 @@ static int write_rsa_hostkey(const char *rsakey_path)
     return 0;
 }
 
+int LLVMFuzzerInitialize(int *argc, char ***argv)
+{
+    (void)argc;
+    nalloc_init(*argv[0]);
+    return 0;
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     int socket_fds[2] = {-1, -1};
@@ -202,6 +211,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     ssh_event event = ssh_event_new();
     assert(event != NULL);
 
+    nalloc_start(data, size);
     if (ssh_handle_key_exchange(session) == SSH_OK) {
         ssh_event_add_session(event, session);
 
@@ -218,6 +228,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             n++;
         }
     }
+    nalloc_end();
 
     ssh_event_free(event);
 

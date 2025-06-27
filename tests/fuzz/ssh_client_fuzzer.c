@@ -24,6 +24,8 @@
 #include <libssh/libssh.h>
 #include <libssh/callbacks.h>
 
+#include "nallocinc.c"
+
 static int auth_callback(const char *prompt,
                          char *buf,
                          size_t len,
@@ -84,6 +86,13 @@ static void select_loop(ssh_session session, ssh_channel channel)
     ssh_event_free(event);
 }
 
+int LLVMFuzzerInitialize(int *argc, char ***argv)
+{
+    (void)argc;
+    nalloc_init(*argv[0]);
+    return 0;
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     ssh_session session = NULL;
@@ -141,6 +150,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     rc = ssh_options_set(session, SSH_OPTIONS_TIMEOUT, &timeout);
     assert(rc == 0);
 
+    nalloc_start(data, size);
     ssh_callbacks_init(&cb);
     ssh_set_callbacks(session, &cb);
 
@@ -181,5 +191,6 @@ out:
     close(socket_fds[0]);
     close(socket_fds[1]);
 
+    nalloc_end();
     return 0;
 }

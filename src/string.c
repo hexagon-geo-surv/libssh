@@ -233,9 +233,6 @@ struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s)
     }
 
     len = ssh_string_len(s);
-    if (len == 0) {
-        return NULL;
-    }
 
     new = ssh_string_new(len);
     if (new == NULL) {

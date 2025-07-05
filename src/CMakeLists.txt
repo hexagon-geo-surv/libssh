@@ -305,6 +305,13 @@ if (HAVE_MLKEM)
   )
 endif (HAVE_MLKEM)
 
+if (WITH_FIDO2)
+    set(libssh_SRCS
+        ${libssh_SRCS}
+        sk_common.c
+    )
+endif (WITH_FIDO2)
+
 # Set the path to the default map file
 set(MAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.map")
 

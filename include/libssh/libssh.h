@@ -851,6 +851,7 @@ LIBSSH_API char *ssh_string_to_char(ssh_string str);
 #define SSH_STRING_FREE_CHAR(x) \
     do { if ((x) != NULL) { ssh_string_free_char(x); x = NULL; } } while(0)
 LIBSSH_API void ssh_string_free_char(char *s);
+LIBSSH_API int ssh_string_cmp(ssh_string s1, ssh_string s2);
 
 LIBSSH_API int ssh_getpass(const char *prompt, char *buf, size_t len, int echo,
     int verify);

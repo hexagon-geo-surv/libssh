@@ -491,5 +491,6 @@ LIBSSH_AFTER_4_10_0
         ssh_get_supported_methods;
         sshsig_sign;
         sshsig_verify;
+        ssh_string_cmp;
 } LIBSSH_4_10_0;
 

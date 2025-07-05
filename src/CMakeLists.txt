@@ -56,6 +56,18 @@ if (MINGW AND Threads_FOUND)
   )
 endif()
 
+if (HAVE_LIBFIDO2)
+    set(LIBSSH_PRIVATE_INCLUDE_DIRS
+        ${LIBSSH_PRIVATE_INCLUDE_DIRS}
+        ${LIBFIDO2_INCLUDE_DIR}
+    )
+
+    set(LIBSSH_LINK_LIBRARIES
+        ${LIBSSH_LINK_LIBRARIES}
+        ${LIBFIDO2_LIBRARIES}
+    )
+endif (HAVE_LIBFIDO2)
+
 # The ws2_32 needs to be last for mingw to build
 # https://gitlab.com/libssh/libssh-mirror/-/issues/84
 if (WIN32)

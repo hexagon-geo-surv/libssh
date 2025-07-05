@@ -211,6 +211,10 @@
 /* Define to 1 if you have the `cmocka' library (-lcmocka). */
 #cmakedefine HAVE_CMOCKA 1
 
+/* Define to 1 if you have the `libfido2' library (-lfido2).
+ * This is required for interacting with FIDO2/U2F devices over USB-HID. */
+#cmakedefine HAVE_LIBFIDO2 1
+
 /**************************** OPTIONS ****************************/
 
 #cmakedefine HAVE_GCC_THREAD_LOCAL_STORAGE 1
@@ -276,6 +280,9 @@
 
 /* Define to 1 if we want to build a support for PKCS #11 provider. */
 #cmakedefine WITH_PKCS11_PROVIDER 1
+
+/* Define to 1 if you want to enable FIDO2/U2F support */
+#cmakedefine WITH_FIDO2 1
 
 /*************************** ENDIAN *****************************/
 

@@ -485,17 +485,9 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
     ssh_key new = NULL;
     int rc;
 
-    new = ssh_key_new();
+    new = pki_key_dup_common_init(key, demote);
     if (new == NULL) {
         return NULL;
-    }
-
-    new->type = key->type;
-    new->type_c = key->type_c;
-    if (demote) {
-        new->flags = SSH_KEY_FLAG_PUBLIC;
-    } else {
-        new->flags = key->flags;
     }
 
     switch (key->type) {
@@ -646,6 +638,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
     case SSH_KEYTYPE_ECDSA_P256:
     case SSH_KEYTYPE_ECDSA_P384:
     case SSH_KEYTYPE_ECDSA_P521:
+    case SSH_KEYTYPE_SK_ECDSA:
 #ifdef HAVE_OPENSSL_ECC
         new->ecdsa_nid = key->ecdsa_nid;
 #ifdef WITH_PKCS11_URI
@@ -715,7 +708,8 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
 #endif /* OPENSSL_VERSION_NUMBER */
         break;
 #endif /* HAVE_OPENSSL_ECC */
-    case SSH_KEYTYPE_ED25519: {
+    case SSH_KEYTYPE_ED25519:
+    case SSH_KEYTYPE_SK_ED25519: {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
         /* Take the PKCS#11 keys as they are */
         if (key->flags & SSH_KEY_FLAG_PKCS11_URI && !demote) {
@@ -727,7 +721,8 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
             return new;
         }
 
-        if (!demote && (key->flags & SSH_KEY_FLAG_PRIVATE)) {
+        if (!demote && (key->flags & SSH_KEY_FLAG_PRIVATE) &&
+            key->type == SSH_KEYTYPE_ED25519) {
             unsigned char *ed25519_privkey = NULL;
             size_t key_len = 0;
 
@@ -1019,7 +1014,7 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
             return 1;
         }
 
-        if (what == SSH_KEY_CMP_PRIVATE) {
+        if (what == SSH_KEY_CMP_PRIVATE && !is_sk_key_type(k1->type)) {
             if (bignum_cmp(EC_KEY_get0_private_key(ec1),
                            EC_KEY_get0_private_key(ec2))) {
                 return 1;

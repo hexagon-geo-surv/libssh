@@ -86,6 +86,11 @@ struct ssh_key_struct {
     ssh_string sk_application;
     ssh_buffer cert;
     enum ssh_keytypes_e cert_type;
+
+    /* Security Key specific private data */
+    uint8_t sk_flags;
+    ssh_string sk_key_handle;
+    ssh_string sk_reserved;
 };
 
 struct ssh_signature_struct {
@@ -136,6 +141,11 @@ enum ssh_digest_e ssh_key_hash_from_name(const char *name);
      (kt) == SSH_KEYTYPE_SK_ED25519_CERT01 ||\
     ((kt) >= SSH_KEYTYPE_ECDSA_P256_CERT01 &&\
      (kt) <= SSH_KEYTYPE_ED25519_CERT01))
+
+#define is_sk_key_type(kt)                                             \
+    ((kt) == SSH_KEYTYPE_SK_ECDSA || (kt) == SSH_KEYTYPE_SK_ED25519 || \
+     (kt) == SSH_KEYTYPE_SK_ECDSA_CERT01 ||                            \
+     (kt) == SSH_KEYTYPE_SK_ED25519_CERT01)
 
 /* SSH Signature Functions */
 ssh_signature ssh_signature_new(void);

@@ -380,17 +380,9 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
     mbedtls_mpi Q;
 #endif
 
-    new = ssh_key_new();
+    new = pki_key_dup_common_init(key, demote);
     if (new == NULL) {
         return NULL;
-    }
-
-    new->type = key->type;
-    new->type_c = key->type_c;
-    if (demote) {
-        new->flags = SSH_KEY_FLAG_PUBLIC;
-    } else {
-        new->flags = key->flags;
     }
 
 #if MBEDTLS_VERSION_MAJOR > 2
@@ -512,6 +504,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
         case SSH_KEYTYPE_ECDSA_P256:
         case SSH_KEYTYPE_ECDSA_P384:
         case SSH_KEYTYPE_ECDSA_P521:
+        case SSH_KEYTYPE_SK_ECDSA:
             new->ecdsa_nid = key->ecdsa_nid;
 
             new->ecdsa = malloc(sizeof(mbedtls_ecdsa_context));
@@ -522,7 +515,8 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
 
             mbedtls_ecdsa_init(new->ecdsa);
 
-            if (demote && ssh_key_is_private(key)) {
+            if ((demote && ssh_key_is_private(key)) ||
+                is_sk_key_type(key->type)) {
                 rc = mbedtls_ecp_copy(&new->ecdsa->MBEDTLS_PRIVATE(Q),
                                 &key->ecdsa->MBEDTLS_PRIVATE(Q));
                 if (rc != 0) {
@@ -540,6 +534,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
 
             break;
         case SSH_KEYTYPE_ED25519:
+        case SSH_KEYTYPE_SK_ED25519:
             rc = pki_ed25519_key_dup(new, key);
             if (rc != SSH_OK) {
                 goto fail;
@@ -768,7 +763,8 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
                 goto cleanup;
             }
 
-            if (what == SSH_KEY_CMP_PRIVATE) {
+            if (what == SSH_KEY_CMP_PRIVATE &&
+                k1->type != SSH_KEYTYPE_SK_ECDSA) {
                 if (mbedtls_mpi_cmp_mpi(&ecdsa1->MBEDTLS_PRIVATE(d),
                     &ecdsa2->MBEDTLS_PRIVATE(d)))
                 {

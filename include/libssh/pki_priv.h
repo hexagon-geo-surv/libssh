@@ -61,6 +61,7 @@ enum ssh_digest_e ssh_key_type_to_hash(ssh_session session,
                                        enum ssh_keytypes_e type);
 
 /* SSH Key Functions */
+ssh_key pki_key_dup_common_init(const ssh_key key, int demote);
 ssh_key pki_key_dup(const ssh_key key, int demote);
 int pki_key_generate_rsa(ssh_key key, int parameter);
 int pki_key_generate_ecdsa(ssh_key key, int parameter);

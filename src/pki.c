@@ -117,6 +117,78 @@ ssh_key ssh_key_new (void)
 }
 
 /**
+ * @internal
+ *
+ * @brief Initialize a new SSH key by duplicating common fields from an existing
+ * key.
+ *
+ * This function creates a new SSH key and copies the common fields from the
+ * source key, including the key type, type string, flags, and security key
+ * fields if applicable. This is a helper function used by key duplication
+ * routines.
+ *
+ * @param[in] key     The source ssh_key to copy common fields from.
+ * @param[in] demote  Whether to demote the new key to public only. If non-zero,
+ *                    only the public fields will be copied and the flags will
+ *                    be set accordingly.
+ *
+ * @return            A new ssh_key with common fields initialized, or NULL on
+ * error.
+ *
+ * @note The caller is responsible for freeing the returned key with
+ * ssh_key_free().
+ */
+ssh_key pki_key_dup_common_init(const ssh_key key, int demote)
+{
+    ssh_key new = NULL;
+
+    if (key == NULL) {
+        return NULL;
+    }
+
+    new = ssh_key_new();
+    if (new == NULL) {
+        return NULL;
+    }
+
+    new->type = key->type;
+    new->type_c = key->type_c;
+    if (demote) {
+        new->flags = SSH_KEY_FLAG_PUBLIC;
+    } else {
+        new->flags = key->flags;
+    }
+
+    /* Copy security key fields if present */
+    if (is_sk_key_type(key->type)) {
+        new->sk_application = ssh_string_copy(key->sk_application);
+        if (new->sk_application == NULL) {
+            goto fail;
+        }
+
+        if (!demote) {
+            new->sk_flags = key->sk_flags;
+
+            new->sk_key_handle = ssh_string_copy(key->sk_key_handle);
+            if (new->sk_key_handle == NULL) {
+                goto fail;
+            }
+
+            new->sk_reserved = ssh_string_copy(key->sk_reserved);
+            if (new->sk_reserved == NULL) {
+                goto fail;
+            }
+        }
+    }
+
+    return new;
+
+fail:
+    SSH_KEY_FREE(new);
+    return NULL;
+}
+
+/**
  * @brief duplicates the key
  *
  * @param key An ssh_key to duplicate
@@ -153,12 +225,14 @@ void ssh_key_clean (ssh_key key)
     if (key->cert != NULL) {
         SSH_BUFFER_FREE(key->cert);
     }
-    if (key->type == SSH_KEYTYPE_SK_ECDSA ||
-        key->type == SSH_KEYTYPE_SK_ED25519 ||
-        key->type == SSH_KEYTYPE_SK_ECDSA_CERT01 ||
-        key->type == SSH_KEYTYPE_SK_ED25519_CERT01) {
+    if (is_sk_key_type(key->type)) {
         ssh_string_burn(key->sk_application);
         ssh_string_free(key->sk_application);
+        ssh_string_burn(key->sk_key_handle);
+        ssh_string_free(key->sk_key_handle);
+        ssh_string_burn(key->sk_reserved);
+        ssh_string_free(key->sk_reserved);
+        key->sk_flags = 0;
     }
     key->cert_type = SSH_KEYTYPE_UNKNOWN;
     key->flags = SSH_KEY_FLAG_EMPTY;
@@ -706,12 +780,23 @@ int ssh_key_cmp(const ssh_key k1,
         }
     }
 
-    if (k1->type == SSH_KEYTYPE_SK_ECDSA ||
-        k1->type == SSH_KEYTYPE_SK_ED25519) {
-        if (strncmp(ssh_string_get_char(k1->sk_application),
-                ssh_string_get_char(k2->sk_application),
-                ssh_string_len(k2->sk_application)) != 0) {
+    if (is_sk_key_type(k1->type)) {
+        if (ssh_string_cmp(k1->sk_application, k2->sk_application) != 0) {
             return 1;
+        }
+
+        if (what == SSH_KEY_CMP_PRIVATE) {
+            if (k1->sk_flags != k2->sk_flags) {
+                return 1;
+            }
+
+            if (ssh_string_cmp(k1->sk_key_handle, k2->sk_key_handle) != 0) {
+                return 1;
+            }
+
+            if (ssh_string_cmp(k1->sk_reserved, k2->sk_reserved) != 0) {
+                return 1;
+            }
         }
     }
 
@@ -732,9 +817,10 @@ int ssh_key_cmp(const ssh_key k1,
     }
 
 #ifndef HAVE_LIBCRYPTO
-    if (k1->type == SSH_KEYTYPE_ED25519 ||
-        k1->type == SSH_KEYTYPE_SK_ED25519) {
+    if (k1->type == SSH_KEYTYPE_ED25519) {
         return pki_ed25519_key_cmp(k1, k2, what);
+    } else if (k1->type == SSH_KEYTYPE_SK_ED25519) {
+        return pki_ed25519_key_cmp(k1, k2, SSH_KEY_CMP_PUBLIC);
     }
 #endif
 
@@ -2635,11 +2721,7 @@ int ssh_pki_signature_verify(ssh_session session,
         return SSH_ERROR;
     }
 
-    if (key->type == SSH_KEYTYPE_SK_ECDSA ||
-        key->type == SSH_KEYTYPE_SK_ECDSA_CERT01 ||
-        key->type == SSH_KEYTYPE_SK_ED25519 ||
-        key->type == SSH_KEYTYPE_SK_ED25519_CERT01) {
-
+    if (is_sk_key_type(key->type)) {
         ssh_buffer sk_buffer = NULL;
         SHA256CTX ctx = NULL;
         unsigned char application_hash[SHA256_DIGEST_LEN] = {0};

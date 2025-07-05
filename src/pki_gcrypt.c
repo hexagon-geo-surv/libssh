@@ -1155,16 +1155,9 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
 
     gcry_sexp_t curve = NULL;
 
-    new = ssh_key_new();
+    new = pki_key_dup_common_init(key, demote);
     if (new == NULL) {
         return NULL;
-    }
-    new->type = key->type;
-    new->type_c = key->type_c;
-    if (demote) {
-        new->flags = SSH_KEY_FLAG_PUBLIC;
-    } else {
-        new->flags = key->flags;
     }
 
     switch (key->type) {
@@ -1203,6 +1196,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
         }
         break;
     case SSH_KEYTYPE_ED25519:
+    case SSH_KEYTYPE_SK_ED25519:
         rc = pki_ed25519_key_dup(new, key);
         if (rc != SSH_OK) {
             ssh_key_free(new);
@@ -1213,6 +1207,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
     case SSH_KEYTYPE_ECDSA_P256:
     case SSH_KEYTYPE_ECDSA_P384:
     case SSH_KEYTYPE_ECDSA_P521:
+    case SSH_KEYTYPE_SK_ECDSA:
 #ifdef HAVE_GCRYPT_ECC
         new->ecdsa_nid = key->ecdsa_nid;
 
@@ -1226,7 +1221,8 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
             break;
         }
 
-        if (!demote && (key->flags & SSH_KEY_FLAG_PRIVATE)) {
+        if (!demote && (key->flags & SSH_KEY_FLAG_PRIVATE) &&
+            !is_sk_key_type(key->type)) {
             err = gcry_sexp_build(&new->ecdsa,
                                   NULL,
                                   "(private-key(ecdsa %S (d %m)(q %m)))",
@@ -1427,7 +1423,7 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
             return 1;
         }
 
-        if (what == SSH_KEY_CMP_PRIVATE) {
+        if (what == SSH_KEY_CMP_PRIVATE && !is_sk_key_type(k1->type)) {
             if (_bignum_cmp(k1->ecdsa, k2->ecdsa, "d") != 0) {
                 return 1;
             }

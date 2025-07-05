@@ -163,6 +163,22 @@ if (SSH_EXECUTABLE)
 
 endif()
 
+find_program(DROPBEAR_EXECUTABLE NAMES dbclient)
+if (DROPBEAR_EXECUTABLE)
+    execute_process(COMMAND ${DROPBEAR_EXECUTABLE} -V ERROR_VARIABLE DROPBEAR_VERSION_STR)
+    string(REGEX REPLACE "^.*Dropbear v([0-9]+)\\.([0-9]+).*$" "\\1.\\2" DROPBEAR_VERSION "${DROPBEAR_VERSION_STR}")
+    set(DROPBEAR_VERSION "${DROPBEAR_VERSION}")
+
+    # HMAC-SHA1 support was removed in version 2025.87
+    if("${DROPBEAR_VERSION}" VERSION_LESS "2025.87")
+        message("Dropbear Version less than 2025.87, enabling dropbear HMAC-SHA1 tests")
+        add_definitions(-DDROPBEAR_SUPPORTS_HMAC_SHA1)
+    endif()
+else()
+    message(STATUS "Could NOT find Dropbear (missing: dbclient executable)")
+    set(DROPBEAR_EXECUTABLE "/bin/false")
+endif()
+
 find_program(SSHD_EXECUTABLE
              NAME
                 sshd

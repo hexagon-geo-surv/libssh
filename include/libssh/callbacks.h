@@ -1154,6 +1154,177 @@ struct ssh_jump_callbacks_struct {
     ssh_jump_authenticate_callback authenticate;
 };
 
+/* Security key callbacks */
+
+/*
+ * Forward declarations for structs that have been defined in sk_api.h.
+ * If you need to work with the fields inside them, please include
+ * libssh/sk_api.h
+ */
+struct sk_enroll_response;
+struct sk_sign_response;
+struct sk_resident_key;
+struct sk_option;
+
+#define LIBSSH_SK_API_VERSION_MAJOR 0x000a0000
+
+/**
+ * @brief FIDO2/U2F SK API version callback.
+ *
+ * Returns the version of the FIDO2/U2F API that the callbacks implement.
+ * This callback allows custom callback implementations to specify their
+ * SK API version for compatibility checking with libssh's security key
+ * interface.
+ *
+ * @details Version compatibility is determined by comparing the major version
+ * portion (upper 16 bits) of the returned value with SSH_SK_VERSION_MAJOR.
+ *
+ * For compatibility, implementations should return a version where:
+ * (returned_version & SSH_SK_VERSION_MAJOR_MASK) == SSH_SK_VERSION_MAJOR
+ *
+ * This ensures that the callbacks' SK API matches the major version expected
+ * by libssh, while allowing minor version differences for backward
+ * compatibility.
+ *
+ * @see LIBSSH_SK_API_VERSION_MAJOR Current expected major API version
+ * @see SSH_SK_VERSION_MAJOR_MASK Mask for extracting major version (0xffff0000)
+ */
+typedef uint32_t (*sk_api_version_callback)(void);
+
+/**
+ * @brief FIDO2/U2F key enrollment callback.
+ *
+ * Enrolls a new FIDO2/U2F security key credential (private key generation).
+ * This callback handles the creation of new FIDO2/U2F credentials, including
+ * both resident and non-resident keys.
+ *
+ * @param[in] alg The cryptographic algorithm to use
+ * @param[in] challenge Random challenge data for enrollment
+ * @param[in] challenge_len Length of the challenge data
+ * @param[in] application Application identifier (relying party ID)
+ * @param[in] flags Enrollment flags
+ * @param[in] pin PIN for user verification (may be NULL)
+ * @param[in] options Array of enrollment options (device path, user ID, etc.)
+ * @param[out] enroll_response Enrollment response containing public key,
+ *                             key handle, signature, and attestation data
+ *
+ * @returns SSH_OK on success, SSH_SK_ERR_* codes on failure.
+ */
+typedef int (*sk_enroll_callback)(uint32_t alg,
+                                  const uint8_t *challenge,
+                                  size_t challenge_len,
+                                  const char *application,
+                                  uint8_t flags,
+                                  const char *pin,
+                                  struct sk_option **options,
+                                  struct sk_enroll_response **enroll_response);
+
+/**
+ * @brief FIDO2/U2F security key signing callback.
+ *
+ * Signs data using a FIDO2 security key credential. This callback performs
+ * cryptographic signing operations using previously enrolled FIDO2/U2F
+ * credentials.
+ *
+ * @param[in] alg The cryptographic algorithm used by the key
+ * @param[in] data Data to be signed
+ * @param[in] data_len Length of the data to sign
+ * @param[in] application Application identifier (relying party ID)
+ * @param[in] key_handle Key handle identifying the credential
+ * @param[in] key_handle_len Length of the key handle
+ * @param[in] flags Signing flags
+ * @param[in] pin PIN for user verification (may be NULL)
+ * @param[in] options Array of signing options (device path, etc.)
+ * @param[out] sign_response Signature response containing signature data,
+ *                           flags, and counter information
+ *
+ * @returns SSH_OK on success, SSH_SK_ERR_* codes on failure.
+ */
+typedef int (*sk_sign_callback)(uint32_t alg,
+                                const uint8_t *data,
+                                size_t data_len,
+                                const char *application,
+                                const uint8_t *key_handle,
+                                size_t key_handle_len,
+                                uint8_t flags,
+                                const char *pin,
+                                struct sk_option **options,
+                                struct sk_sign_response **sign_response);
+
+/**
+ * @brief FIDO2 security key resident keys loading callback.
+ *
+ * Enumerates and loads all resident keys (discoverable credentials) stored
+ * on FIDO2 devices. Resident keys are credentials stored directly on
+ * the device itself and can be discovered without prior knowledge
+ * of key handles.
+ *
+ * @param[in] pin PIN for accessing resident keys (required for most operations)
+ * @param[in] options Array of options (device path, etc.)
+ * @param[out] resident_keys Array of resident key structures containing key
+ * data, application IDs, user information, and metadata
+ * @param[out] num_keys_found Number of resident keys found and loaded
+ *
+ * @returns SSH_OK on success, SSH_SK_ERR_* codes on failure.
+ */
+typedef int (*sk_load_resident_keys_callback)(
+    const char *pin,
+    struct sk_option **options,
+    struct sk_resident_key ***resident_keys,
+    size_t *num_keys_found);
+
+/**
+ * @brief FIDO2/U2F security key callbacks structure.
+ *
+ * This structure contains callbacks for FIDO2/U2F operations.
+ * It allows applications to provide custom implementations of FIDO2/U2F
+ * operations to override the default libfido2-based implementation.
+ *
+ * @warning These callbacks will only be called if libssh was built with
+ * FIDO2/U2F support enabled. (WITH_FIDO2 = ON).
+ */
+struct ssh_sk_callbacks_struct {
+    /** DON'T SET THIS use ssh_callbacks_init() instead. */
+    size_t size;
+
+    /**
+     * This callback returns the SK API version used by the callback
+     * implementation.
+     *
+     * @see sk_api_version_callback for detailed documentation
+     */
+    sk_api_version_callback api_version;
+
+    /**
+     * This callback enrolls a new FIDO2/U2F credential, generating
+     * a new key pair and optionally storing it on the device itself
+     * (resident keys).
+     *
+     * @see sk_enroll_callback for detailed documentation
+     */
+    sk_enroll_callback enroll;
+
+    /**
+     * This callback performs cryptographic signing operations using a
+     * previously enrolled FIDO2/U2F credential.
+     *
+     * @see sk_sign_callback for detailed documentation
+     */
+    sk_sign_callback sign;
+
+    /**
+     * This callback enumerates and loads all resident keys (discoverable
+     * credentials) stored on the FIDO2 device.
+     *
+     * @see sk_load_resident_keys_callback for detailed documentation
+     */
+    sk_load_resident_keys_callback load_resident_keys;
+};
+
+typedef struct ssh_sk_callbacks_struct *ssh_sk_callbacks;
+
+const struct ssh_sk_callbacks_struct *ssh_sk_get_default_callbacks(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2742,6 +2742,7 @@ static int sshsig_armor(ssh_buffer blob, char **out_str)
     size_t i, j;
 
     if (blob == NULL || out_str == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid input parameters");
         return SSH_ERROR;
     }
 
@@ -2752,6 +2753,7 @@ static int sshsig_armor(ssh_buffer blob, char **out_str)
 
     b64_data = (char *)bin_to_base64(data, len);
     if (b64_data == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to base64 encode signature blob");
         return SSH_ERROR;
     }
 
@@ -2766,6 +2768,9 @@ static int sshsig_armor(ssh_buffer blob, char **out_str)
 
     armored = calloc(armored_len, 1);
     if (armored == NULL) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to allocate %zu bytes for armored signature",
+                armored_len);
         SAFE_FREE(b64_data);
         return SSH_ERROR;
     }
@@ -2804,6 +2809,7 @@ static int sshsig_dearmor(const char *signature, ssh_buffer *out)
     int rc = SSH_ERROR;
 
     if (signature == NULL || out == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid input parameters");
         return SSH_ERROR;
     }
 
@@ -2813,6 +2819,7 @@ static int sshsig_dearmor(const char *signature, ssh_buffer *out)
                  SSHSIG_BEGIN_SIGNATURE,
                  strlen(SSHSIG_BEGIN_SIGNATURE));
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Signature does not start with expected header");
         return SSH_ERROR;
     }
 
@@ -2823,6 +2830,7 @@ static int sshsig_dearmor(const char *signature, ssh_buffer *out)
 
     end = strstr(begin, SSHSIG_END_SIGNATURE);
     if (end == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Signature end marker not found");
         return SSH_ERROR;
     }
 
@@ -2833,6 +2841,9 @@ static int sshsig_dearmor(const char *signature, ssh_buffer *out)
 
     clean_b64 = calloc(end - begin + 1, 1);
     if (clean_b64 == NULL) {
+        SSH_LOG(SSH_LOG_TRACE,
+                "Failed to allocate %td bytes for clean base64 data",
+                end - begin + 1);
         return SSH_ERROR;
     }
 
@@ -2847,6 +2858,7 @@ static int sshsig_dearmor(const char *signature, ssh_buffer *out)
     SAFE_FREE(clean_b64);
 
     if (decoded_buffer == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to decode base64 signature data");
         return SSH_ERROR;
     }
 
@@ -2884,6 +2896,7 @@ static int sshsig_prepare_data(const void *data,
 
     if (data == NULL || hash_alg == NULL || sig_namespace == NULL ||
         tosign_buf == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Invalid input parameters");
         return SSH_ERROR;
     }
 
@@ -2896,24 +2909,29 @@ static int sshsig_prepare_data(const void *data,
         hash_len = SHA512_DIGEST_LEN;
         rc = sha512(data, data_length, (unsigned char *)hash);
     } else {
+        SSH_LOG(SSH_LOG_TRACE, "Unsupported hash algorithm: %s", hash_alg);
         goto cleanup;
     }
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to compute %s hash of data", hash_alg);
         goto cleanup;
     }
 
     hash_string = ssh_string_new(hash_len);
     if (hash_string == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to allocate ssh_string for hash");
         goto cleanup;
     }
 
     rc = ssh_string_fill(hash_string, hash, hash_len);
     if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to fill ssh_string with hash data");
         goto cleanup;
     }
 
     tosign = ssh_buffer_new();
     if (tosign == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to allocate buffer for signing data");
         goto cleanup;
     }
 
@@ -2928,6 +2946,8 @@ static int sshsig_prepare_data(const void *data,
     if (rc == SSH_OK) {
         *tosign_buf = tosign;
         tosign = NULL;
+    } else {
+        SSH_LOG(SSH_LOG_TRACE, "Failed to pack signing data into buffer");
     }
 
 cleanup:

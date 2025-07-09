@@ -247,6 +247,133 @@ static void torture_ssh_string_burn(void **state)
     ssh_string_free(str);
 }
 
+static void torture_ssh_string_cmp(void **state)
+{
+    struct ssh_string_struct *str1 = NULL, *str2 = NULL;
+    const char *test_string1 = "Hello, World!";
+    const char *test_string2 = "Hello, libssh";
+    const char *test_string3 = "Hello";
+    const char *test_string4 = "Apple";
+
+    const char data1[] = "Hello\x00World!";
+    const char data2[] = "Hello\x00libssh";
+    const char data3[] = "Hello";
+
+    int rc;
+    (void)state;
+
+    /* Test comparing two NULL strings - should be equal */
+    assert_int_equal(ssh_string_cmp(NULL, NULL), 0);
+
+    /* Test comparing NULL with non-NULL string - NULL should be less */
+    str1 = ssh_string_from_char(test_string1);
+    assert_non_null(str1);
+    assert_true(ssh_string_cmp(NULL, str1) < 0);
+    assert_true(ssh_string_cmp(str1, NULL) > 0);
+    ssh_string_free(str1);
+
+    /* Test comparing empty strings */
+    str1 = ssh_string_from_char("");
+    str2 = ssh_string_from_char("");
+    assert_non_null(str1);
+    assert_non_null(str2);
+
+    /* Both empty strings should be equal */
+    assert_int_equal(ssh_string_cmp(str1, str2), 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing empty string with non-empty string */
+    str1 = ssh_string_from_char("");
+    str2 = ssh_string_from_char("test");
+    assert_non_null(str1);
+    assert_non_null(str2);
+
+    /* Empty string should be less than non-empty string */
+    assert_true(ssh_string_cmp(str1, str2) < 0);
+    assert_true(ssh_string_cmp(str2, str1) > 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing strings where one is a prefix of another */
+    str1 = ssh_string_from_char(test_string1); /* "Hello, World!" */
+    str2 = ssh_string_from_char(test_string3); /* "Hello" - prefix */
+    assert_non_null(str1);
+    assert_non_null(str2);
+
+    /* "Hello" is shorter and a prefix, so it should be < "Hello, World!" */
+    assert_true(ssh_string_cmp(str2, str1) < 0);
+    assert_true(ssh_string_cmp(str1, str2) > 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing different strings with same length */
+    str1 = ssh_string_from_char(test_string1); /* "Hello, World!" */
+    str2 = ssh_string_from_char(test_string2); /* "Hello, libssh" */
+    assert_non_null(str1);
+    assert_non_null(str2);
+
+    /* "Hello, World!" vs "Hello, libssh" - 'W' < 'l' */
+    assert_true(ssh_string_cmp(str1, str2) < 0);
+    assert_true(ssh_string_cmp(str2, str1) > 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing strings with different lengths and different characters */
+    str1 = ssh_string_from_char(test_string1); /* "Hello, World!" */
+    str2 = ssh_string_from_char(test_string4); /* "Apple" */
+    assert_non_null(str1);
+    assert_non_null(str2);
+
+    /* 'A' < 'H' so "Apple" < "Hello, World!" */
+    assert_true(ssh_string_cmp(str2, str1) < 0);
+    assert_true(ssh_string_cmp(str1, str2) > 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing identical strings - should be equal */
+    str1 = ssh_string_from_char(test_string1);
+    str2 = ssh_string_from_char(test_string1);
+    assert_non_null(str1);
+    assert_non_null(str2);
+    assert_int_equal(ssh_string_cmp(str1, str2), 0);
+    assert_int_equal(ssh_string_cmp(str2, str1), 0);
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Test comparing strings with embedded null characters */
+    str1 = ssh_string_new(sizeof(data1)); /* "Hello\x00World!" */
+    str2 = ssh_string_new(sizeof(data3)); /* "Hello" */
+    assert_non_null(str1);
+    assert_non_null(str2);
+    rc = ssh_string_fill(str1, data1, sizeof(data1));
+    assert_int_equal(rc, 0);
+    rc = ssh_string_fill(str2, data3, sizeof(data3));
+    assert_int_equal(rc, 0);
+
+    /* "Hello\x00World!" > "Hello" because its length is greater */
+    assert_true(ssh_string_cmp(str1, str2) > 0); /* data1 > data3 */
+    assert_true(ssh_string_cmp(str2, str1) < 0); /* data3 < data1 */
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+
+    /* Comparing binary strings with same length, but different characters */
+    str1 = ssh_string_new(sizeof(data1)); /* "Hello\x00World!" */
+    str2 = ssh_string_new(sizeof(data2)); /* "Hello\x00libssh" */
+    assert_non_null(str1);
+    assert_non_null(str2);
+    rc = ssh_string_fill(str1, data1, sizeof(data1));
+    assert_int_equal(rc, 0);
+    rc = ssh_string_fill(str2, data2, sizeof(data2));
+    assert_int_equal(rc, 0);
+
+    /* 'W' < 'l' so str1 < str2 */
+    assert_true(ssh_string_cmp(str1, str2) < 0); /* data1 < data2 */
+    assert_true(ssh_string_cmp(str2, str1) > 0); /* data2 > data1 */
+    ssh_string_free(str1);
+    ssh_string_free(str2);
+}
+
 int torture_run_tests(void)
 {
     int rc;
@@ -257,6 +384,7 @@ int torture_run_tests(void)
         cmocka_unit_test(torture_ssh_string_to_char),
         cmocka_unit_test(torture_ssh_string_copy),
         cmocka_unit_test(torture_ssh_string_burn),
+        cmocka_unit_test(torture_ssh_string_cmp),
     };
 
     ssh_init();

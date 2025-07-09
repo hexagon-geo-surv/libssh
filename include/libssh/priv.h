@@ -369,6 +369,17 @@ int ssh_connector_remove_event(ssh_connector connector);
 void explicit_bzero(void *s, size_t n);
 #endif /* !HAVE_EXPLICIT_BZERO */
 
+void burn_free(void *ptr, size_t len);
+
+/** Free memory space after zeroing it */
+#define BURN_FREE(x, len)          \
+    do {                           \
+        if ((x) != NULL) {         \
+            burn_free((x), (len)); \
+            (x) = NULL;            \
+        }                          \
+    } while (0)
+
 /**
  * This is a hack to fix warnings. The idea is to use this everywhere that we
  * get the "discarding const" warning by the compiler. That doesn't actually

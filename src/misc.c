@@ -1619,6 +1619,27 @@ void explicit_bzero(void *s, size_t n)
 }
 #endif /* !HAVE_EXPLICIT_BZERO */
 
+/**
+ * @brief Securely free memory by overwriting it before deallocation
+ *
+ * Overwrites the memory region with zeros before calling free() to prevent
+ * sensitive data from remaining in memory after deallocation.
+ *
+ * @param[in] ptr Pointer to the memory region to securely free.
+ *                Can be NULL (no operation performed).
+ * @param[in] len Length of the memory region in bytes.
+ *
+ */
+void burn_free(void *ptr, size_t len)
+{
+    if (ptr == NULL || len == 0) {
+        return;
+    }
+
+    explicit_bzero(ptr, len);
+    free(ptr);
+}
+
 #if !defined(HAVE_STRNDUP)
 char *strndup(const char *s, size_t n)
 {

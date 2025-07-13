@@ -422,35 +422,67 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_KEX_DH_GEX_INIT:                    // 32
-        /* Server only */
+      // SSH2_MSG_KEXGSS_COMPLETE:                    // 32
+        if (ssh_kex_is_gss(session->next_crypto)) {
+            /* SSH2_MSG_KEXGSS_COMPLETE */
+            /* Client only */
 
-        /*
-         * States required:
-         * - session_state == SSH_SESSION_STATE_DH
-         * - dh_handshake_state == DH_STATE_GROUP_SENT
-         *
-         * Transitions:
-         * - session->dh_handshake_state = DH_STATE_GROUP_SENT
-         * then calls ssh_packet_server_dhgex_init which triggers:
-         * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
-         * */
+            /*
+            * States required:
+            * - session_state == SSH_SESSION_STATE_DH
+            * - dh_handshake_state == DH_STATE_INIT_SENT
+            *
+            * Transitions:
+            * - session->dh_handshake_state = DH_STATE_INIT_SENT
+            * then calls ssh_packet_client_gss_dh_reply which triggers:
+            * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+            * */
 
-        if (session->client) {
-            rc = SSH_PACKET_DENIED;
-            break;
+            if (!session->client) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
+
+            if (session->session_state != SSH_SESSION_STATE_DH) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
+
+            if (session->dh_handshake_state != DH_STATE_INIT_SENT) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
+        } else {
+            /* SSH2_MSG_KEX_DH_GEX_INIT */
+            /* Server only */
+
+            /*
+            * States required:
+            * - session_state == SSH_SESSION_STATE_DH
+            * - dh_handshake_state == DH_STATE_GROUP_SENT
+            *
+            * Transitions:
+            * - session->dh_handshake_state = DH_STATE_GROUP_SENT
+            * then calls ssh_packet_server_dhgex_init which triggers:
+            * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+            * */
+
+            if (session->client) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
+
+            if (session->session_state != SSH_SESSION_STATE_DH) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
+
+            /* Only allowed if dh_handshake_state is in initial state */
+            if (session->dh_handshake_state != DH_STATE_GROUP_SENT) {
+                rc = SSH_PACKET_DENIED;
+                break;
+            }
         }
-
-        if (session->session_state != SSH_SESSION_STATE_DH) {
-            rc = SSH_PACKET_DENIED;
-            break;
-        }
-
-        /* Only allowed if dh_handshake_state is in initial state */
-        if (session->dh_handshake_state != DH_STATE_GROUP_SENT) {
-            rc = SSH_PACKET_DENIED;
-            break;
-        }
-
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_KEX_DH_GEX_REPLY:                   // 33

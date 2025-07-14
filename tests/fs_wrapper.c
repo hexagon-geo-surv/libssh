@@ -1,13 +1,13 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 /*******************************************************************************
  *                            Structs
@@ -224,31 +224,32 @@ static int is_file_blocked(const char *pathname)
         /* Block for torture_gssapi_server_key_exchange_null */
         "/etc/ssh/ssh_host_ecdsa_key",
         "/etc/ssh/ssh_host_rsa_key",
-        "/etc/ssh/ssh_host_ed25519_key"
+        "/etc/ssh/ssh_host_ed25519_key",
     };
 
-    for (size_t i = 0; i < sizeof(blocked_files) / sizeof(blocked_files[0]); i++) {
+    for (size_t i = 0; i < sizeof(blocked_files) / sizeof(blocked_files[0]);
+         i++) {
         if (strcmp(pathname, blocked_files[i]) == 0) {
-            errno = ENOENT;  /* No such file or directory */
+            errno = ENOENT; /* No such file or directory */
             return 1;
         }
     }
     return 0;
 }
 
-#define WRAP_FOPEN(func_name) \
-FILE *func_name(const char *pathname, const char *mode) \
-{ \
-    typedef FILE *(*orig_func_t)(const char *pathname, const char *mode); \
-    static orig_func_t orig_func = NULL; \
-    if (orig_func == NULL) { \
-        orig_func = (orig_func_t)dlsym(RTLD_NEXT, #func_name); \
-    } \
-    if (is_file_blocked(pathname)) { \
-        return NULL; \
-    } \
-    return orig_func(pathname, mode); \
-}
+#define WRAP_FOPEN(func_name)                                                 \
+    FILE *func_name(const char *pathname, const char *mode)                   \
+    {                                                                         \
+        typedef FILE *(*orig_func_t)(const char *pathname, const char *mode); \
+        static orig_func_t orig_func = NULL;                                  \
+        if (orig_func == NULL) {                                              \
+            orig_func = (orig_func_t)dlsym(RTLD_NEXT, #func_name);            \
+        }                                                                     \
+        if (is_file_blocked(pathname)) {                                      \
+            return NULL;                                                      \
+        }                                                                     \
+        return orig_func(pathname, mode);                                     \
+    }
 
 WRAP_FOPEN(fopen)
 WRAP_FOPEN(fopen64)

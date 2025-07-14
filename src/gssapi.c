@@ -21,23 +21,23 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
 #include <gssapi/gssapi.h>
 
+#include <libssh/buffer.h>
+#include <libssh/callbacks.h>
+#include <libssh/crypto.h>
 #include <libssh/gssapi.h>
 #include <libssh/libssh.h>
-#include <libssh/ssh2.h>
-#include <libssh/buffer.h>
-#include <libssh/crypto.h>
-#include <libssh/callbacks.h>
-#include <libssh/string.h>
 #include <libssh/server.h>
+#include <libssh/ssh2.h>
+#include <libssh/string.h>
 #include <libssh/token.h>
 
 static gss_OID_desc spnego_oid = {6, (void *)"\x2B\x06\x01\x05\x05\x02"};
@@ -155,8 +155,7 @@ static int ssh_gssapi_send_response(ssh_session session, ssh_string oid)
  * @param[out] selected OID set of supported oids
  * @returns SSH_OK if successful, SSH_ERROR otherwise
  */
-int
-ssh_gssapi_server_oids(gss_OID_set *selected)
+int ssh_gssapi_server_oids(gss_OID_set *selected)
 {
     OM_uint32 maj_stat, min_stat;
     size_t i;
@@ -172,11 +171,14 @@ ssh_gssapi_server_oids(gss_OID_set *selected)
         return SSH_ERROR;
     }
 
-    for (i=0; i < supported->count; ++i){
-        ptr = ssh_get_hexa(supported->elements[i].elements, supported->elements[i].length);
+    for (i = 0; i < supported->count; ++i) {
+        ptr = ssh_get_hexa(supported->elements[i].elements,
+                           supported->elements[i].length);
         /* According to RFC 4462 we MUST NOT use SPNEGO */
         if (supported->elements[i].length == spnego_oid.length &&
-                memcmp(supported->elements[i].elements, spnego_oid.elements, supported->elements[i].length) == 0) {
+            memcmp(supported->elements[i].elements,
+                   spnego_oid.elements,
+                   supported->elements[i].length) == 0) {
             SAFE_FREE(ptr);
             continue;
         }
@@ -289,9 +291,14 @@ ssh_gssapi_handle_userauth(ssh_session session, const char *user,
         return SSH_ERROR;
     }
 
-    maj_stat = gss_acquire_cred(&min_stat, session->gssapi->client.server_name, 0,
-            both_supported, GSS_C_ACCEPT,
-            &session->gssapi->server_creds, &selected, NULL);
+    maj_stat = gss_acquire_cred(&min_stat,
+                                session->gssapi->client.server_name,
+                                0,
+                                both_supported,
+                                GSS_C_ACCEPT,
+                                &session->gssapi->server_creds,
+                                &selected,
+                                NULL);
     gss_release_oid_set(&min_stat, &both_supported);
     if (maj_stat != GSS_S_COMPLETE) {
         ssh_gssapi_log_error(SSH_LOG_TRACE,
@@ -477,7 +484,8 @@ ssh_buffer ssh_gssapi_build_mic(ssh_session session, const char *context)
     rc = ssh_buffer_pack(mic_buffer,
                          "dPbsss",
                          crypto->session_id_len,
-                         crypto->session_id_len, crypto->session_id,
+                         crypto->session_id_len,
+                         crypto->session_id,
                          SSH2_MSG_USERAUTH_REQUEST,
                          session->gssapi->user,
                          "ssh-connection",
@@ -655,8 +663,7 @@ fail:
  *
  * @returns the hash or NULL on error
  */
-char *
-ssh_gssapi_oid_hash(ssh_string oid)
+char *ssh_gssapi_oid_hash(ssh_string oid)
 {
     MD5CTX ctx = NULL;
     unsigned char *h = NULL;
@@ -674,9 +681,7 @@ ssh_gssapi_oid_hash(ssh_string oid)
         return NULL;
     }
 
-    rc = md5_update(ctx,
-                    ssh_string_data(oid),
-                    ssh_string_len(oid));
+    rc = md5_update(ctx, ssh_string_data(oid), ssh_string_len(oid));
     if (rc != SSH_OK) {
         SAFE_FREE(h);
         md5_ctx_free(ctx);
@@ -700,8 +705,7 @@ ssh_gssapi_oid_hash(ssh_string oid)
  *
  * @returns SSH_OK if any one of the mechanisms is configured or NULL
  */
-int
-ssh_gssapi_check_client_config(ssh_session session)
+int ssh_gssapi_check_client_config(ssh_session session)
 {
     OM_uint32 maj_stat, min_stat;
     size_t i;
@@ -725,7 +729,7 @@ ssh_gssapi_check_client_config(ssh_session session)
         return SSH_ERROR;
     }
 
-    for (i = 0; i < supported->count; ++i){
+    for (i = 0; i < supported->count; ++i) {
         gssapi = calloc(1, sizeof(struct ssh_gssapi_struct));
         if (gssapi == NULL) {
             ssh_set_error_oom(session);
@@ -738,7 +742,9 @@ ssh_gssapi_check_client_config(ssh_session session)
 
         /* According to RFC 4462 we MUST NOT use SPNEGO */
         if (supported->elements[i].length == spnego_oid.length &&
-                memcmp(supported->elements[i].elements, spnego_oid.elements, supported->elements[i].length) == 0) {
+            memcmp(supported->elements[i].elements,
+                   spnego_oid.elements,
+                   supported->elements[i].length) == 0) {
             ret = SSH_ERROR;
             goto end;
         }
@@ -750,18 +756,24 @@ ssh_gssapi_check_client_config(ssh_session session)
             namebuf.value = (void *)session->opts.gss_client_identity;
             namebuf.length = strlen(session->opts.gss_client_identity);
 
-            maj_stat = gss_import_name(&min_stat, &namebuf,
-                                       GSS_C_NT_USER_NAME, &client_id);
+            maj_stat = gss_import_name(&min_stat,
+                                       &namebuf,
+                                       GSS_C_NT_USER_NAME,
+                                       &client_id);
             if (GSS_ERROR(maj_stat)) {
                 ret = SSH_ERROR;
                 goto end;
             }
         }
 
-        maj_stat = gss_acquire_cred(&min_stat, client_id, GSS_C_INDEFINITE,
-                                    one_oidset, GSS_C_INITIATE,
+        maj_stat = gss_acquire_cred(&min_stat,
+                                    client_id,
+                                    GSS_C_INDEFINITE,
+                                    one_oidset,
+                                    GSS_C_INITIATE,
                                     &gssapi->client.creds,
-                                    NULL, NULL);
+                                    NULL,
+                                    NULL);
         if (GSS_ERROR(maj_stat)) {
             ssh_gssapi_log_error(SSH_LOG_WARN,
                                  "acquiring credential",
@@ -776,7 +788,8 @@ ssh_gssapi_check_client_config(ssh_session session)
             goto end;
         }
 
-        maj_stat = ssh_gssapi_init_ctx(gssapi, &input_token, &output_token, &oflags);
+        maj_stat =
+            ssh_gssapi_init_ctx(gssapi, &input_token, &output_token, &oflags);
         if (GSS_ERROR(maj_stat)) {
             ssh_gssapi_log_error(SSH_LOG_WARN,
                                  "initializing context",
@@ -786,14 +799,15 @@ ssh_gssapi_check_client_config(ssh_session session)
             goto end;
         }
 
-        ptr = ssh_get_hexa(supported->elements[i].elements, supported->elements[i].length);
+        ptr = ssh_get_hexa(supported->elements[i].elements,
+                           supported->elements[i].length);
         SSH_LOG(SSH_LOG_DEBUG, "Supported mech %zu: %s", i, ptr);
         free(ptr);
 
         /* If atleast one mechanism is configured then return successfully */
         ret = SSH_OK;
 
-end:
+    end:
         if (ret == SSH_ERROR) {
             SSH_LOG(SSH_LOG_WARN, "GSSAPI not configured correctly");
         }
@@ -802,8 +816,8 @@ end:
         gss_release_oid_set(&min_stat, &one_oidset);
 
         gss_release_name(&min_stat, &gssapi->client.server_name);
-        gss_release_cred(&min_stat,&gssapi->server_creds);
-        gss_release_cred(&min_stat,&gssapi->client.creds);
+        gss_release_cred(&min_stat, &gssapi->server_creds);
+        gss_release_cred(&min_stat, &gssapi->client.creds);
         gss_release_oid(&min_stat, &gssapi->client.oid);
         gss_release_buffer(&min_stat, &output_token);
         gss_delete_sec_context(&min_stat, &gssapi->ctx, GSS_C_NO_BUFFER);
@@ -909,16 +923,17 @@ end:
  * @param[in] session current session handler
  * @returns string suffixed kex algorithms or NULL on error
  */
-char *
-ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs)
+char *ssh_gssapi_kex_mechs(ssh_session session)
 {
-    size_t i,j;
-    gss_OID_set selected = GSS_C_NO_OID_SET; /* oid selected for authentication */
+    size_t i, j;
+    /* oid selected for authentication */
+    gss_OID_set selected = GSS_C_NO_OID_SET;
     ssh_string *oids = NULL;
     int rc;
     size_t n_oids = 0;
     struct ssh_tokens_st *algs = NULL;
     char *oid_hash = NULL;
+    const char *gss_algs = session->opts.gssapi_key_exchange_algs;
     char *new_gss_algs = NULL;
     char gss_kex_algs[8000] = {0};
     OM_uint32 min_stat;
@@ -950,11 +965,13 @@ ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs)
     }
 
     /* Check if algorithms are valid */
-    new_gss_algs = ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, gss_algs);
+    new_gss_algs =
+        ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, gss_algs);
     if (gss_algs == NULL) {
-        ssh_set_error(session,
-                      SSH_FATAL,
-                      "GSSAPI key exchange algorithms not supported or invalid");
+        ssh_set_error(
+            session,
+            SSH_FATAL,
+            "GSSAPI key exchange algorithms not supported or invalid");
         rc = SSH_ERROR;
         goto out;
     }
@@ -967,7 +984,7 @@ ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs)
         rc = SSH_ERROR;
         goto out;
     }
-    for (i=0; i<n_oids; ++i){
+    for (i = 0; i < n_oids; ++i) {
         oids[i] = ssh_string_new(selected->elements[i].length + 2);
         if (oids[i] == NULL) {
             ssh_set_error_oom(session);
@@ -976,8 +993,9 @@ ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs)
         }
         ((unsigned char *)oids[i]->data)[0] = SSH_OID_TAG;
         ((unsigned char *)oids[i]->data)[1] = selected->elements[i].length;
-        memcpy((unsigned char *)oids[i]->data + 2, selected->elements[i].elements,
-                selected->elements[i].length);
+        memcpy((unsigned char *)oids[i]->data + 2,
+               selected->elements[i].elements,
+               selected->elements[i].length);
 
         /* Get the algorithm suffix */
         oid_hash = ssh_gssapi_oid_hash(oids[i]);
@@ -991,17 +1009,17 @@ ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs)
          * the algorithms to a string */
         for (j = 0; algs->tokens[j]; j++) {
             if (sizeof(gss_kex_algs) < offset) {
-                ssh_set_error(session,
-                              SSH_FATAL,
-                              "snprintf failed");
+                ssh_set_error(session, SSH_FATAL, "snprintf failed");
                 rc = SSH_ERROR;
                 goto out;
             }
-            rc = snprintf(&gss_kex_algs[offset], sizeof(gss_kex_algs)-offset, "%s%s,", algs->tokens[j], oid_hash);
+            rc = snprintf(&gss_kex_algs[offset],
+                          sizeof(gss_kex_algs) - offset,
+                          "%s%s,",
+                          algs->tokens[j],
+                          oid_hash);
             if (rc < 0 || rc >= (ssize_t)sizeof(gss_kex_algs)) {
-                ssh_set_error(session,
-                              SSH_FATAL,
-                              "snprintf failed");
+                ssh_set_error(session, SSH_FATAL, "snprintf failed");
                 rc = SSH_ERROR;
                 goto out;
             }
@@ -1028,8 +1046,7 @@ out:
     return strdup(gss_kex_algs);
 }
 
-int
-ssh_gssapi_import_name(struct ssh_gssapi_struct *gssapi, const char *host)
+int ssh_gssapi_import_name(struct ssh_gssapi_struct *gssapi, const char *host)
 {
     gss_buffer_desc hostname;
     char name_buf[256] = {0};
@@ -1055,11 +1072,10 @@ ssh_gssapi_import_name(struct ssh_gssapi_struct *gssapi, const char *host)
     return maj_stat;
 }
 
-OM_uint32
-ssh_gssapi_init_ctx(struct ssh_gssapi_struct *gssapi,
-                    gss_buffer_desc *input_token,
-                    gss_buffer_desc *output_token,
-                    OM_uint32 *ret_flags)
+OM_uint32 ssh_gssapi_init_ctx(struct ssh_gssapi_struct *gssapi,
+                              gss_buffer_desc *input_token,
+                              gss_buffer_desc *output_token,
+                              OM_uint32 *ret_flags)
 {
     OM_uint32 maj_stat, min_stat;
 
@@ -1175,7 +1191,9 @@ out:
  * @returns SSH_ERROR:   A serious error happened\n
  *          SSH_OK:      MIC token is stored in mic_token_buf
  */
-int ssh_gssapi_auth_keyex_mic(ssh_session session, gss_buffer_desc *mic_token_buf) {
+int ssh_gssapi_auth_keyex_mic(ssh_session session,
+                              gss_buffer_desc *mic_token_buf)
+{
     ssh_buffer buf = NULL;
     gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
     OM_uint32 maj_stat, min_stat;
@@ -1189,8 +1207,11 @@ int ssh_gssapi_auth_keyex_mic(ssh_session session, gss_buffer_desc *mic_token_bu
     mic_buf.length = ssh_buffer_get_len(buf);
     mic_buf.value = ssh_buffer_get(buf);
 
-    maj_stat = gss_get_mic(&min_stat,session->gssapi->ctx, GSS_C_QOP_DEFAULT,
-                           &mic_buf, mic_token_buf);
+    maj_stat = gss_get_mic(&min_stat,
+                           session->gssapi->ctx,
+                           GSS_C_QOP_DEFAULT,
+                           &mic_buf,
+                           mic_token_buf);
     if (GSS_ERROR(maj_stat)) {
         ssh_gssapi_log_error(SSH_LOG_DEBUG,
                              "generating MIC",
@@ -1273,8 +1294,9 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_response){
         session->gssapi->client.flags |= GSS_C_DELEG_FLAG;
     }
 
-    maj_stat = ssh_gssapi_init_ctx(session->gssapi, &input_token, &output_token, NULL);
-    if (GSS_ERROR(maj_stat)){
+    maj_stat =
+        ssh_gssapi_init_ctx(session->gssapi, &input_token, &output_token, NULL);
+    if (GSS_ERROR(maj_stat)) {
         goto error;
     }
 
@@ -1380,7 +1402,8 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_token_client)
 
     input_token.length = ssh_string_len(token);
     input_token.value = ssh_string_data(token);
-    maj_stat = ssh_gssapi_init_ctx(session->gssapi, &input_token, &output_token, NULL);
+    maj_stat =
+        ssh_gssapi_init_ctx(session->gssapi, &input_token, &output_token, NULL);
     if (GSS_ERROR(maj_stat)) {
         goto error;
     }

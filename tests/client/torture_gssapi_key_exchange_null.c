@@ -10,8 +10,7 @@
 #include <gssapi.h>
 #include <pwd.h>
 
-static int
-sshd_setup(void **state)
+static int sshd_setup(void **state)
 {
     struct torture_state *s = NULL;
     torture_setup_sshd_server(state, false);
@@ -31,16 +30,15 @@ sshd_setup(void **state)
             "echo bar | kinit alice");
 
         torture_update_sshd_config(state,
-                                "GSSAPIAuthentication yes\n"
-                                "GSSAPIKeyExchange yes\n");
+                                   "GSSAPIAuthentication yes\n"
+                                   "GSSAPIKeyExchange yes\n");
 
         torture_teardown_kdc_server(state);
     }
     return 0;
 }
 
-static int
-sshd_teardown(void **state)
+static int sshd_teardown(void **state)
 {
     assert_non_null(state);
 
@@ -49,8 +47,7 @@ sshd_teardown(void **state)
     return 0;
 }
 
-static int
-session_setup(void **state)
+static int session_setup(void **state)
 {
     struct torture_state *s = *state;
     int verbosity = torture_libssh_verbosity();
@@ -79,8 +76,7 @@ session_setup(void **state)
     return 0;
 }
 
-static int
-session_teardown(void **state)
+static int session_teardown(void **state)
 {
     struct torture_state *s = *state;
 
@@ -92,8 +88,7 @@ session_teardown(void **state)
     return 0;
 }
 
-static void
-torture_gssapi_key_exchange_null(void **state)
+static void torture_gssapi_key_exchange_null(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -121,13 +116,13 @@ torture_gssapi_key_exchange_null(void **state)
     rc = ssh_connect(session);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS], "null");
+    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS],
+                        "null");
 
     torture_teardown_kdc_server(state);
 }
 
-int
-torture_run_tests(void)
+int torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {

@@ -428,15 +428,15 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
             /* Client only */
 
             /*
-            * States required:
-            * - session_state == SSH_SESSION_STATE_DH
-            * - dh_handshake_state == DH_STATE_INIT_SENT
-            *
-            * Transitions:
-            * - session->dh_handshake_state = DH_STATE_INIT_SENT
-            * then calls ssh_packet_client_gss_dh_reply which triggers:
-            * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
-            * */
+             * States required:
+             * - session_state == SSH_SESSION_STATE_DH
+             * - dh_handshake_state == DH_STATE_INIT_SENT
+             *
+             * Transitions:
+             * - session->dh_handshake_state = DH_STATE_INIT_SENT
+             * then calls ssh_packet_client_gss_dh_reply which triggers:
+             * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+             * */
 
             if (!session->client) {
                 rc = SSH_PACKET_DENIED;
@@ -457,15 +457,15 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
             /* Server only */
 
             /*
-            * States required:
-            * - session_state == SSH_SESSION_STATE_DH
-            * - dh_handshake_state == DH_STATE_GROUP_SENT
-            *
-            * Transitions:
-            * - session->dh_handshake_state = DH_STATE_GROUP_SENT
-            * then calls ssh_packet_server_dhgex_init which triggers:
-            * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
-            * */
+             * States required:
+             * - session_state == SSH_SESSION_STATE_DH
+             * - dh_handshake_state == DH_STATE_GROUP_SENT
+             *
+             * Transitions:
+             * - session->dh_handshake_state = DH_STATE_GROUP_SENT
+             * then calls ssh_packet_server_dhgex_init which triggers:
+             * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
+             * */
 
             if (session->client) {
                 rc = SSH_PACKET_DENIED;
@@ -657,8 +657,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
             (session->auth.state != SSH_AUTH_STATE_PASSWORD_AUTH_SENT) &&
             (session->auth.state != SSH_AUTH_STATE_GSSAPI_MIC_SENT) &&
             (session->auth.state != SSH_AUTH_STATE_GSSAPI_KEYEX_MIC_SENT) &&
-            (session->auth.state != SSH_AUTH_STATE_AUTH_NONE_SENT))
-        {
+            (session->auth.state != SSH_AUTH_STATE_AUTH_NONE_SENT)) {
             rc = SSH_PACKET_DENIED;
             break;
         }

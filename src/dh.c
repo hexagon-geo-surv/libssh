@@ -27,8 +27,8 @@
 
 #include <stdio.h>
 #ifdef WITH_GSSAPI
-#include <gssapi/gssapi.h>
 #include "libssh/gssapi.h"
+#include <gssapi/gssapi.h>
 #endif
 
 #include "libssh/priv.h"

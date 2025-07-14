@@ -1560,7 +1560,6 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     case SOC_GSSAPIKEYEXCHANGE: {
-        bool b = false;
         i = ssh_config_get_yesno(&s, -1);
         CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
         if (*parsing) {

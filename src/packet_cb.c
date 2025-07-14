@@ -28,8 +28,8 @@
 #include <arpa/inet.h>
 #endif
 #ifdef WITH_GSSAPI
-#include <gssapi/gssapi.h>
 #include "libssh/gssapi.h"
+#include <gssapi/gssapi.h>
 #endif
 
 #include "libssh/priv.h"
@@ -226,14 +226,15 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
             /* Check if signature from server matches user preferences */
             if (session->opts.wanted_methods[SSH_HOSTKEYS]) {
                 rc = match_group(session->opts.wanted_methods[SSH_HOSTKEYS],
-                                     sig->type_c);
+                                 sig->type_c);
                 if (rc == 0) {
-                    ssh_set_error(session,
-                                  SSH_FATAL,
-                                  "Public key from server (%s) doesn't match user "
-                                  "preference (%s)",
-                                  sig->type_c,
-                                  session->opts.wanted_methods[SSH_HOSTKEYS]);
+                    ssh_set_error(
+                        session,
+                        SSH_FATAL,
+                        "Public key from server (%s) doesn't match user "
+                        "preference (%s)",
+                        sig->type_c,
+                        session->opts.wanted_methods[SSH_HOSTKEYS]);
                     goto error;
                 }
             }

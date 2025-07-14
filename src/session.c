@@ -161,7 +161,8 @@ ssh_session ssh_new(void)
     }
 
 #ifdef WITH_GSSAPI
-    session->opts.gssapi_key_exchange_algs = strdup(GSSAPI_KEY_EXCHANGE_SUPPORTED);
+    session->opts.gssapi_key_exchange_algs =
+        strdup(GSSAPI_KEY_EXCHANGE_SUPPORTED);
     if (session->opts.gssapi_key_exchange_algs == NULL) {
         goto err;
     }

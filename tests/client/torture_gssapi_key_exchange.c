@@ -2,17 +2,16 @@
 
 #define LIBSSH_STATIC
 
+#include "libssh/crypto.h"
 #include "torture.h"
 #include <libssh/libssh.h>
-#include "libssh/crypto.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <gssapi.h>
 #include <pwd.h>
 
-static int
-sshd_setup(void **state)
+static int sshd_setup(void **state)
 {
     torture_setup_sshd_server(state, false);
     torture_update_sshd_config(state,
@@ -22,8 +21,7 @@ sshd_setup(void **state)
     return 0;
 }
 
-static int
-sshd_teardown(void **state)
+static int sshd_teardown(void **state)
 {
     assert_non_null(state);
 
@@ -32,8 +30,7 @@ sshd_teardown(void **state)
     return 0;
 }
 
-static int
-session_setup(void **state)
+static int session_setup(void **state)
 {
     struct torture_state *s = *state;
     int verbosity = torture_libssh_verbosity();
@@ -62,8 +59,7 @@ session_setup(void **state)
     return 0;
 }
 
-static int
-session_teardown(void **state)
+static int session_teardown(void **state)
 {
     struct torture_state *s = *state;
 
@@ -75,8 +71,7 @@ session_teardown(void **state)
     return 0;
 }
 
-static void
-torture_gssapi_key_exchange(void **state)
+static void torture_gssapi_key_exchange(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -106,8 +101,7 @@ torture_gssapi_key_exchange(void **state)
     torture_teardown_kdc_server(state);
 }
 
-static void
-torture_gssapi_key_exchange_no_tgt(void **state)
+static void torture_gssapi_key_exchange_no_tgt(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -136,14 +130,15 @@ torture_gssapi_key_exchange_no_tgt(void **state)
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
-    assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
+    assert_int_not_equal(session->current_crypto->kex_type,
+                         SSH_GSS_KEX_DH_GROUP14_SHA256);
+    assert_int_not_equal(session->current_crypto->kex_type,
+                         SSH_GSS_KEX_DH_GROUP16_SHA512);
 
     torture_teardown_kdc_server(state);
 }
 
-static void
-torture_gssapi_key_exchange_gss_group14_sha256(void **state)
+static void torture_gssapi_key_exchange_gss_group14_sha256(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -168,19 +163,21 @@ torture_gssapi_key_exchange_gss_group14_sha256(void **state)
     rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS, "gss-group14-sha256-");
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS,
+                         "gss-group14-sha256-");
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
+    assert_int_equal(session->current_crypto->kex_type,
+                     SSH_GSS_KEX_DH_GROUP14_SHA256);
 
     torture_teardown_kdc_server(state);
 }
 
-static void
-torture_gssapi_key_exchange_gss_group16_sha512(void **state)
+static void torture_gssapi_key_exchange_gss_group16_sha512(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -205,19 +202,21 @@ torture_gssapi_key_exchange_gss_group16_sha512(void **state)
     rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS, "gss-group16-sha512-");
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS,
+                         "gss-group16-sha512-");
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_true(session->current_crypto->kex_type == SSH_GSS_KEX_DH_GROUP16_SHA512);
+    assert_true(session->current_crypto->kex_type ==
+                SSH_GSS_KEX_DH_GROUP16_SHA512);
 
     torture_teardown_kdc_server(state);
 }
 
-static void
-torture_gssapi_key_exchange_auth(void **state)
+static void torture_gssapi_key_exchange_auth(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -251,8 +250,7 @@ torture_gssapi_key_exchange_auth(void **state)
     torture_teardown_kdc_server(state);
 }
 
-static void
-torture_gssapi_key_exchange_no_auth(void **state)
+static void torture_gssapi_key_exchange_no_auth(void **state)
 {
     struct torture_state *s = *state;
     ssh_session session = s->ssh.session;
@@ -288,8 +286,7 @@ torture_gssapi_key_exchange_no_auth(void **state)
     torture_teardown_kdc_server(state);
 }
 
-int
-torture_run_tests(void)
+int torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {
@@ -299,12 +296,14 @@ torture_run_tests(void)
         cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_no_tgt,
                                         session_setup,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_gss_group14_sha256,
-                                        session_setup,
-                                        session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_gss_group16_sha512,
-                                        session_setup,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_key_exchange_gss_group14_sha256,
+            session_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_key_exchange_gss_group16_sha512,
+            session_setup,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_gssapi_key_exchange_auth,
                                         session_setup,
                                         session_teardown),

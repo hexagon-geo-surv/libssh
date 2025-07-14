@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "libssh/libssh.h"
 #include "libssh/crypto.h"
+#include "libssh/libssh.h"
 #include "torture.h"
 #include "torture_key.h"
 
@@ -21,8 +21,7 @@ struct test_server_st {
     char *cwd;
 };
 
-static void
-free_test_server_state(void **state)
+static void free_test_server_state(void **state)
 {
     struct test_server_st *tss = *state;
 
@@ -30,8 +29,7 @@ free_test_server_state(void **state)
     SAFE_FREE(tss);
 }
 
-static void
-setup_config(void **state)
+static void setup_config(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -147,8 +145,7 @@ setup_config(void **state)
     *state = tss;
 }
 
-static int
-setup_default_server(void **state)
+static int setup_default_server(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -186,8 +183,7 @@ setup_default_server(void **state)
     return 0;
 }
 
-static int
-teardown_default_server(void **state)
+static int teardown_default_server(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -212,8 +208,7 @@ teardown_default_server(void **state)
     return 0;
 }
 
-static int
-session_setup(void **state)
+static int session_setup(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -253,8 +248,7 @@ session_setup(void **state)
     return 0;
 }
 
-static int
-session_teardown(void **state)
+static int session_teardown(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -276,9 +270,7 @@ session_teardown(void **state)
     return 0;
 }
 
-
-static void
-torture_gssapi_server_key_exchange(void **state)
+static void torture_gssapi_server_key_exchange(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -303,7 +295,8 @@ torture_gssapi_server_key_exchange(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site\n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site\n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site\n"
         "kadmin.local addprinc -pw bar alice\n"
         "kadmin.local list_principals",
 
@@ -318,8 +311,7 @@ torture_gssapi_server_key_exchange(void **state)
     torture_teardown_kdc_server((void **)&s);
 }
 
-static void
-torture_gssapi_server_key_exchange_no_tgt(void **state)
+static void torture_gssapi_server_key_exchange_no_tgt(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -344,7 +336,8 @@ torture_gssapi_server_key_exchange_no_tgt(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
@@ -357,14 +350,15 @@ torture_gssapi_server_key_exchange_no_tgt(void **state)
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
-    assert_int_not_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
+    assert_int_not_equal(session->current_crypto->kex_type,
+                         SSH_GSS_KEX_DH_GROUP14_SHA256);
+    assert_int_not_equal(session->current_crypto->kex_type,
+                         SSH_GSS_KEX_DH_GROUP16_SHA512);
 
     torture_teardown_kdc_server((void **)&s);
 }
 
-static void
-torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
+static void torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -389,7 +383,8 @@ torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
@@ -398,19 +393,21 @@ torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
     rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS, "gss-group14-sha256-");
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS,
+                         "gss-group14-sha256-");
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP14_SHA256);
+    assert_int_equal(session->current_crypto->kex_type,
+                     SSH_GSS_KEX_DH_GROUP14_SHA256);
 
     torture_teardown_kdc_server((void **)&s);
 }
 
-static void
-torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
+static void torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -435,7 +432,8 @@ torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
@@ -444,19 +442,21 @@ torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
     rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS, "gss-group16-sha512-");
+    rc = ssh_options_set(s->ssh.session,
+                         SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS,
+                         "gss-group16-sha512-");
     assert_ssh_return_code(s->ssh.session, rc);
 
     rc = ssh_connect(session);
     assert_ssh_return_code(session, rc);
 
-    assert_int_equal(session->current_crypto->kex_type, SSH_GSS_KEX_DH_GROUP16_SHA512);
+    assert_int_equal(session->current_crypto->kex_type,
+                     SSH_GSS_KEX_DH_GROUP16_SHA512);
 
     torture_teardown_kdc_server((void **)&s);
 }
 
-static void
-torture_gssapi_server_key_exchange_auth(void **state)
+static void torture_gssapi_server_key_exchange_auth(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -499,8 +499,7 @@ torture_gssapi_server_key_exchange_auth(void **state)
     torture_teardown_kdc_server((void **)&s);
 }
 
-static void
-torture_gssapi_server_key_exchange_no_auth(void **state)
+static void torture_gssapi_server_key_exchange_no_auth(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -545,29 +544,32 @@ torture_gssapi_server_key_exchange_no_auth(void **state)
     torture_teardown_kdc_server((void **)&s);
 }
 
-int
-torture_run_tests(void)
+int torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange,
                                         session_setup,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_no_tgt,
-                                        session_setup,
-                                        session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_gss_group14_sha256,
-                                        session_setup,
-                                        session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_gss_group16_sha512,
-                                        session_setup,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_server_key_exchange_no_tgt,
+            session_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_server_key_exchange_gss_group14_sha256,
+            session_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_server_key_exchange_gss_group16_sha512,
+            session_setup,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_auth,
                                         session_setup,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_no_auth,
-                                        session_setup,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_gssapi_server_key_exchange_no_auth,
+            session_setup,
+            session_teardown),
     };
 
     ssh_init();

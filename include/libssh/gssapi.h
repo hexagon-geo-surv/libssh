@@ -29,8 +29,7 @@
 /* all OID begin with the tag identifier + length */
 #define SSH_OID_TAG 06
 
-#define GSSAPI_KEY_EXCHANGE_SUPPORTED \
-    "gss-group14-sha256-,gss-group16-sha512-,"
+#define GSSAPI_KEY_EXCHANGE_SUPPORTED "gss-group14-sha256-,gss-group16-sha512-,"
 
 typedef struct ssh_gssapi_struct *ssh_gssapi;
 
@@ -82,15 +81,16 @@ int ssh_gssapi_client_identity(ssh_session session, gss_OID_set *valid_oids);
 char *ssh_gssapi_name_to_char(gss_name_t name);
 int ssh_gssapi_import_name(struct ssh_gssapi_struct *gssapi, const char *host);
 OM_uint32 ssh_gssapi_init_ctx(struct ssh_gssapi_struct *gssapi,
-                    gss_buffer_desc *input_token,
-                    gss_buffer_desc *output_token,
-                    OM_uint32 *ret_flags);
+                              gss_buffer_desc *input_token,
+                              gss_buffer_desc *output_token,
+                              OM_uint32 *ret_flags);
 
 char *ssh_gssapi_oid_hash(ssh_string oid);
-char *ssh_gssapi_kex_mechs(ssh_session session, const char *gss_algs);
+char *ssh_gssapi_kex_mechs(ssh_session session);
 int ssh_gssapi_check_client_config(ssh_session session);
 ssh_buffer ssh_gssapi_build_mic(ssh_session session, const char *context);
-int ssh_gssapi_auth_keyex_mic(ssh_session session, gss_buffer_desc *mic_token_buf);
+int ssh_gssapi_auth_keyex_mic(ssh_session session,
+                              gss_buffer_desc *mic_token_buf);
 
 #ifdef __cplusplus
 }

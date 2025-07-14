@@ -32,20 +32,19 @@
 #include <arpa/inet.h>
 #endif
 
-#include "libssh/priv.h"
-#include "libssh/crypto.h"
-#include "libssh/ssh2.h"
-#include "libssh/buffer.h"
 #include "libssh/agent.h"
+#include "libssh/auth.h"
+#include "libssh/buffer.h"
+#include "libssh/crypto.h"
+#include "libssh/gssapi.h"
+#include "libssh/keys.h"
+#include "libssh/legacy.h"
 #include "libssh/misc.h"
 #include "libssh/packet.h"
-#include "libssh/session.h"
-#include "libssh/keys.h"
-#include "libssh/auth.h"
 #include "libssh/pki.h"
-#include "libssh/gssapi.h"
-#include "libssh/legacy.h"
-#include "libssh/gssapi.h"
+#include "libssh/priv.h"
+#include "libssh/session.h"
+#include "libssh/ssh2.h"
 
 /**
  * @defgroup libssh_auth The SSH authentication functions
@@ -2476,16 +2475,16 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     OM_uint32 min_stat;
     gss_buffer_desc mic_token_buf = GSS_C_EMPTY_BUFFER;
 
-    switch(session->pending_call_state) {
+    switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
         break;
     case SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX:
         goto pending;
     default:
         ssh_set_error(session,
-                SSH_FATAL,
-                "Wrong state (%d) during pending SSH call",
-                session->pending_call_state);
+                      SSH_FATAL,
+                      "Wrong state (%d) during pending SSH call",
+                      session->pending_call_state);
         return SSH_ERROR;
     }
 
@@ -2493,7 +2492,8 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     if (!ssh_kex_is_gss(session->current_crypto)) {
         ssh_set_error(session,
                       SSH_FATAL,
-                      "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key exchange.");
+                      "Attempt to authenticate with gssapi-keyex without "
+                      "doing GSSAPI Key exchange.");
         return SSH_ERROR;
     }
 
@@ -2546,7 +2546,7 @@ pending:
         session->pending_call_state = SSH_PENDING_CALL_NONE;
     }
 #else
-    (void) session; /* unused */
+    (void)session; /* unused */
 #endif
     return rc;
 }

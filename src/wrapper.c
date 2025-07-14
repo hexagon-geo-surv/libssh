@@ -591,8 +591,8 @@ int crypt_set_algorithms_server(ssh_session session){
 #ifdef WITH_GSSAPI
     case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_GSS_KEX_DH_GROUP16_SHA512:
-      ssh_server_gss_dh_init(session);
-      break;
+        ssh_server_gss_dh_init(session);
+        break;
 #endif /* WITH_GSSAPI */
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:

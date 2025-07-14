@@ -1157,13 +1157,14 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request)
         if (!ssh_kex_is_gss(session->current_crypto)) {
             ssh_set_error(session,
                           SSH_FATAL,
-                          "Attempt to authenticate with \"gssapi-keyex\" without doing GSSAPI Key Exchange");
+                          "Attempt to authenticate with gssapi-keyex without "
+                          "doing GSSAPI Key Exchange.");
             ssh_auth_reply_default(session, 0);
             goto error;
         }
 
         rc = ssh_buffer_unpack(packet, "S", &mic_token_string);
-        if (rc != SSH_OK){
+        if (rc != SSH_OK) {
             ssh_auth_reply_default(session, 0);
             goto error;
         }
@@ -1190,7 +1191,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request)
         if (maj_stat != GSS_S_COMPLETE) {
             ssh_set_error(session,
                           SSH_FATAL,
-                          "Failed to verify MIC for \"gssapi-keyex\" auth");
+                          "Failed to verify MIC for gssapi-keyex auth");
             SSH_BUFFER_FREE(buf);
             SSH_STRING_FREE(mic_token_string);
             ssh_auth_reply_default(session, 0);

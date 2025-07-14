@@ -19,8 +19,7 @@ struct test_server_st {
     char *cwd;
 };
 
-static void
-free_test_server_state(void **state)
+static void free_test_server_state(void **state)
 {
     struct test_server_st *tss = *state;
 
@@ -28,8 +27,7 @@ free_test_server_state(void **state)
     SAFE_FREE(tss);
 }
 
-static void
-setup_config(void **state)
+static void setup_config(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -105,8 +103,7 @@ setup_config(void **state)
     *state = tss;
 }
 
-static int
-setup_default_server(void **state)
+static int setup_default_server(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -144,8 +141,7 @@ setup_default_server(void **state)
     return 0;
 }
 
-static int
-teardown_default_server(void **state)
+static int teardown_default_server(void **state)
 {
     struct torture_state *s = NULL;
     struct server_state_st *ss = NULL;
@@ -170,8 +166,7 @@ teardown_default_server(void **state)
     return 0;
 }
 
-static int
-session_setup(void **state)
+static int session_setup(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -211,8 +206,7 @@ session_setup(void **state)
     return 0;
 }
 
-static int
-session_teardown(void **state)
+static int session_teardown(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -234,9 +228,7 @@ session_teardown(void **state)
     return 0;
 }
 
-
-static void
-torture_gssapi_server_key_exchange_null(void **state)
+static void torture_gssapi_server_key_exchange_null(void **state)
 {
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
@@ -261,7 +253,8 @@ torture_gssapi_server_key_exchange_null(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site\n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site\n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site\n"
         "kadmin.local addprinc -pw bar alice\n"
         "kadmin.local list_principals",
 
@@ -273,13 +266,13 @@ torture_gssapi_server_key_exchange_null(void **state)
     rc = ssh_connect(session);
     assert_ssh_return_code(s->ssh.session, rc);
 
-    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS], "null");
+    assert_string_equal(session->current_crypto->kex_methods[SSH_HOSTKEYS],
+                        "null");
 
     torture_teardown_kdc_server((void **)&s);
 }
 
-int
-torture_run_tests(void)
+int torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {

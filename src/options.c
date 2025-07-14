@@ -1278,11 +1278,13 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 /* Check if algorithms are supported */
-                char *ret = ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, v);
+                char *ret =
+                    ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, v);
                 if (ret == NULL) {
                     ssh_set_error(session,
                                   SSH_FATAL,
-                                  "GSSAPI key exchange algorithms not supported or invalid");
+                                  "GSSAPI key exchange algorithms not "
+                                  "supported or invalid");
                     return -1;
                 }
                 SAFE_FREE(session->opts.gssapi_key_exchange_algs);
@@ -2332,9 +2334,9 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                        false to disable GSSAPI key exchange. (bool)
  *
  *                      - SSH_BIND_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS
- *                        Set the GSSAPI key exchange method to be used (const char *,
- *                        comma-separated list). ex:
- *                        "gss-group14-sha256-,gss-group16-sha512-"
+ *                        Set the GSSAPI key exchange method to be used
+ *                        (const char *, comma-separated list).
+ *                        ex: "gss-group14-sha256-,gss-group16-sha512-"
  *
  * @param  value        The value to set. This is a generic pointer and the
  *                      datatype which should be used is described at the
@@ -2751,9 +2753,10 @@ ssh_bind_options_set(ssh_bind sshbind,
             SAFE_FREE(sshbind->gssapi_key_exchange_algs);
             ret = ssh_find_all_matching(GSSAPI_KEY_EXCHANGE_SUPPORTED, value);
             if (ret == NULL) {
-                ssh_set_error(sshbind,
-                              SSH_REQUEST_DENIED,
-                              "GSSAPI key exchange algorithms not supported or invalid");
+                ssh_set_error(
+                    sshbind,
+                    SSH_REQUEST_DENIED,
+                    "GSSAPI key exchange algorithms not supported or invalid");
                 return -1;
             }
             sshbind->gssapi_key_exchange_algs = ret;

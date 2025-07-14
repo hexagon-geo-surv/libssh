@@ -44,23 +44,23 @@
 # include <netinet/in.h>
 #endif
 
-#include "libssh/priv.h"
-#include "libssh/libssh.h"
-#include "libssh/server.h"
-#include "libssh/ssh2.h"
 #include "libssh/buffer.h"
-#include "libssh/packet.h"
-#include "libssh/socket.h"
-#include "libssh/session.h"
-#include "libssh/kex.h"
-#include "libssh/misc.h"
-#include "libssh/pki.h"
-#include "libssh/dh.h"
-#include "libssh/messages.h"
-#include "libssh/options.h"
 #include "libssh/curve25519.h"
-#include "libssh/token.h"
+#include "libssh/dh.h"
 #include "libssh/gssapi.h"
+#include "libssh/kex.h"
+#include "libssh/libssh.h"
+#include "libssh/messages.h"
+#include "libssh/misc.h"
+#include "libssh/options.h"
+#include "libssh/packet.h"
+#include "libssh/pki.h"
+#include "libssh/priv.h"
+#include "libssh/server.h"
+#include "libssh/session.h"
+#include "libssh/socket.h"
+#include "libssh/ssh2.h"
+#include "libssh/token.h"
 
 #define set_status(session, status) do {\
         if (session->common.callbacks && session->common.callbacks->connect_status_function) \
@@ -154,8 +154,9 @@ int server_set_kex(ssh_session session)
     if (strlen(hostkeys) != 0) {
         /* It is expected for the list of allowed hostkeys to be ordered by
          * preference */
-        kept = ssh_find_all_matching(hostkeys[0] == ',' ? hostkeys + 1 : hostkeys,
-                                     allowed);
+        kept =
+            ssh_find_all_matching(hostkeys[0] == ',' ? hostkeys + 1 : hostkeys,
+                                  allowed);
         if (kept == NULL) {
             /* Nothing was allowed */
             return -1;
@@ -178,7 +179,7 @@ int server_set_kex(ssh_session session)
             return SSH_ERROR;
         }
 
-        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs);
+        gssapi_algs = ssh_gssapi_kex_mechs(session);
         if (gssapi_algs == NULL) {
             return SSH_ERROR;
         }
@@ -186,7 +187,8 @@ int server_set_kex(ssh_session session)
 
         /* Prefix the default algorithms with gsskex algs */
         session->opts.wanted_methods[SSH_KEX] =
-            ssh_prefix_without_duplicates(ssh_kex_get_default_methods(SSH_KEX), gssapi_algs);
+            ssh_prefix_without_duplicates(ssh_kex_get_default_methods(SSH_KEX),
+                                          gssapi_algs);
 
         if (strlen(hostkeys) == 0) {
             session->opts.wanted_methods[SSH_HOSTKEYS] = strdup("null");
@@ -700,12 +702,14 @@ int ssh_auth_reply_default(ssh_session session,int partial) {
 	  strncat(methods_c,"gssapi-with-mic,",
 			  sizeof(methods_c) - strlen(methods_c) - 1);
   }
-    /* Check if GSSAPI Key exchange was performed */
-    if (session->auth.supported_methods & SSH_AUTH_METHOD_GSSAPI_KEYEX) {
-        if (ssh_kex_is_gss(session->current_crypto)) {
-            strncat(methods_c, "gssapi-keyex,", sizeof(methods_c) - strlen(methods_c) - 1);
-        }
-    }
+  /* Check if GSSAPI Key exchange was performed */
+  if (session->auth.supported_methods & SSH_AUTH_METHOD_GSSAPI_KEYEX) {
+      if (ssh_kex_is_gss(session->current_crypto)) {
+          strncat(methods_c,
+                  "gssapi-keyex,",
+                  sizeof(methods_c) - strlen(methods_c) - 1);
+      }
+  }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_INTERACTIVE) {
     strncat(methods_c, "keyboard-interactive,",
             sizeof(methods_c) - strlen(methods_c) - 1);

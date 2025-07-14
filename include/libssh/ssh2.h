@@ -39,13 +39,13 @@
 #define SSH2_MSG_USERAUTH_GSSAPI_ERRTOK 65
 #define SSH2_MSG_USERAUTH_GSSAPI_MIC 66
 
-#define SSH2_MSG_KEXGSS_INIT                       30
-#define SSH2_MSG_KEXGSS_CONTINUE                   31
-#define SSH2_MSG_KEXGSS_COMPLETE                   32
-#define SSH2_MSG_KEXGSS_HOSTKEY                    33
-#define SSH2_MSG_KEXGSS_ERROR                      34
-#define SSH2_MSG_KEXGSS_GROUPREQ                   40
-#define SSH2_MSG_KEXGSS_GROUP                      41
+#define SSH2_MSG_KEXGSS_INIT     30
+#define SSH2_MSG_KEXGSS_CONTINUE 31
+#define SSH2_MSG_KEXGSS_COMPLETE 32
+#define SSH2_MSG_KEXGSS_HOSTKEY  33
+#define SSH2_MSG_KEXGSS_ERROR    34
+#define SSH2_MSG_KEXGSS_GROUPREQ 40
+#define SSH2_MSG_KEXGSS_GROUP    41
 
 #define SSH2_MSG_GLOBAL_REQUEST 80
 #define SSH2_MSG_REQUEST_SUCCESS 81

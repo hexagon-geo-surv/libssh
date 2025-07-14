@@ -825,14 +825,15 @@ int ssh_set_client_kex(ssh_session session)
             return SSH_ERROR;
         }
 
-        gssapi_algs = ssh_gssapi_kex_mechs(session, session->opts.gssapi_key_exchange_algs);
+        gssapi_algs = ssh_gssapi_kex_mechs(session);
         if (gssapi_algs == NULL) {
             return SSH_ERROR;
         }
 
         /* Prefix the default algorithms with gsskex algs */
         session->opts.wanted_methods[SSH_KEX] =
-            ssh_prefix_without_duplicates(default_methods[SSH_KEX], gssapi_algs);
+            ssh_prefix_without_duplicates(default_methods[SSH_KEX],
+                                          gssapi_algs);
 
         gssapi_null_alg = true;
 
@@ -853,7 +854,8 @@ int ssh_set_client_kex(ssh_session session)
                 return SSH_ERROR;
             }
             if (gssapi_null_alg) {
-                hostkeys = ssh_append_without_duplicates(client->methods[i], "null");
+                hostkeys =
+                    ssh_append_without_duplicates(client->methods[i], "null");
                 if (hostkeys == NULL) {
                     ssh_set_error_oom(session);
                     return SSH_ERROR;
@@ -1490,7 +1492,7 @@ int ssh_make_sessionid(ssh_session session)
 
     if (server_pubkey_blob == NULL) {
         if ((session->server && ssh_kex_is_gss(session->next_crypto)) ||
-             session->opts.gssapi_key_exchange) {
+            session->opts.gssapi_key_exchange) {
             server_pubkey_blob = ssh_string_new(0);
             if (server_pubkey_blob == NULL) {
                 ssh_set_error_oom(session);
@@ -2036,8 +2038,7 @@ error:
  * @param[in] crypto The SSH crypto context
  * @return true if the KEX of the context is a GSSAPI KEX, false otherwise
  */
-bool
-ssh_kex_is_gss(struct ssh_crypto_struct *crypto)
+bool ssh_kex_is_gss(struct ssh_crypto_struct *crypto)
 {
     switch (crypto->kex_type) {
     case SSH_GSS_KEX_DH_GROUP14_SHA256:

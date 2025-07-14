@@ -30,15 +30,15 @@
 #include <arpa/inet.h>
 #endif
 
-#include "libssh/priv.h"
-#include "libssh/ssh2.h"
 #include "libssh/buffer.h"
-#include "libssh/packet.h"
-#include "libssh/options.h"
-#include "libssh/socket.h"
-#include "libssh/session.h"
-#include "libssh/dh.h"
 #include "libssh/dh-gss.h"
+#include "libssh/dh.h"
+#include "libssh/options.h"
+#include "libssh/packet.h"
+#include "libssh/priv.h"
+#include "libssh/session.h"
+#include "libssh/socket.h"
+#include "libssh/ssh2.h"
 #ifdef WITH_GEX
 #include "libssh/dh-gex.h"
 #endif /* WITH_GEX */
@@ -267,7 +267,7 @@ int dh_handshake(ssh_session session)
 
     switch (session->dh_handshake_state) {
     case DH_STATE_INIT:
-      switch(session->next_crypto->kex_type){
+        switch (session->next_crypto->kex_type) {
 #ifdef WITH_GSSAPI
         case SSH_GSS_KEX_DH_GROUP14_SHA256:
         case SSH_GSS_KEX_DH_GROUP16_SHA512:

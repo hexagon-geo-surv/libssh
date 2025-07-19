@@ -114,6 +114,17 @@ typedef void (*ssh_global_request_callback) (ssh_session session,
                                         ssh_message message, void *userdata);
 
 /**
+ * @brief SSH connect status callback. These are functions that report the
+ * status of the connection i,e. a function indicating the completed percentage
+ * of the connection
+ * steps.
+ * @param userdata Userdata to be passed to the callback function.
+ * @param status Percentage of connection status, going from 0.0 to 1.0
+ * once connection is done.
+ */
+typedef void (*ssh_connect_status_callback)(void *userdata, float status);
+
+/**
  * @brief Handles an SSH new channel open X11 request. This happens when the server
  * sends back an X11 connection attempt. This is a client-side API
  * @param session current session handler
@@ -181,7 +192,7 @@ struct ssh_callbacks_struct {
    * This function gets called during connection time to indicate the
    * percentage of connection steps completed.
    */
-  void (*connect_status_function)(void *userdata, float status);
+  ssh_connect_status_callback connect_status_function;
   /**
    * This function will be called each time a global request is received.
    */

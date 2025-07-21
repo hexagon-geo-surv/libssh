@@ -10,6 +10,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 static const char template[] = "tmp_XXXXXX";
 static const char input[] = "Test input\0string with null byte";

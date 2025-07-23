@@ -683,6 +683,20 @@ void ssh_poll_ctx_remove(ssh_poll_ctx ctx, ssh_poll_handle p)
 }
 
 /**
+ * @brief  Returns if a poll object is locked.
+ *
+ * @param  p            Pointer to an already allocated poll object.
+ * @returns true if the poll object is locked; false otherwise.
+ */
+bool ssh_poll_is_locked(ssh_poll_handle p)
+{
+    if (p == NULL) {
+        return false;
+    }
+    return p->lock_cnt > 0;
+}
+
+/**
  * @brief  Poll all the sockets associated through a poll object with a
  *         poll context. If any of the events are set after the poll, the
  *         call back function of the socket will be called.

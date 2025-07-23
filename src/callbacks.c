@@ -28,7 +28,7 @@
 #include "libssh/session.h"
 
 #define is_callback_valid(session, cb) \
-    (cb->size <= 0 || cb->size > 1024 * sizeof(void *))
+    (cb->size > 0 || cb->size <= 1024 * sizeof(void *))
 
 /* LEGACY */
 static void ssh_legacy_log_callback(int priority,
@@ -59,7 +59,7 @@ int ssh_set_callbacks(ssh_session session, ssh_callbacks cb)
         return SSH_ERROR;
     }
 
-    if (is_callback_valid(session, cb)) {
+    if (!is_callback_valid(session, cb)) {
         ssh_set_error(session,
                       SSH_FATAL,
                       "Invalid callback passed in (badly initialized)");
@@ -88,7 +88,7 @@ static int ssh_add_set_channel_callbacks(ssh_channel channel,
     }
     session = channel->session;
 
-    if (is_callback_valid(session, cb)) {
+    if (!is_callback_valid(session, cb)) {
         ssh_set_error(session,
                       SSH_FATAL,
                       "Invalid callback passed in (badly initialized)");
@@ -144,7 +144,7 @@ int ssh_set_server_callbacks(ssh_session session, ssh_server_callbacks cb)
         return SSH_ERROR;
     }
 
-    if (is_callback_valid(session, cb)) {
+    if (!is_callback_valid(session, cb)) {
         ssh_set_error(session,
                       SSH_FATAL,
                       "Invalid callback passed in (badly initialized)");

@@ -79,6 +79,12 @@ int ssh_curve25519_init(ssh_session session)
         return SSH_ERROR;
     }
 
+    /* Free any previously allocated privkey */
+    if (session->next_crypto->curve25519_privkey != NULL) {
+        EVP_PKEY_free(session->next_crypto->curve25519_privkey);
+        session->next_crypto->curve25519_privkey = NULL;
+    }
+
     session->next_crypto->curve25519_privkey = pkey;
     pkey = NULL;
 

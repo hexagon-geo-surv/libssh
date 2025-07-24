@@ -89,6 +89,12 @@ int ssh_curve25519_init(ssh_session session)
 
     memcpy(*pubkey_loc, pubkey_data + 1, CURVE25519_PUBKEY_SIZE);
 
+    /* Free any previously allocated privkey */
+    if (session->next_crypto->curve25519_privkey != NULL) {
+        gcry_sexp_release(session->next_crypto->curve25519_privkey);
+        session->next_crypto->curve25519_privkey = NULL;
+    }
+
     /* Store the private key */
     session->next_crypto->curve25519_privkey = keypair_sexp;
     keypair_sexp = NULL;

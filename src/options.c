@@ -2285,6 +2285,9 @@ ssh_bind_options_set(ssh_bind sshbind,
                               SSH_FATAL,
                               "The host key size %d is too small.",
                               ssh_key_size(key));
+                if (type != SSH_BIND_OPTIONS_IMPORT_KEY) {
+                    SSH_KEY_FREE(key);
+                }
                 return -1;
             }
             key_type = ssh_key_type(key);
@@ -2327,6 +2330,11 @@ ssh_bind_options_set(ssh_bind sshbind,
                    need it in case some other function wants it */
                 rc = ssh_bind_set_key(sshbind, bind_key_path_loc, value);
                 if (rc < 0) {
+                    ssh_key_free(key);
+                    return -1;
+                }
+            } else if (type == SSH_BIND_OPTIONS_IMPORT_KEY_STR) {
+                if (bind_key_loc == NULL) {
                     ssh_key_free(key);
                     return -1;
                 }

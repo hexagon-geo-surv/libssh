@@ -445,12 +445,16 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_MAC_FIPS(f, client, maccmd)  \
     PKDTESTS_MAC_FIPS_BASE(f, client, maccmd) \
     PKDTESTS_MAC_FIPS_SHA1(f, client, maccmd)
+#define PKDTESTS_MAC_OPENSSHONLY_FIPS_SHA1(f, client, maccmd)
 #else
 #define PKDTESTS_MAC_FIPS(f, client, maccmd) \
     PKDTESTS_MAC_FIPS_BASE(f, client, maccmd)
+#define PKDTESTS_MAC_OPENSSHONLY_FIPS_SHA1(f, client, maccmd) \
+    PKDTESTS_MAC_FIPS_SHA1(f, client, maccmd)
 #endif
 
 #define PKDTESTS_MAC_OPENSSHONLY_FIPS(f, client, maccmd) \
+    PKDTESTS_MAC_OPENSSHONLY_FIPS_SHA1(f, client, maccmd) \
     f(client, ecdsa_256_hmac_sha1_etm,      maccmd("hmac-sha1-etm@openssh.com"),      setup_ecdsa_256,  teardown) \
     f(client, ecdsa_256_hmac_sha2_256_etm,  maccmd("hmac-sha2-256-etm@openssh.com"),  setup_ecdsa_256,  teardown) \
     f(client, ecdsa_256_hmac_sha2_512,      maccmd("hmac-sha2-512"),                  setup_ecdsa_256,  teardown) \

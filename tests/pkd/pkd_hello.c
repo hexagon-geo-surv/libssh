@@ -22,6 +22,11 @@
 #include "pkd_keyutil.h"
 #include "pkd_util.h"
 
+#if defined(HAVE_LIBCRYPTO)
+/* for OPENSSL_cleanup() of OpenSSL context */
+#include <openssl/crypto.h>
+#endif
+
 #define DEFAULT_ITERATIONS 10
 static struct pkd_daemon_args pkd_dargs;
 
@@ -1019,6 +1024,9 @@ out_finalize:
     if (rc != 0) {
         fprintf(stderr, "ssh_finalize: %d\n", rc);
     }
+#if defined(HAVE_LIBCRYPTO)
+    OPENSSL_cleanup();
+#endif
 out:
     return exit_code;
 }

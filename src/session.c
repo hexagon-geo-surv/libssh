@@ -26,6 +26,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include "libssh/priv.h"
 #include "libssh/libssh.h"
 #include "libssh/crypto.h"
@@ -409,10 +413,10 @@ const char* ssh_get_clientbanner(ssh_session session) {
  * @return Returns the server banner string or NULL.
  */
 const char* ssh_get_serverbanner(ssh_session session) {
-	if(!session) {
-		return NULL;
-	}
-	return session->serverbanner;
+    if (!session) {
+        return NULL;
+    }
+    return session->serverbanner;
 }
 
 /**
@@ -942,16 +946,41 @@ int ssh_get_version(ssh_session session) {
  * @param user is a pointer to session
  */
 void ssh_socket_exception_callback(int code, int errno_code, void *user){
-    ssh_session session=(ssh_session)user;
+    ssh_session session = (ssh_session)user;
 
-    SSH_LOG(SSH_LOG_RARE,"Socket exception callback: %d (%d)",code, errno_code);
+    SSH_LOG(SSH_LOG_RARE,
+            "Socket exception callback: %d (%d)",
+            code,
+            errno_code);
     session->session_state = SSH_SESSION_STATE_ERROR;
     if (errno_code == 0 && code == SSH_SOCKET_EXCEPTION_EOF) {
         ssh_set_error(session, SSH_FATAL, "Socket error: disconnected");
+#ifdef _WIN32
+    } else if (errno_code == WSAENETDOWN) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: network down");
+    } else if (errno_code == WSAENETUNREACH) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: network unreachable");
+    } else if (errno_code == WSAENETRESET) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: network reset");
+    } else if (errno_code == WSAECONNABORTED) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: connection aborted");
+    } else if (errno_code == WSAECONNRESET) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Socket error: connection reset by peer");
+    } else if (errno_code == WSAETIMEDOUT) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: connection timed out");
+    } else if (errno_code == WSAECONNREFUSED) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: connection refused");
+    } else if (errno_code == WSAEHOSTUNREACH) {
+        ssh_set_error(session, SSH_FATAL, "Socket error: host unreachable");
+#endif
     } else {
         char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-        ssh_set_error(session, SSH_FATAL, "Socket error: %s",
-                ssh_strerror(errno_code, err_msg, SSH_ERRNO_MSG_MAX));
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Socket error: %s",
+                      ssh_strerror(errno_code, err_msg, SSH_ERRNO_MSG_MAX));
     }
 
     session->ssh_connection_callback(session);

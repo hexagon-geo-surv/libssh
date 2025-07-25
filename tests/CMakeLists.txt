@@ -24,9 +24,10 @@ if (NOT WIN32)
         pthread)
 endif(NOT WIN32)
 if (WITH_GSSAPI AND GSSAPI_FOUND)
+    find_package(OpenSSL 1.1.1 REQUIRED)
     set(TORTURE_LINK_LIBRARIES
         ${TORTURE_LINK_LIBRARIES}
-        crypto)
+        OpenSSL::Crypto)
 endif (WITH_GSSAPI AND GSSAPI_FOUND)
 
 # create test library

@@ -1802,7 +1802,6 @@ int pki_privkey_build_ecdsa(ssh_key key, int nid, ssh_string e, ssh_string exp)
     mbedtls_ecp_point Q;
 
     key->ecdsa_nid = nid;
-    key->type_c = pki_key_ecdsa_nid_to_name(nid);
 
     key->ecdsa = malloc(sizeof(mbedtls_ecdsa_context));
     if (key->ecdsa == NULL) {
@@ -1870,7 +1869,6 @@ int pki_pubkey_build_ecdsa(ssh_key key, int nid, ssh_string e)
     mbedtls_ecp_point Q;
 
     key->ecdsa_nid = nid;
-    key->type_c = pki_key_ecdsa_nid_to_name(nid);
 
     key->ecdsa = malloc(sizeof(mbedtls_ecdsa_context));
     if (key->ecdsa == NULL) {

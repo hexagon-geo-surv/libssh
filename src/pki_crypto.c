@@ -227,7 +227,6 @@ int pki_privkey_build_ecdsa(ssh_key key, int nid, ssh_string e, ssh_string exp)
     }
 
     key->ecdsa_nid = nid;
-    key->type_c = pki_key_ecdsa_nid_to_name(nid);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     ecdsa = EC_KEY_new_by_curve_name(key->ecdsa_nid);
@@ -341,7 +340,6 @@ int pki_pubkey_build_ecdsa(ssh_key key, int nid, ssh_string e)
 #endif /* OPENSSL_VERSION_NUMBER */
 
     key->ecdsa_nid = nid;
-    key->type_c = pki_key_ecdsa_nid_to_name(nid);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     ecdsa = EC_KEY_new_by_curve_name(key->ecdsa_nid);

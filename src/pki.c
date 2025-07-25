@@ -1497,11 +1497,6 @@ static int pki_import_pubkey_buffer(ssh_buffer buffer,
                     goto fail;
                 }
 
-                /* Update key type */
-                if (type == SSH_KEYTYPE_ECDSA) {
-                    key->type_c = ssh_pki_key_ecdsa_name(key);
-                }
-
                 /* Unpack SK specific parameters */
                 if (type == SSH_KEYTYPE_SK_ECDSA) {
                     ssh_string application = ssh_buffer_get_ssh_string(buffer);

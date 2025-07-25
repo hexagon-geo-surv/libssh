@@ -1212,7 +1212,6 @@ int ssh_channel_open_forward_unix(ssh_channel channel,
 {
     ssh_session session = NULL;
     ssh_buffer payload = NULL;
-    ssh_string str = NULL;
     int rc = SSH_ERROR;
     int version;
 
@@ -1259,7 +1258,6 @@ int ssh_channel_open_forward_unix(ssh_channel channel,
 
 error:
     SSH_BUFFER_FREE(payload);
-    SSH_STRING_FREE(str);
 
     return rc;
 }

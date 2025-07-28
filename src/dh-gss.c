@@ -373,7 +373,7 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         goto error;
     }
 
-    if (strncmp(crypto->kex_methods[SSH_HOSTKEYS], "null", 4) != 0) {
+    if (strcmp(crypto->kex_methods[SSH_HOSTKEYS], "null") != 0) {
         rc =
             ssh_dh_get_next_server_publickey_blob(session, &server_pubkey_blob);
         if (rc != SSH_OK) {

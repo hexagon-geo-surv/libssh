@@ -137,11 +137,5 @@ int torture_run_tests(void)
     rc = cmocka_run_group_tests(tests, sshd_setup, sshd_teardown);
     ssh_finalize();
 
-    /* pthread_exit() won't return anything so error should be returned prior */
-    if (rc != 0) {
-        return rc;
-    }
-
-    /* Required for freeing memory allocated by GSSAPI */
-    pthread_exit(NULL);
+    return rc;
 }

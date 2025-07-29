@@ -3221,12 +3221,6 @@ int sshsig_verify(const void *data,
         SSH_LOG(SSH_LOG_TRACE, "Signature verification failed");
         goto cleanup;
     }
-    if (strlen(sig_namespace) == 0) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Invalid parameters provided to sshsig_verify: empty namespace "
-                "string");
-        return SSH_ERROR;
-    }
 
     if (sign_key != NULL) {
         *sign_key = key;

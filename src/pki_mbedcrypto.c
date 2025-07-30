@@ -1215,6 +1215,11 @@ ssh_string pki_signature_to_blob(const ssh_signature sig)
         case SSH_KEYTYPE_ED25519:
             sig_blob = pki_ed25519_signature_to_blob(sig);
             break;
+        case SSH_KEYTYPE_SK_ECDSA:
+        case SSH_KEYTYPE_SK_ED25519:
+            /* For SK keys, signature data is already in raw_sig */
+            sig_blob = ssh_string_copy(sig->raw_sig);
+            break;
         default:
             SSH_LOG(SSH_LOG_TRACE, "Unknown signature key type: %s",
                     sig->type_c);

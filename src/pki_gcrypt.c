@@ -1809,6 +1809,11 @@ ssh_string pki_signature_to_blob(const ssh_signature sig)
         break;
     }
 #endif
+    case SSH_KEYTYPE_SK_ECDSA:
+    case SSH_KEYTYPE_SK_ED25519:
+        /* For SK keys, signature data is already in raw_sig */
+        sig_blob = ssh_string_copy(sig->raw_sig);
+        break;
     case SSH_KEYTYPE_RSA1:
     case SSH_KEYTYPE_UNKNOWN:
     default:

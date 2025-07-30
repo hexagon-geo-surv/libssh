@@ -506,6 +506,7 @@ static enum ssh_digest_e key_type_to_hash(enum ssh_keytypes_e type)
         return SSH_DIGEST_SHA512;
     case SSH_KEYTYPE_ECDSA_P256_CERT01:
     case SSH_KEYTYPE_ECDSA_P256:
+    case SSH_KEYTYPE_SK_ECDSA:
         return SSH_DIGEST_SHA256;
     case SSH_KEYTYPE_ECDSA_P384_CERT01:
     case SSH_KEYTYPE_ECDSA_P384:
@@ -515,6 +516,7 @@ static enum ssh_digest_e key_type_to_hash(enum ssh_keytypes_e type)
         return SSH_DIGEST_SHA512;
     case SSH_KEYTYPE_ED25519_CERT01:
     case SSH_KEYTYPE_ED25519:
+    case SSH_KEYTYPE_SK_ED25519:
         return SSH_DIGEST_AUTO;
     case SSH_KEYTYPE_RSA1:
     case SSH_KEYTYPE_DSS:        /* deprecated */
@@ -2506,6 +2508,15 @@ int ssh_pki_export_signature_blob(const ssh_signature sig,
     if (rc < 0) {
         SSH_BUFFER_FREE(buf);
         return SSH_ERROR;
+    }
+
+    if (is_sk_key_type(sig->type)) {
+        /* Add flags and counter for SK keys */
+        rc = ssh_buffer_pack(buf, "bd", sig->sk_flags, sig->sk_counter);
+        if (rc < 0) {
+            SSH_BUFFER_FREE(buf);
+            return SSH_ERROR;
+        }
     }
 
     str = ssh_string_new(ssh_buffer_get_len(buf));

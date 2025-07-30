@@ -105,6 +105,7 @@ add_subdirectory(unittests)
 # OpenSSH Capabilities are required for all unit tests
 find_program(SSH_EXECUTABLE NAMES ssh)
 if (SSH_EXECUTABLE)
+    file(SIZE ${SSH_EXECUTABLE} SSH_EXECUTABLE_SIZE)
     execute_process(COMMAND ${SSH_EXECUTABLE} -V ERROR_VARIABLE OPENSSH_VERSION_STR)
     string(REGEX REPLACE "^.*OpenSSH_([0-9]+).[0-9].*$" "\\1" OPENSSH_VERSION_MAJOR "${OPENSSH_VERSION_STR}")
     string(REGEX REPLACE "^.*OpenSSH_[0-9]+.([0-9]).*$" "\\1" OPENSSH_VERSION_MINOR "${OPENSSH_VERSION_STR}")

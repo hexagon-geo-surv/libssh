@@ -164,6 +164,11 @@ int pki_uri_import(const char *uri_name, ssh_key *key, enum ssh_key_e key_type);
 #endif /* WITH_PKCS11_URI */
 
 bool ssh_key_size_allowed_rsa(int min_size, ssh_key key);
+
+/* Security Key Helper Functions */
+int pki_buffer_pack_sk_priv_data(ssh_buffer buffer, const ssh_key key);
+int pki_buffer_unpack_sk_priv_data(ssh_buffer buffer, ssh_key key);
+
 #ifdef __cplusplus
 }
 #endif

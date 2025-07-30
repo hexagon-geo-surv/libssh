@@ -1785,7 +1785,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             goto fail;
         }
 
-        if (type == SSH_KEY_PRIVATE) {
+        if (type == SSH_KEY_PRIVATE && key->type == SSH_KEYTYPE_ED25519) {
             key_len = 0;
             rc = EVP_PKEY_get_raw_private_key(key->key, NULL, &key_len);
             if (rc != 1) {
@@ -1831,15 +1831,22 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             }
             explicit_bzero(ed25519_privkey, ED25519_KEY_LEN);
             SAFE_FREE(ed25519_privkey);
-        } else {
+        } else if (type == SSH_KEY_PRIVATE &&
+                   key->type == SSH_KEYTYPE_SK_ED25519) {
+
+            rc = pki_buffer_pack_sk_priv_data(buffer, key);
+            if (rc == SSH_ERROR) {
+                goto fail;
+            }
+        } else if (type == SSH_KEY_PUBLIC &&
+                   key->type == SSH_KEYTYPE_SK_ED25519) {
             /* public key can contain certificate sk information */
-            if (key->type == SSH_KEYTYPE_SK_ED25519) {
-                rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
-                if (rc < 0) {
-                    goto fail;
-                }
+            rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
+            if (rc != SSH_OK) {
+                goto fail;
             }
         }
+
         SAFE_FREE(ed25519_pubkey);
         break;
     case SSH_KEYTYPE_ECDSA_P256:
@@ -1944,7 +1951,8 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
         ssh_string_burn(e);
         SSH_STRING_FREE(e);
         e = NULL;
-        if (type == SSH_KEY_PRIVATE) {
+
+        if (type == SSH_KEY_PRIVATE && key->type != SSH_KEYTYPE_SK_ECDSA) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
             OSSL_PARAM_free(params);
             rc = EVP_PKEY_todata(key->key, EVP_PKEY_KEYPAIR, &params);
@@ -1981,10 +1989,18 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             ssh_string_burn(d);
             SSH_STRING_FREE(d);
             d = NULL;
-        } else if (key->type == SSH_KEYTYPE_SK_ECDSA) {
+        } else if (type == SSH_KEY_PRIVATE &&
+                   key->type == SSH_KEYTYPE_SK_ECDSA) {
+
+            rc = pki_buffer_pack_sk_priv_data(buffer, key);
+            if (rc == SSH_ERROR) {
+                goto fail;
+            }
+        } else if (type == SSH_KEY_PUBLIC &&
+                   key->type == SSH_KEYTYPE_SK_ECDSA) {
             /* public key can contain certificate sk information */
             rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
-            if (rc < 0) {
+            if (rc != SSH_OK) {
                 goto fail;
             }
         }

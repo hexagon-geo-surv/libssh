@@ -1066,7 +1066,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             goto out;
         }
 
-        if (type == SSH_KEY_PRIVATE) {
+        if (type == SSH_KEY_PRIVATE && key->type != SSH_KEYTYPE_SK_ECDSA) {
             d = ssh_make_bignum_string(&key->ecdsa->MBEDTLS_PRIVATE(d));
 
             if (d == NULL) {
@@ -1078,7 +1078,14 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             if (rc < 0) {
                 goto out;
             }
-        } else if (key->type == SSH_KEYTYPE_SK_ECDSA) {
+        } else if (type == SSH_KEY_PRIVATE &&
+                   key->type == SSH_KEYTYPE_SK_ECDSA) {
+            rc = pki_buffer_pack_sk_priv_data(buffer, key);
+            if (rc != SSH_OK) {
+                goto out;
+            }
+        } else if (type == SSH_KEY_PUBLIC &&
+                   key->type == SSH_KEYTYPE_SK_ECDSA) {
             /* public key can contain certificate sk information */
             rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
             if (rc < 0) {
@@ -1101,9 +1108,21 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
                 }
             }
         } else {
-            rc = pki_ed25519_private_key_to_blob(buffer, key);
-            if (rc == SSH_ERROR) {
-                goto out;
+            if (key->type == SSH_KEYTYPE_SK_ED25519) {
+                rc = pki_ed25519_public_key_to_blob(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto out;
+                }
+
+                rc = pki_buffer_pack_sk_priv_data(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto out;
+                }
+            } else {
+                rc = pki_ed25519_private_key_to_blob(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto out;
+                }
             }
         }
         break;

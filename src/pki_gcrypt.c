@@ -1600,9 +1600,21 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
                 }
             }
         } else {
-            rc = pki_ed25519_private_key_to_blob(buffer, key);
-            if (rc == SSH_ERROR) {
-                goto fail;
+            if (key->type == SSH_KEYTYPE_SK_ED25519) {
+                rc = pki_ed25519_public_key_to_blob(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto fail;
+                }
+
+                rc = pki_buffer_pack_sk_priv_data(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto fail;
+                }
+            } else {
+                rc = pki_ed25519_private_key_to_blob(buffer, key);
+                if (rc == SSH_ERROR) {
+                    goto fail;
+                }
             }
         }
         break;
@@ -1640,7 +1652,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
         SSH_STRING_FREE(e);
         e = NULL;
 
-        if (type == SSH_KEY_PRIVATE) {
+        if (type == SSH_KEY_PRIVATE && !is_sk_key_type(key->type)) {
             d = ssh_sexp_extract_mpi(key->ecdsa,
                                      "d",
                                      GCRYMPI_FMT_STD,
@@ -1657,7 +1669,14 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             ssh_string_burn(d);
             SSH_STRING_FREE(d);
             d = NULL;
-        } else if (key->type == SSH_KEYTYPE_SK_ECDSA) {
+        } else if (type == SSH_KEY_PRIVATE && is_sk_key_type(key->type)) {
+            /* Add security key private data for SK_ECDSA */
+            rc = pki_buffer_pack_sk_priv_data(buffer, key);
+            if (rc == SSH_ERROR) {
+                goto fail;
+            }
+        } else if (type == SSH_KEY_PUBLIC &&
+                   key->type == SSH_KEYTYPE_SK_ECDSA) {
             /* public key can contain certificate sk information */
             rc = ssh_buffer_add_ssh_string(buffer, key->sk_application);
             if (rc < 0) {

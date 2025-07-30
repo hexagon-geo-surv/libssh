@@ -997,10 +997,15 @@ ssh_pki_export_privkey_base64_format(const ssh_key privkey,
     /*
      * For historic reasons, the Ed25519 keys are exported in OpenSSH file
      * format by default also when built with OpenSSL.
+     *
+     * The FIDO2/U2F security keys are an extension to the SSH protocol
+     * proposed by OpenSSH, and do not have any representation in PEM format.
+     * So, they are always exported in the OpenSSH file format.
      */
 #ifdef HAVE_LIBCRYPTO
     if (format == SSH_FILE_FORMAT_DEFAULT &&
-        privkey->type != SSH_KEYTYPE_ED25519) {
+        privkey->type != SSH_KEYTYPE_ED25519 &&
+        !is_sk_key_type(privkey->type)) {
         format = SSH_FILE_FORMAT_PEM;
     }
 #endif /* HAVE_LIBCRYPTO */
@@ -1224,10 +1229,16 @@ ssh_pki_export_privkey_file_format(const ssh_key privkey,
     /*
      * For historic reasons, the Ed25519 keys are exported in OpenSSH file
      * format by default also when built with OpenSSL.
+     *
+     * The FIDO2/U2F security keys are an extension to the SSH protocol
+     * proposed by OpenSSH, and do not have any representation in PEM format.
+     * So, they are always exported in the OpenSSH file format.
      */
 #ifdef HAVE_LIBCRYPTO
     if (format == SSH_FILE_FORMAT_DEFAULT &&
-        privkey->type != SSH_KEYTYPE_ED25519) {
+        privkey->type != SSH_KEYTYPE_ED25519 &&
+        !is_sk_key_type(privkey->type)) {
+
         format = SSH_FILE_FORMAT_PEM;
     }
 #endif /* HAVE_LIBCRYPTO */
@@ -1453,6 +1464,38 @@ int pki_import_privkey_buffer(enum ssh_keytypes_e type,
         }
         break;
     }
+    case SSH_KEYTYPE_SK_ECDSA: {
+        ssh_string type_str = NULL;
+        ssh_string pubkey = NULL;
+        int nid;
+
+        rc = ssh_buffer_unpack(buffer, "SS", &type_str, &pubkey);
+        if (rc != SSH_OK) {
+            goto fail;
+        }
+
+        rc = pki_buffer_unpack_sk_priv_data(buffer, key);
+        if (rc != SSH_OK) {
+            SSH_STRING_FREE(type_str);
+            SSH_STRING_FREE(pubkey);
+            goto fail;
+        }
+
+        nid = pki_key_ecdsa_nid_from_name(ssh_string_get_char(type_str));
+        SSH_STRING_FREE(type_str);
+
+        if (nid == -1) {
+            SSH_STRING_FREE(pubkey);
+            goto fail;
+        }
+
+        rc = pki_pubkey_build_ecdsa(key, nid, pubkey);
+        SSH_STRING_FREE(pubkey);
+        if (rc != SSH_OK) {
+            goto fail;
+        }
+        break;
+    }
 #endif /* HAVE_ECC */
     case SSH_KEYTYPE_ED25519: {
         ssh_string pubkey = NULL, privkey = NULL;
@@ -1478,14 +1521,38 @@ int pki_import_privkey_buffer(enum ssh_keytypes_e type,
         }
         break;
     }
+    case SSH_KEYTYPE_SK_ED25519: {
+        ssh_string pubkey = NULL;
+
+        if (ssh_fips_mode()) {
+            SSH_LOG(SSH_LOG_TRACE, "Ed25519 keys not supported in FIPS mode");
+            goto fail;
+        }
+
+        rc = ssh_buffer_unpack(buffer, "S", &pubkey);
+        if (rc != SSH_OK) {
+            goto fail;
+        }
+
+        rc = pki_buffer_unpack_sk_priv_data(buffer, key);
+        if (rc != SSH_OK) {
+            SSH_STRING_FREE(pubkey);
+            goto fail;
+        }
+
+        rc = pki_pubkey_build_ed25519(key, pubkey);
+        SSH_STRING_FREE(pubkey);
+        if (rc != SSH_OK) {
+            goto fail;
+        }
+        break;
+    }
     case SSH_KEYTYPE_RSA_CERT01:
     case SSH_KEYTYPE_ECDSA_P256_CERT01:
     case SSH_KEYTYPE_ECDSA_P384_CERT01:
     case SSH_KEYTYPE_ECDSA_P521_CERT01:
     case SSH_KEYTYPE_ED25519_CERT01:
-    case SSH_KEYTYPE_SK_ECDSA:
     case SSH_KEYTYPE_SK_ECDSA_CERT01:
-    case SSH_KEYTYPE_SK_ED25519:
     case SSH_KEYTYPE_SK_ED25519_CERT01:
     case SSH_KEYTYPE_RSA1:
     case SSH_KEYTYPE_UNKNOWN:
@@ -2230,6 +2297,64 @@ int ssh_pki_export_privkey_to_pubkey(const ssh_key privkey,
 
     *pkey = pubkey;
     return SSH_OK;
+}
+
+/**
+ * @internal
+ *
+ * @brief Pack security key private data into a buffer.
+ *
+ * This function packs the common security key fields (application, flags,
+ * key handle, and reserved data) into a buffer.
+ * This is used for both ECDSA and Ed25519 security keys when exporting
+ * private key data.
+ *
+ * @param[in] buffer    The buffer to pack the security key data into.
+ *
+ * @param[in] key       The security key containing the data to pack.
+ *                      Must be a security key type (SK_ECDSA or SK_ED25519).
+ *
+ * @return              SSH_OK on success, SSH_ERROR on error.
+ *
+ * @see ssh_buffer_pack()
+ */
+int pki_buffer_pack_sk_priv_data(ssh_buffer buffer, ssh_key key)
+{
+    return ssh_buffer_pack(buffer,
+                           "SbSS",
+                           key->sk_application,
+                           key->sk_flags,
+                           key->sk_key_handle,
+                           key->sk_reserved);
+}
+
+/**
+ * @internal
+ *
+ * @brief Unpack security key private data from a buffer.
+ *
+ * This function unpacks the common security key fields (application, flags,
+ * key handle, and reserved data) from a buffer.
+ * This is used for both ECDSA and Ed25519 security keys when importing
+ * private key data.
+ *
+ * @param[in] buffer    The buffer to unpack the security key data from.
+ *
+ * @param[in] key       The security key to store the unpacked data into.
+ *                      Must be a security key type (SK_ECDSA or SK_ED25519).
+ *
+ * @return              SSH_OK on success, SSH_ERROR on error.
+ *
+ * @see ssh_buffer_unpack()
+ */
+int pki_buffer_unpack_sk_priv_data(ssh_buffer buffer, ssh_key key)
+{
+    return ssh_buffer_unpack(buffer,
+                             "SbSS",
+                             &key->sk_application,
+                             &key->sk_flags,
+                             &key->sk_key_handle,
+                             &key->sk_reserved);
 }
 
 /**

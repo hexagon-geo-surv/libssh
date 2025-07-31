@@ -1376,129 +1376,122 @@ int pki_import_privkey_buffer(enum ssh_keytypes_e type,
     key->flags = SSH_KEY_FLAG_PRIVATE | SSH_KEY_FLAG_PUBLIC;
 
     switch (type) {
-        case SSH_KEYTYPE_RSA:
-            {
-                ssh_string n = NULL;
-                ssh_string e = NULL;
-                ssh_string d = NULL;
-                ssh_string iqmp = NULL;
-                ssh_string p = NULL;
-                ssh_string q = NULL;
+    case SSH_KEYTYPE_RSA: {
+        ssh_string n = NULL;
+        ssh_string e = NULL;
+        ssh_string d = NULL;
+        ssh_string iqmp = NULL;
+        ssh_string p = NULL;
+        ssh_string q = NULL;
 
-                rc = ssh_buffer_unpack(buffer, "SSSSSS", &n, &e, &d,
-                                       &iqmp, &p, &q);
-                if (rc != SSH_OK) {
-                    SSH_LOG(SSH_LOG_TRACE, "Unpack error");
-                    goto fail;
-                }
-
-                rc = pki_privkey_build_rsa(key, n, e, d, iqmp, p, q);
-#ifdef DEBUG_CRYPTO
-                ssh_log_hexdump("n", ssh_string_data(n), ssh_string_len(n));
-                ssh_log_hexdump("e", ssh_string_data(e), ssh_string_len(e));
-                ssh_log_hexdump("d", ssh_string_data(d), ssh_string_len(d));
-                ssh_log_hexdump("iqmp",
-                                ssh_string_data(iqmp),
-                                ssh_string_len(iqmp));
-                ssh_log_hexdump("p", ssh_string_data(p), ssh_string_len(p));
-                ssh_log_hexdump("q", ssh_string_data(q), ssh_string_len(q));
-#endif /* DEBUG_CRYPTO */
-                ssh_string_burn(n);
-                SSH_STRING_FREE(n);
-                ssh_string_burn(e);
-                SSH_STRING_FREE(e);
-                ssh_string_burn(d);
-                SSH_STRING_FREE(d);
-                ssh_string_burn(iqmp);
-                SSH_STRING_FREE(iqmp);
-                ssh_string_burn(p);
-                SSH_STRING_FREE(p);
-                ssh_string_burn(q);
-                SSH_STRING_FREE(q);
-                if (rc == SSH_ERROR) {
-                    SSH_LOG(SSH_LOG_TRACE, "Failed to build RSA private key");
-                    goto fail;
-                }
-            }
-            break;
-#ifdef HAVE_ECC
-        case SSH_KEYTYPE_ECDSA_P256:
-        case SSH_KEYTYPE_ECDSA_P384:
-        case SSH_KEYTYPE_ECDSA_P521:
-            {
-                ssh_string e = NULL;
-                ssh_string exp = NULL;
-                ssh_string i = NULL;
-                int nid;
-
-                rc = ssh_buffer_unpack(buffer, "SSS", &i, &e, &exp);
-                if (rc != SSH_OK) {
-                    SSH_LOG(SSH_LOG_TRACE, "Unpack error");
-                    goto fail;
-                }
-
-                nid = pki_key_ecdsa_nid_from_name(ssh_string_get_char(i));
-                SSH_STRING_FREE(i);
-                if (nid == -1) {
-                    ssh_string_burn(e);
-                    SSH_STRING_FREE(e);
-                    ssh_string_burn(exp);
-                    SSH_STRING_FREE(exp);
-                    goto fail;
-                }
-
-                rc = pki_privkey_build_ecdsa(key, nid, e, exp);
-                ssh_string_burn(e);
-                SSH_STRING_FREE(e);
-                ssh_string_burn(exp);
-                SSH_STRING_FREE(exp);
-                if (rc < 0) {
-                    SSH_LOG(SSH_LOG_TRACE, "Failed to build ECDSA private key");
-                    goto fail;
-                }
-            }
-            break;
-#endif /* HAVE_ECC */
-        case SSH_KEYTYPE_ED25519:
-            {
-                ssh_string pubkey = NULL, privkey = NULL;
-
-                if (ssh_fips_mode()) {
-                    SSH_LOG(SSH_LOG_TRACE,
-                            "Ed25519 keys not supported in FIPS mode");
-                    goto fail;
-                }
-
-                rc = ssh_buffer_unpack(buffer, "SS", &pubkey, &privkey);
-                if (rc != SSH_OK){
-                    SSH_LOG(SSH_LOG_TRACE, "Unpack error");
-                    goto fail;
-                }
-
-                rc = pki_privkey_build_ed25519(key, pubkey, privkey);
-                ssh_string_burn(privkey);
-                SSH_STRING_FREE(privkey);
-                SSH_STRING_FREE(pubkey);
-                if (rc != SSH_OK) {
-                    SSH_LOG(SSH_LOG_TRACE, "Failed to build ed25519 key");
-                    goto fail;
-                }
-            }
-            break;
-        case SSH_KEYTYPE_RSA_CERT01:
-        case SSH_KEYTYPE_ECDSA_P256_CERT01:
-        case SSH_KEYTYPE_ECDSA_P384_CERT01:
-        case SSH_KEYTYPE_ECDSA_P521_CERT01:
-        case SSH_KEYTYPE_ED25519_CERT01:
-        case SSH_KEYTYPE_SK_ECDSA:
-        case SSH_KEYTYPE_SK_ECDSA_CERT01:
-        case SSH_KEYTYPE_SK_ED25519:
-        case SSH_KEYTYPE_SK_ED25519_CERT01:
-        case SSH_KEYTYPE_RSA1:
-        case SSH_KEYTYPE_UNKNOWN:
-        default:
-            SSH_LOG(SSH_LOG_TRACE, "Unknown private key type (%d)", type);
+        rc = ssh_buffer_unpack(buffer, "SSSSSS", &n, &e, &d, &iqmp, &p, &q);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_TRACE, "Unpack error");
             goto fail;
+        }
+
+        rc = pki_privkey_build_rsa(key, n, e, d, iqmp, p, q);
+#ifdef DEBUG_CRYPTO
+        ssh_log_hexdump("n", ssh_string_data(n), ssh_string_len(n));
+        ssh_log_hexdump("e", ssh_string_data(e), ssh_string_len(e));
+        ssh_log_hexdump("d", ssh_string_data(d), ssh_string_len(d));
+        ssh_log_hexdump("iqmp", ssh_string_data(iqmp), ssh_string_len(iqmp));
+        ssh_log_hexdump("p", ssh_string_data(p), ssh_string_len(p));
+        ssh_log_hexdump("q", ssh_string_data(q), ssh_string_len(q));
+#endif /* DEBUG_CRYPTO */
+        ssh_string_burn(n);
+        SSH_STRING_FREE(n);
+        ssh_string_burn(e);
+        SSH_STRING_FREE(e);
+        ssh_string_burn(d);
+        SSH_STRING_FREE(d);
+        ssh_string_burn(iqmp);
+        SSH_STRING_FREE(iqmp);
+        ssh_string_burn(p);
+        SSH_STRING_FREE(p);
+        ssh_string_burn(q);
+        SSH_STRING_FREE(q);
+        if (rc == SSH_ERROR) {
+            SSH_LOG(SSH_LOG_TRACE, "Failed to build RSA private key");
+            goto fail;
+        }
+        break;
+    }
+#ifdef HAVE_ECC
+    case SSH_KEYTYPE_ECDSA_P256:
+    case SSH_KEYTYPE_ECDSA_P384:
+    case SSH_KEYTYPE_ECDSA_P521: {
+        ssh_string e = NULL;
+        ssh_string exp = NULL;
+        ssh_string i = NULL;
+        int nid;
+
+        rc = ssh_buffer_unpack(buffer, "SSS", &i, &e, &exp);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_TRACE, "Unpack error");
+            goto fail;
+        }
+
+        nid = pki_key_ecdsa_nid_from_name(ssh_string_get_char(i));
+        SSH_STRING_FREE(i);
+        if (nid == -1) {
+            ssh_string_burn(e);
+            SSH_STRING_FREE(e);
+            ssh_string_burn(exp);
+            SSH_STRING_FREE(exp);
+            goto fail;
+        }
+
+        rc = pki_privkey_build_ecdsa(key, nid, e, exp);
+        ssh_string_burn(e);
+        SSH_STRING_FREE(e);
+        ssh_string_burn(exp);
+        SSH_STRING_FREE(exp);
+        if (rc < 0) {
+            SSH_LOG(SSH_LOG_TRACE, "Failed to build ECDSA private key");
+            goto fail;
+        }
+        break;
+    }
+#endif /* HAVE_ECC */
+    case SSH_KEYTYPE_ED25519: {
+        ssh_string pubkey = NULL, privkey = NULL;
+
+        if (ssh_fips_mode()) {
+            SSH_LOG(SSH_LOG_TRACE, "Ed25519 keys not supported in FIPS mode");
+            goto fail;
+        }
+
+        rc = ssh_buffer_unpack(buffer, "SS", &pubkey, &privkey);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_TRACE, "Unpack error");
+            goto fail;
+        }
+
+        rc = pki_privkey_build_ed25519(key, pubkey, privkey);
+        ssh_string_burn(privkey);
+        SSH_STRING_FREE(privkey);
+        SSH_STRING_FREE(pubkey);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_TRACE, "Failed to build ed25519 key");
+            goto fail;
+        }
+        break;
+    }
+    case SSH_KEYTYPE_RSA_CERT01:
+    case SSH_KEYTYPE_ECDSA_P256_CERT01:
+    case SSH_KEYTYPE_ECDSA_P384_CERT01:
+    case SSH_KEYTYPE_ECDSA_P521_CERT01:
+    case SSH_KEYTYPE_ED25519_CERT01:
+    case SSH_KEYTYPE_SK_ECDSA:
+    case SSH_KEYTYPE_SK_ECDSA_CERT01:
+    case SSH_KEYTYPE_SK_ED25519:
+    case SSH_KEYTYPE_SK_ED25519_CERT01:
+    case SSH_KEYTYPE_RSA1:
+    case SSH_KEYTYPE_UNKNOWN:
+    default:
+        SSH_LOG(SSH_LOG_TRACE, "Unknown private key type (%d)", type);
+        goto fail;
     }
 
     *pkey = key;

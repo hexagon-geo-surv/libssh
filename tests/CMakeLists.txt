@@ -37,6 +37,7 @@ add_library(${TORTURE_LIBRARY}
                 torture.c
                 torture_key.c
                 torture_pki.c
+                torture_sk.c
                 torture_cmocka.c)
 target_link_libraries(${TORTURE_LIBRARY} PRIVATE ${TORTURE_LINK_LIBRARIES})
 target_compile_options(${TORTURE_LIBRARY} PRIVATE
@@ -77,6 +78,7 @@ if (CLIENT_TESTING)
                     torture.c
                     torture_key.c
                     torture_pki.c
+                    torture_sk.c
                     torture_cmocka.c
                )
     target_link_libraries(${TORTURE_SHARED_LIBRARY} PUBLIC

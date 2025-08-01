@@ -833,11 +833,10 @@ ssh_signature ssh_signature_new(void)
 {
     struct ssh_signature_struct *sig = NULL;
 
-    sig = malloc(sizeof(struct ssh_signature_struct));
+    sig = calloc(1, sizeof(struct ssh_signature_struct));
     if (sig == NULL) {
         return NULL;
     }
-    ZERO_STRUCTP(sig);
 
     return sig;
 }

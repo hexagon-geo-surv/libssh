@@ -136,11 +136,10 @@ ssh_agent ssh_agent_new(struct ssh_session_struct *session)
 {
     ssh_agent agent = NULL;
 
-    agent = malloc(sizeof(struct ssh_agent_struct));
+    agent = calloc(1, sizeof(struct ssh_agent_struct));
     if (agent == NULL) {
         return NULL;
     }
-    ZERO_STRUCTP(agent);
 
     agent->count = 0;
     agent->sock = ssh_socket_new(session);

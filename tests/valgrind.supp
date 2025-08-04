@@ -367,3 +367,57 @@
    fun:pki_sk_enroll_key
    ...
 }
+
+
+{
+   malloc inside expand_hostname
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:expand_hostname
+   fun:canonicalize_princ
+   fun:krb5_sname_to_principal
+   fun:krb5_gss_import_name
+   fun:gssint_import_internal_name
+   fun:gss_init_sec_context
+   fun:ssh_gssapi_init_ctx
+}
+{
+   malloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   ...
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}
+{
+   malloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect,definite
+   fun:malloc
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}
+{
+   calloc in krb5_build_principal
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:calloc
+   ...
+   fun:krb5_build_principal_alloc_va
+   fun:krb5_build_principal
+   ...
+   fun:gss_add_cred_from
+   fun:gss_acquire_cred_from
+   fun:gss_acquire_cred
+}

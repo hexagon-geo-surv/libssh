@@ -188,6 +188,8 @@ void crypto_free(struct ssh_crypto_struct *crypto)
 #endif
 #ifdef HAVE_LIBCRYPTO
     EVP_PKEY_free(crypto->curve25519_privkey);
+#elif defined(HAVE_GCRYPT_CURVE25519)
+    gcry_sexp_release(crypto->curve25519_privkey);
 #endif
     SAFE_FREE(crypto->dh_server_signature);
     if (crypto->session_id != NULL) {

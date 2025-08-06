@@ -116,6 +116,7 @@ int ssh_client_ecdh_init(ssh_session session)
         goto out;
     }
 
+    SSH_STRING_FREE(session->next_crypto->ecdh_client_pubkey);
     session->next_crypto->ecdh_client_pubkey = client_pubkey;
     client_pubkey = NULL;
 

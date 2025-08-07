@@ -119,12 +119,14 @@ static const char *ssh_auth_get_current_method(ssh_session session)
     case SSH_AUTH_METHOD_INTERACTIVE:
         method = "keyboard interactive";
         break;
+#ifdef WITH_GSSAPI
     case SSH_AUTH_METHOD_GSSAPI_MIC:
         method = "gssapi";
         break;
     case SSH_AUTH_METHOD_GSSAPI_KEYEX:
         method = "gssapi-keyex";
         break;
+#endif
     default:
         break;
     }
@@ -274,12 +276,14 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_failure) {
     if (strstr(auth_methods, "hostbased") != NULL) {
         session->auth.supported_methods |= SSH_AUTH_METHOD_HOSTBASED;
     }
+#ifdef WITH_GSSAPI
     if (strstr(auth_methods, "gssapi-with-mic") != NULL) {
         session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_MIC;
     }
     if (strstr(auth_methods, "gssapi-keyex") != NULL) {
         session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_KEYEX;
     }
+#endif
 
 end:
     session->auth.current_method = SSH_AUTH_METHOD_UNKNOWN;

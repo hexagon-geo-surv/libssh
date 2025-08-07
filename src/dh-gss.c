@@ -39,27 +39,27 @@
 static SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply);
 
 static ssh_packet_callback gss_dh_client_callbacks[] = {
-    ssh_packet_client_gss_dh_reply
+    ssh_packet_client_gss_dh_reply,
 };
 
 static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callbacks = {
     .start = SSH2_MSG_KEXGSS_COMPLETE,
     .n_callbacks = 1,
     .callbacks = gss_dh_client_callbacks,
-    .user = NULL
+    .user = NULL,
 };
 
 static SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey);
 
 static ssh_packet_callback gss_dh_client_callback_hostkey[] = {
-    ssh_packet_client_gss_dh_hostkey
+    ssh_packet_client_gss_dh_hostkey,
 };
 
 static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callback_hostkey = {
     .start = SSH2_MSG_KEXGSS_HOSTKEY,
     .n_callbacks = 1,
     .callbacks = gss_dh_client_callback_hostkey,
-    .user = NULL
+    .user = NULL,
 };
 
 /** @internal
@@ -285,7 +285,8 @@ static struct ssh_packet_callbacks_struct ssh_gss_dh_server_callbacks = {
     .start = SSH2_MSG_KEXGSS_INIT,
     .n_callbacks = 1,
     .callbacks = gss_dh_server_callbacks,
-    .user = NULL};
+    .user = NULL,
+};
 
 /** @internal
  * @brief sets up the gssapi kex callbacks

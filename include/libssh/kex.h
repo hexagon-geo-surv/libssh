@@ -31,6 +31,7 @@ struct ssh_kex_struct {
     char *methods[SSH_KEX_METHODS];
 };
 
+/* crypto.h needs ssh_kex_struct so it is included below the struct definition */
 #include "libssh/crypto.h"
 
 #ifdef __cplusplus

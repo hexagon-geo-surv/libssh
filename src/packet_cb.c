@@ -177,8 +177,8 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
         /* server things are done in server.c */
         session->dh_handshake_state=DH_STATE_FINISHED;
     } else {
-        if (session->opts.gssapi_key_exchange) {
 #ifdef WITH_GSSAPI
+        if (session->opts.gssapi_key_exchange) {
             OM_uint32 maj_stat, min_stat;
             gss_buffer_desc mic = GSS_C_EMPTY_BUFFER, msg = GSS_C_EMPTY_BUFFER;
 
@@ -200,8 +200,9 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
                 goto error;
             }
             SSH_STRING_FREE(session->gssapi_key_exchange_mic);
+        } else
 #endif
-        } else {
+        {
             ssh_key server_key = NULL;
 
             /* client */

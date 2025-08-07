@@ -68,7 +68,7 @@ enum ssh_pending_call_e {
     SSH_PENDING_CALL_AUTH_KBDINT_INIT,
     SSH_PENDING_CALL_AUTH_KBDINT_SEND,
     SSH_PENDING_CALL_AUTH_GSSAPI_MIC,
-    SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX
+    SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX,
 };
 
 /* libssh calls may block an undefined amount of time */

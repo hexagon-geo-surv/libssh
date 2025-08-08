@@ -94,6 +94,7 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tGSSAPIClientIdentity home.sweet\n" \
     "\tUserKnownHostsFile "USER_KNOWN_HOSTS"\n" \
     "\tRequiredRSASize 2233\n" \
+    "\tGSSAPIKeyExchange yes\n" \
     "\tGSSAPIKexAlgorithms gss-group14-sha256-\n"
 
 /* authentication methods */
@@ -650,6 +651,7 @@ static void torture_config_new(void ** state,
     assert_string_equal(session->opts.gss_server_identity, "example.com");
     assert_string_equal(session->opts.gss_client_identity, "home.sweet");
 #ifdef WITH_GSSAPI
+    assert_true(session->opts.gssapi_key_exchange);
     assert_string_equal(session->opts.gssapi_key_exchange_algs,
                         "gss-group14-sha256-");
 #endif /* WITH_GSSAPI */

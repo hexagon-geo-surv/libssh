@@ -202,7 +202,10 @@ void ssh_socket_reset(ssh_socket s)
     s->read_wontblock = 0;
     s->write_wontblock = 0;
     s->data_except = 0;
-    s->poll_handle = NULL;
+    if (s->poll_handle != NULL) {
+        ssh_poll_free(s->poll_handle);
+        s->poll_handle = NULL;
+    }
     s->state=SSH_SOCKET_NONE;
 #ifndef _WIN32
     s->proxy_pid = 0;

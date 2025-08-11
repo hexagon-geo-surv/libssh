@@ -163,6 +163,7 @@ error:
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     bignum_safe_free(pubkey);
 #endif
+    gss_release_buffer(&min_stat, &output_token);
     ssh_dh_cleanup(crypto);
     return SSH_ERROR;
 }
@@ -198,6 +199,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply)
     if (rc == SSH_ERROR) {
         goto error;
     }
+    SSH_STRING_FREE(session->gssapi_key_exchange_mic);
     session->gssapi_key_exchange_mic = mic;
     input_token.length = ssh_string_len(otoken);
     input_token.value = ssh_string_data(otoken);

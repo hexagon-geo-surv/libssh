@@ -360,7 +360,7 @@ int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout)
 ssh_poll_handle
 ssh_poll_new(socket_t fd, short events, ssh_poll_callback cb, void *userdata)
 {
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
 
     p = malloc(sizeof(struct ssh_poll_handle_struct));
     if (p == NULL) {
@@ -702,7 +702,7 @@ int ssh_poll_ctx_dopoll(ssh_poll_ctx ctx, int timeout)
 {
     int rc;
     size_t i, used;
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
     socket_t fd;
     int revents;
     struct ssh_timestamp ts;
@@ -879,7 +879,7 @@ int ssh_event_add_fd(ssh_event event,
                      ssh_event_callback cb,
                      void *userdata)
 {
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
     struct ssh_event_fd_wrapper *pw = NULL;
     int rc;
 
@@ -950,7 +950,7 @@ void ssh_event_remove_poll(ssh_event event, ssh_poll_handle p)
  */
 int ssh_event_add_session(ssh_event event, ssh_session session)
 {
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
 #ifdef WITH_SERVER
     struct ssh_iterator *iterator = NULL;
 #endif
@@ -1099,7 +1099,7 @@ int ssh_event_remove_fd(ssh_event event, socket_t fd)
  */
 int ssh_event_remove_session(ssh_event event, ssh_session session)
 {
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
     register size_t i, used;
     int rc = SSH_ERROR;
 #ifdef WITH_SERVER
@@ -1171,7 +1171,7 @@ int ssh_event_remove_connector(ssh_event event, ssh_connector connector)
 void ssh_event_free(ssh_event event)
 {
     size_t used, i;
-    ssh_poll_handle p;
+    ssh_poll_handle p = NULL;
 
     if (event == NULL) {
         return;

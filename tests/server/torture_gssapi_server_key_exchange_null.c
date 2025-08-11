@@ -252,10 +252,9 @@ static void torture_gssapi_server_key_exchange_null(void **state)
     /* Valid */
     torture_setup_kdc_server(
         (void **)&s,
-        "kadmin.local addprinc -randkey host/server.libssh.site\n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
-        "host/server.libssh.site\n"
-        "kadmin.local addprinc -pw bar alice\n"
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
         "echo bar | kinit alice");
@@ -272,11 +271,55 @@ static void torture_gssapi_server_key_exchange_null(void **state)
     torture_teardown_kdc_server((void **)&s);
 }
 
+static void torture_gssapi_server_key_exchange_no_tgt(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    ssh_session session;
+    int rc;
+    bool t = true;
+
+    /* Skip test if in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    session = s->ssh.session;
+    assert_non_null(session);
+
+    /* Don't run kinit */
+    torture_setup_kdc_server(
+        (void **)&s,
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local list_principals",
+
+        /* No TGT */
+        "");
+
+    rc = ssh_options_set(s->ssh.session, SSH_OPTIONS_GSSAPI_KEY_EXCHANGE, &t);
+    assert_ssh_return_code(s->ssh.session, rc);
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    torture_teardown_kdc_server((void **)&s);
+}
+
 int torture_run_tests(void)
 {
     int rc;
     struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_null,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_gssapi_server_key_exchange_no_tgt,
                                         session_setup,
                                         session_teardown),
     };

@@ -294,10 +294,9 @@ static void torture_gssapi_server_key_exchange(void **state)
     /* Valid */
     torture_setup_kdc_server(
         (void **)&s,
-        "kadmin.local addprinc -randkey host/server.libssh.site\n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
-        "host/server.libssh.site\n"
-        "kadmin.local addprinc -pw bar alice\n"
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
         "echo bar | kinit alice");
@@ -336,8 +335,7 @@ static void torture_gssapi_server_key_exchange_no_tgt(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
-        "host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
@@ -383,8 +381,7 @@ static void torture_gssapi_server_key_exchange_gss_group14_sha256(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
-        "host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 
@@ -432,8 +429,7 @@ static void torture_gssapi_server_key_exchange_gss_group16_sha512(void **state)
     torture_setup_kdc_server(
         (void **)&s,
         "kadmin.local addprinc -randkey host/server.libssh.site \n"
-        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
-        "host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
         "kadmin.local addprinc -pw bar alice \n"
         "kadmin.local list_principals",
 

@@ -572,25 +572,33 @@ static int ssh_poll_ctx_resize(ssh_poll_ctx ctx, size_t new_size)
 
     pollptrs = realloc(ctx->pollptrs, sizeof(ssh_poll_handle) * new_size);
     if (pollptrs == NULL) {
-        return -1;
+        /* Fail, but keep the old value to be freed later */
+        return SSH_ERROR;
     }
     ctx->pollptrs = pollptrs;
 
     pollfds = realloc(ctx->pollfds, sizeof(ssh_pollfd_t) * new_size);
     if (pollfds == NULL) {
+        if (ctx->polls_allocated == 0) {
+            /* This was initial allocation -- just free what we allocated above
+             * and fail */
+            SAFE_FREE(ctx->pollptrs);
+            return SSH_ERROR;
+        }
+        /* Try to realloc the pollptrs back to the original size */
         pollptrs = realloc(ctx->pollptrs,
                            sizeof(ssh_poll_handle) * ctx->polls_allocated);
         if (pollptrs == NULL) {
-            return -1;
+            return SSH_ERROR;
         }
         ctx->pollptrs = pollptrs;
-        return -1;
+        return SSH_ERROR;
     }
 
     ctx->pollfds = pollfds;
     ctx->polls_allocated = new_size;
 
-    return 0;
+    return SSH_OK;
 }
 
 /**

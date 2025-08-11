@@ -1985,10 +1985,10 @@ int ssh_options_apply(ssh_session session)
              * it with ssh expansion of ssh escape characters.
              */
             tmp = ssh_path_expand_escape(session, id);
+            free(id);
             if (tmp == NULL) {
                 return -1;
             }
-            free(id);
         }
 
         /* use append to keep the order at first call and use prepend
@@ -1999,6 +1999,7 @@ int ssh_options_apply(ssh_session session)
             rc = ssh_list_append(session->opts.identity, tmp);
         }
         if (rc != SSH_OK) {
+            free(tmp);
             return -1;
         }
     }
@@ -2010,13 +2011,14 @@ int ssh_options_apply(ssh_session session)
         char *id = tmp;
 
         tmp = ssh_path_expand_escape(session, id);
+        free(id);
         if (tmp == NULL) {
             return -1;
         }
-        free(id);
 
         rc = ssh_list_append(session->opts.certificate, tmp);
         if (rc != SSH_OK) {
+            free(tmp);
             return -1;
         }
     }

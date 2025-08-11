@@ -637,14 +637,12 @@ int ssh_poll_ctx_add(ssh_poll_ctx ctx, ssh_poll_handle p)
 int ssh_poll_ctx_add_socket(ssh_poll_ctx ctx, ssh_socket s)
 {
     ssh_poll_handle p = NULL;
-    int ret;
 
     p = ssh_socket_get_poll_handle(s);
     if (p == NULL) {
         return -1;
     }
-    ret = ssh_poll_ctx_add(ctx, p);
-    return ret;
+    return ssh_poll_ctx_add(ctx, p);
 }
 
 /**
@@ -948,6 +946,7 @@ int ssh_event_add_session(ssh_event event, ssh_session session)
 #ifdef WITH_SERVER
     struct ssh_iterator *iterator = NULL;
 #endif
+    int rc;
 
     if (event == NULL || event->ctx == NULL || session == NULL) {
         return SSH_ERROR;
@@ -962,7 +961,10 @@ int ssh_event_add_session(ssh_event event, ssh_session session)
          * session->default_poll_ctx->polls_used
          */
         ssh_poll_ctx_remove(session->default_poll_ctx, p);
-        ssh_poll_ctx_add(event->ctx, p);
+        rc = ssh_poll_ctx_add(event->ctx, p);
+        if (rc != SSH_OK) {
+            return rc;
+        }
         /* associate the pollhandler with a session so we can put it back
          * at ssh_event_free()
          */
@@ -1110,7 +1112,10 @@ int ssh_event_remove_session(ssh_event event, ssh_session session)
              */
             ssh_poll_ctx_remove(event->ctx, p);
             p->session = NULL;
-            ssh_poll_ctx_add(session->default_poll_ctx, p);
+            rc = ssh_poll_ctx_add(session->default_poll_ctx, p);
+            if (rc != SSH_OK) {
+                return rc;
+            }
             rc = SSH_OK;
             /*
              * Restart the loop!

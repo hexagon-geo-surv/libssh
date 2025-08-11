@@ -744,7 +744,10 @@ int ssh_handle_packets(ssh_session session, int timeout)
             ssh_set_error_oom(session);
             return SSH_ERROR;
         }
-        ssh_poll_ctx_add(ctx, spoll);
+        rc = ssh_poll_ctx_add(ctx, spoll);
+        if (rc != SSH_OK) {
+            return SSH_ERROR;
+        }
     }
 
     if (timeout == SSH_TIMEOUT_USER) {

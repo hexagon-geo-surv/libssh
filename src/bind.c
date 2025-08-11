@@ -505,7 +505,10 @@ int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd)
       ssh_set_error_oom(sshbind);
       return SSH_ERROR;
     }
-    ssh_socket_set_fd(session->socket, fd);
+    rc = ssh_socket_set_fd(session->socket, fd);
+    if (rc != SSH_OK) {
+        return rc;
+    }
     handle = ssh_socket_get_poll_handle(session->socket);
     if (handle == NULL) {
         ssh_set_error_oom(sshbind);

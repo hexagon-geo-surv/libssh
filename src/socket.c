@@ -440,7 +440,7 @@ int ssh_socket_unix(ssh_socket s, const char *path)
         ssh_set_error(s->session, SSH_FATAL,
                       "Error from socket(AF_UNIX, SOCK_STREAM, 0): %s",
                       ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
-        return -1;
+        return SSH_ERROR;
     }
 
 #ifndef _WIN32
@@ -449,7 +449,7 @@ int ssh_socket_unix(ssh_socket s, const char *path)
                       "Error from fcntl(fd, F_SETFD, 1): %s",
                       ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
         CLOSE_SOCKET(fd);
-        return -1;
+        return SSH_ERROR;
     }
 #endif
 
@@ -458,10 +458,9 @@ int ssh_socket_unix(ssh_socket s, const char *path)
                       path,
                       ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
         CLOSE_SOCKET(fd);
-        return -1;
+        return SSH_ERROR;
     }
-    ssh_socket_set_fd(s,fd);
-    return 0;
+    return ssh_socket_set_fd(s, fd);
 }
 
 /** \internal
@@ -519,7 +518,7 @@ void ssh_socket_close(ssh_socket s)
  * @warning this function updates both the input and output
  * file descriptors
  */
-void ssh_socket_set_fd(ssh_socket s, socket_t fd)
+int ssh_socket_set_fd(ssh_socket s, socket_t fd)
 {
     ssh_poll_handle h = NULL;
 
@@ -531,7 +530,7 @@ void ssh_socket_set_fd(ssh_socket s, socket_t fd)
         s->state = SSH_SOCKET_CONNECTING;
         h = ssh_socket_get_poll_handle(s);
         if (h == NULL) {
-            return;
+            return SSH_ERROR;
         }
 
         /* POLLOUT is the event to wait for in a nonblocking connect */
@@ -540,6 +539,7 @@ void ssh_socket_set_fd(ssh_socket s, socket_t fd)
         ssh_poll_add_events(h, POLLWRNORM);
 #endif
     }
+    return SSH_OK;
 }
 
 /** \internal
@@ -889,9 +889,7 @@ int ssh_socket_connect(ssh_socket s,
     if (fd == SSH_INVALID_SOCKET) {
         return SSH_ERROR;
     }
-    ssh_socket_set_fd(s,fd);
-
-    return SSH_OK;
+    return ssh_socket_set_fd(s, fd);
 }
 
 #ifdef WITH_EXEC
@@ -985,8 +983,16 @@ ssh_socket_connect_proxycommand(ssh_socket s, const char *command)
     }
     s->proxy_pid = pid;
     close(pair[0]);
-    SSH_LOG(SSH_LOG_DEBUG, "ProxyCommand connection pipe: [%d,%d]",pair[0],pair[1]);
-    ssh_socket_set_fd(s, pair[1]);
+    SSH_LOG(SSH_LOG_DEBUG,
+            "ProxyCommand connection pipe: [%d,%d]",
+            pair[0],
+            pair[1]);
+
+    rc = ssh_socket_set_fd(s, pair[1]);
+    if (rc != SSH_OK) {
+        return rc;
+    }
+
     s->fd_is_socket = 0;
     h = ssh_socket_get_poll_handle(s);
     if (h == NULL) {
@@ -1276,7 +1282,12 @@ ssh_socket_connect_proxyjump(ssh_socket s)
             "ProxyJump connection pipe: [%d,%d]",
             pair[0],
             pair[1]);
-    ssh_socket_set_fd(s, pair[1]);
+
+    rc = ssh_socket_set_fd(s, pair[1]);
+    if (rc != SSH_OK) {
+        return rc;
+    }
+
     s->fd_is_socket = 1;
     h = ssh_socket_get_poll_handle(s);
     if (h == NULL) {

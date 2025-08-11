@@ -602,8 +602,7 @@ int ssh_connect(ssh_session session)
 
     if (session->opts.fd != SSH_INVALID_SOCKET) {
         session->session_state = SSH_SESSION_STATE_SOCKET_CONNECTED;
-        ssh_socket_set_fd(session->socket, session->opts.fd);
-        ret = SSH_OK;
+        ret = ssh_socket_set_fd(session->socket, session->opts.fd);
 #ifndef _WIN32
 #ifdef HAVE_PTHREAD
     } else if (ssh_libssh_proxy_jumps() &&

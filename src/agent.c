@@ -210,8 +210,7 @@ int ssh_set_agent_socket(ssh_session session, socket_t fd)
         return SSH_ERROR;
     }
 
-    ssh_socket_set_fd(session->agent->sock, fd);
-    return SSH_OK;
+    return ssh_socket_set_fd(session->agent->sock, fd);
 }
 
 /**

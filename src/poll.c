@@ -427,7 +427,7 @@ void ssh_poll_set_events(ssh_poll_handle p, short events)
 {
     p->events = events;
     if (p->ctx != NULL) {
-        if (p->lock_cnt == 0) {
+        if (!ssh_poll_is_locked(p)) {
             p->ctx->pollfds[p->x.idx].events = events;
         } else if (!(p->ctx->pollfds[p->x.idx].events & POLLOUT)) {
             /* if locked, allow only setting POLLOUT to prevent recursive
@@ -730,7 +730,7 @@ int ssh_poll_ctx_dopoll(ssh_poll_ctx ctx, int timeout)
      * output buffer */
     for (i = 0; i < ctx->polls_used; i++) {
         /* The lock allows only POLLOUT events: drop the rest */
-        if (ctx->pollptrs[i]->lock_cnt > 0) {
+        if (ssh_poll_is_locked(ctx->pollptrs[i])) {
             ctx->pollfds[i].events &= POLLOUT;
         }
     }

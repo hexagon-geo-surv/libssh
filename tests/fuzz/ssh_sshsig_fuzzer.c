@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define LIBSSH_STATIC 1
 #include "libssh/libssh.h"
+
+#include "nallocinc.c"
 
 static void _fuzz_finalize(void)
 {
@@ -29,7 +32,8 @@ static void _fuzz_finalize(void)
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
     (void)argc;
-    (void)argv;
+
+    nalloc_init(*argv[0]);
 
     ssh_init();
 
@@ -46,9 +50,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     char *signature = NULL;
     int rc;
 
+    assert(nalloc_start(data, size) > 0);
+
     signature = (char *)malloc(size + 1);
     if (signature == NULL) {
-        return 1;
+        goto out;
     }
     strncpy(signature, (const char *)data, size);
     signature[size] = '\0';
@@ -56,9 +62,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     rc = sshsig_verify(input, sizeof(input), signature, namespace, &pkey);
     free(signature);
     if (rc != SSH_OK) {
-        return 1;
+        goto out;
     }
     ssh_key_free(pkey);
 
+out:
+    nalloc_end();
     return 0;
 }

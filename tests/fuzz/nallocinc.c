@@ -157,7 +157,7 @@ static int nalloc_start(const uint8_t *data, size_t size)
         }
     } else if (nalloc_bitmask == 0) {
         // nalloc disabled
-        return 0;
+        return 2;
     }
     nalloc_random_state = 0;
     for (size_t i = 0; i < size; i++) {

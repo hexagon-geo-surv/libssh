@@ -70,6 +70,24 @@ struct session_data_struct {
     bool authenticated;
 };
 
+static void _fuzz_finalize(void)
+{
+    ssh_finalize();
+}
+
+int LLVMFuzzerInitialize(int *argc, char ***argv)
+{
+    (void)argc;
+
+    nalloc_init(*argv[0]);
+
+    ssh_init();
+
+    atexit(_fuzz_finalize);
+
+    return 0;
+}
+
 static int auth_none(ssh_session session, const char *user, void *userdata)
 {
     struct session_data_struct *sdata =
@@ -120,13 +138,6 @@ static int write_rsa_hostkey(const char *rsakey_path)
     return 0;
 }
 
-int LLVMFuzzerInitialize(int *argc, char ***argv)
-{
-    (void)argc;
-    nalloc_init(*argv[0]);
-    return 0;
-}
-
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     int socket_fds[2] = {-1, -1};
@@ -134,6 +145,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     bool no = false;
     const char *env = NULL;
     int rc;
+    ssh_bind sshbind = NULL;
+    ssh_session session = NULL;
+    ssh_event event = NULL;
 
     /* Our struct holding information about the session. */
     struct session_data_struct sdata = {
@@ -170,35 +184,54 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     rc = shutdown(socket_fds[1], SHUT_WR);
     assert(rc == 0);
 
+    assert(nalloc_start(data, size) > 0);
+
     /* Set up the libssh server */
-    ssh_bind sshbind = ssh_bind_new();
-    assert(sshbind != NULL);
+    sshbind = ssh_bind_new();
+    if (sshbind == NULL) {
+        goto out;
+    }
 
-    ssh_session session = ssh_new();
-    assert(session != NULL);
-
+    session = ssh_new();
+    if (session == NULL) {
+        goto out;
+    }
 
     env = getenv("LIBSSH_VERBOSITY");
     if (env != NULL && strlen(env) > 0) {
         rc = ssh_bind_options_set(sshbind,
                                   SSH_BIND_OPTIONS_LOG_VERBOSITY_STR,
                                   env);
-        assert(rc == 0);
+        if (rc != SSH_OK) {
+            goto out;
+        }
     }
     rc = ssh_bind_options_set(sshbind,
                               SSH_BIND_OPTIONS_HOSTKEY,
                               "/tmp/libssh_fuzzer_private_key");
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
     rc = ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_CIPHERS_C_S, "none");
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
     rc = ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_CIPHERS_S_C, "none");
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
     rc = ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HMAC_C_S, "none");
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
     rc = ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HMAC_S_C, "none");
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
     rc = ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_PROCESS_CONFIG, &no);
-    assert(rc == 0);
+    if (rc != SSH_OK) {
+        goto out;
+    }
 
     ssh_set_auth_methods(session, SSH_AUTH_METHOD_NONE);
 
@@ -206,12 +239,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     ssh_set_server_callbacks(session, &server_cb);
 
     rc = ssh_bind_accept_fd(sshbind, session, socket_fds[0]);
-    assert(rc == SSH_OK);
+    if (rc != SSH_OK) {
+        goto out;
+    }
 
-    ssh_event event = ssh_event_new();
-    assert(event != NULL);
+    event = ssh_event_new();
+    if (event == NULL) {
+        goto out;
+    }
 
-    nalloc_start(data, size);
     if (ssh_handle_key_exchange(session) == SSH_OK) {
         ssh_event_add_session(event, session);
 
@@ -228,6 +264,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             n++;
         }
     }
+
+out:
     nalloc_end();
 
     ssh_event_free(event);

@@ -456,7 +456,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_token_server)
     gss_release_buffer(&min_stat, &output_token);
     gss_release_name(&min_stat, &client_name);
 
-    if(maj_stat == GSS_S_COMPLETE){
+    if (maj_stat == GSS_S_COMPLETE) {
         session->gssapi->state = SSH_GSSAPI_STATE_RCV_MIC;
     }
     return SSH_PACKET_USED;
@@ -512,15 +512,17 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_mic)
     (void)user;
     (void)type;
 
-    SSH_LOG(SSH_LOG_PACKET,"Received SSH_MSG_USERAUTH_GSSAPI_MIC");
+    SSH_LOG(SSH_LOG_PACKET, "Received SSH_MSG_USERAUTH_GSSAPI_MIC");
     mic_token = ssh_buffer_get_ssh_string(packet);
     if (mic_token == NULL) {
         ssh_set_error(session, SSH_FATAL, "Missing MIC in packet");
         goto error;
     }
-    if (session->gssapi == NULL
-        || session->gssapi->state != SSH_GSSAPI_STATE_RCV_MIC) {
-        ssh_set_error(session, SSH_FATAL, "Received SSH_MSG_USERAUTH_GSSAPI_MIC in invalid state");
+    if (session->gssapi == NULL ||
+        session->gssapi->state != SSH_GSSAPI_STATE_RCV_MIC) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Received SSH_MSG_USERAUTH_GSSAPI_MIC in invalid state");
         goto error;
     }
 
@@ -529,7 +531,8 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_mic)
         ssh_set_error_oom(session);
         goto error;
     }
-    if (ssh_callbacks_exists(session->server_callbacks, gssapi_verify_mic_function)){
+    if (ssh_callbacks_exists(session->server_callbacks,
+                             gssapi_verify_mic_function)) {
         int rc = session->server_callbacks->gssapi_verify_mic_function(session, mic_token,
                 ssh_buffer_get(mic_buffer), ssh_buffer_get_len(mic_buffer),
                 session->server_callbacks->userdata);
@@ -542,7 +545,11 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_mic)
         mic_token_buf.length = ssh_string_len(mic_token);
         mic_token_buf.value = ssh_string_data(mic_token);
 
-        maj_stat = gss_verify_mic(&min_stat, session->gssapi->ctx, &mic_buf, &mic_token_buf, NULL);
+        maj_stat = gss_verify_mic(&min_stat,
+                                  session->gssapi->ctx,
+                                  &mic_buf,
+                                  &mic_token_buf,
+                                  NULL);
         ssh_gssapi_log_error(SSH_LOG_DEBUG,
                              "verifying MIC",
                              maj_stat,

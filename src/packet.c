@@ -749,15 +749,58 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_GSSAPI_EXCHANGE_COMPLETE:  // 63
-        /* TODO Not filtered */
+        /* Server only. Ignored */
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_AUTHENTICATING
+         * - session->gssapi->state == SSH_GSSAPI_STATE_RCV_MIC (TODO)
+         *
+         * Transitions:
+         * - None
+         */
+        if (session->client) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+        if (session->session_state != SSH_SESSION_STATE_AUTHENTICATING) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_GSSAPI_ERROR:              // 64
-        /* TODO Not filtered */
+        /* Client only. Ignored */
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_AUTHENTICATING
+         *
+         * Transitions:
+         * - None
+         */
+        if (session->server) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+        if (session->session_state != SSH_SESSION_STATE_AUTHENTICATING) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_GSSAPI_ERRTOK:             // 65
-        /* TODO Not filtered */
+        /*
+         * States required:
+         * - session_state == SSH_SESSION_STATE_AUTHENTICATING
+         *
+         * Transitions:
+         * - None
+         */
+        if (session->session_state != SSH_SESSION_STATE_AUTHENTICATING) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_GSSAPI_MIC:                // 66

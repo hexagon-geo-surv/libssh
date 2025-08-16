@@ -310,6 +310,13 @@ if (WITH_FIDO2)
         ${libssh_SRCS}
         sk_common.c
     )
+
+    if (HAVE_LIBFIDO2)
+        set(libssh_SRCS
+            ${libssh_SRCS}
+            sk_usbhid.c
+        )
+    endif (HAVE_LIBFIDO2)
 endif (WITH_FIDO2)
 
 # Set the path to the default map file

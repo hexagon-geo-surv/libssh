@@ -23,8 +23,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libssh/callbacks.h"
 #include "libssh/priv.h"
 #include "libssh/sk_common.h"
+
+#ifdef HAVE_LIBFIDO2
+#include "libssh/sk_usbhid.h"
+#endif
 
 const char *ssh_sk_err_to_string(int sk_err)
 {
@@ -273,4 +278,13 @@ bool sk_callbacks_check_compatibility(
     }
 
     return true;
+}
+
+const struct ssh_sk_callbacks_struct *ssh_sk_get_default_callbacks(void)
+{
+#ifdef HAVE_LIBFIDO2
+    return ssh_sk_get_usbhid_callbacks();
+#else
+    return NULL;
+#endif /* HAVE_LIBFIDO2 */
 }

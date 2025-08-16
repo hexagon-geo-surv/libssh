@@ -164,6 +164,8 @@ if (SSH_EXECUTABLE)
         ssh-rsa-cert-v01@openssh.com
         ecdsa-sha2-nistp256-cert-v01@openssh.com ecdsa-sha2-nistp384-cert-v01@openssh.com
         ecdsa-sha2-nistp521-cert-v01@openssh.com
+        sk-ssh-ed25519@openssh.com sk-ecdsa-sha2-nistp256@openssh.com
+        sk-ssh-ed25519-cert-v01@openssh.com sk-ecdsa-sha2-nistp256-cert-v01@openssh.com
         )
     foreach(ALGORITHM ${SSH_ALGORITHMS})
         string(TOUPPER ${ALGORITHM} VARNAME)
@@ -327,6 +329,11 @@ if (CLIENT_TESTING OR SERVER_TESTING)
     file(COPY keys/id_ecdsa.pub DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
     file(COPY keys/id_ed25519 DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
     file(COPY keys/id_ed25519.pub DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
+    # Security key support
+    file(COPY keys/id_ecdsa_sk DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
+    file(COPY keys/id_ecdsa_sk.pub DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
+    file(COPY keys/id_ed25519_sk DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
+    file(COPY keys/id_ed25519_sk.pub DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/home/bob/.ssh/ FILE_PERMISSIONS OWNER_READ OWNER_WRITE)
 
     # Allow to auth with bob's public keys on alice and doe account
     configure_file(keys/id_rsa.pub ${CMAKE_CURRENT_BINARY_DIR}/home/alice/.ssh/authorized_keys @ONLY)
@@ -338,6 +345,14 @@ if (CLIENT_TESTING OR SERVER_TESTING)
 
     # append ed25519 public key
     file(READ keys/id_ed25519.pub CONTENTS)
+    file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/home/alice/.ssh/authorized_keys "${CONTENTS}")
+
+    # append sk-ecdsa public key
+    file(READ keys/id_ecdsa_sk.pub CONTENTS)
+    file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/home/alice/.ssh/authorized_keys "${CONTENTS}")
+
+    # append sk-ed25519 public key
+    file(READ keys/id_ed25519_sk.pub CONTENTS)
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/home/alice/.ssh/authorized_keys "${CONTENTS}")
 
     # Allow to auth with bob his public keys on charlie account

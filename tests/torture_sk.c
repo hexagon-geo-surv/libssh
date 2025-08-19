@@ -23,7 +23,7 @@
 
 #include "torture_sk.h"
 #include "libssh/pki.h"
-#include "torture.h"
+#include "libssh/sk_api.h" /* For SSH_SK_* flag definitions */
 
 /* Helper function to validate ssh_key structure for security keys */
 void assert_sk_key_valid(ssh_key key,
@@ -66,7 +66,13 @@ void assert_sk_key_valid(ssh_key key,
         assert_true(ssh_string_len(key->sk_key_handle) > 0);
     }
 
-    /* TODO: Check for sk_flags */
+    const uint8_t allowed_flags = SSH_SK_USER_PRESENCE_REQD |
+                                  SSH_SK_USER_VERIFICATION_REQD |
+                                  SSH_SK_RESIDENT_KEY | SSH_SK_FORCE_OPERATION;
+
+    /* Validate sk_flags contain only allowed bits */
+    uint8_t flags = key->sk_flags;
+    assert_int_equal(flags & ~allowed_flags, 0);
 
     /* Validate underlying cryptographic key exists based on type */
     switch (expected_type) {

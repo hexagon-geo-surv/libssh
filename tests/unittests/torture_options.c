@@ -1969,6 +1969,18 @@ static void torture_options_apply (void **state)
     id = ssh_path_expand_escape(session, "%d/id_rsa");
     rc = ssh_list_append(awaited_list, id);
     assert_int_equal(rc, SSH_OK);
+#ifdef WITH_FIDO2
+    /* Add security key identities */
+    id = ssh_path_expand_escape(session, "%d/id_ed25519_sk");
+    rc = ssh_list_append(awaited_list, id);
+    assert_int_equal(rc, SSH_OK);
+
+#ifdef HAVE_ECC
+    id = ssh_path_expand_escape(session, "%d/id_ecdsa_sk");
+    rc = ssh_list_append(awaited_list, id);
+    assert_int_equal(rc, SSH_OK);
+#endif /* HAVE_ECC */
+#endif /* WITH_FIDO2 */
 
     assert_int_equal(ssh_list_count(awaited_list),
                      ssh_list_count(session->opts.identity));

@@ -392,6 +392,8 @@ int ssh_options_set_algo(ssh_session session,
  *                the identity list.\n
  *                \n
  *                By default id_rsa, id_ecdsa and id_ed25519 files are used.\n
+ *                If libssh is built with FIDO2/U2F support, id_ecdsa_sk and\n
+ *                id_ed25519_sk files are also used by default.\n
  *                \n
  *                The identity used to authenticate with public key will be
  *                prepended to the list.

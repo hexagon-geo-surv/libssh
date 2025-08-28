@@ -31,13 +31,14 @@
 #else
 #include <winsock2.h>
 #endif
-#include <sys/types.h>
+#include "libssh/config_parser.h"
+#include "libssh/misc.h"
+#include "libssh/options.h"
+#include "libssh/pki.h"
 #include "libssh/pki_priv.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
-#include "libssh/misc.h"
-#include "libssh/options.h"
-#include "libssh/config_parser.h"
+#include <sys/types.h>
 #ifdef WITH_SERVER
 #include "libssh/server.h"
 #include "libssh/bind.h"
@@ -1288,11 +1289,13 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
 
                 /* (*x == 0) is allowed as it is used to revert to default */
 
-                if (*x > 0 && *x < 768) {
-                    ssh_set_error(session, SSH_REQUEST_DENIED,
+                if (*x > 0 && *x < RSA_MIN_KEY_SIZE) {
+                    ssh_set_error(session,
+                                  SSH_REQUEST_DENIED,
                                   "The provided value (%d) for minimal RSA key "
-                                  "size is too small. Use at least 768 bits.",
-                                  *x);
+                                  "size is too small. Use at least %d bits.",
+                                  *x,
+                                  RSA_MIN_KEY_SIZE);
                     return -1;
                 }
                 session->opts.rsa_min_size = *x;
@@ -2590,12 +2593,13 @@ ssh_bind_options_set(ssh_bind sshbind,
 
             /* (*x == 0) is allowed as it is used to revert to default */
 
-            if (*x > 0 && *x < 768) {
+            if (*x > 0 && *x < RSA_MIN_KEY_SIZE) {
                 ssh_set_error(sshbind,
                               SSH_REQUEST_DENIED,
                               "The provided value (%d) for minimal RSA key "
-                              "size is too small. Use at least 768 bits.",
-                              *x);
+                              "size is too small. Use at least %d bits.",
+                              *x,
+                              RSA_MIN_KEY_SIZE);
                 return -1;
             }
             sshbind->rsa_min_size = *x;

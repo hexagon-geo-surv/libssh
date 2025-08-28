@@ -8,13 +8,14 @@
 #endif
 #include <sys/stat.h>
 
-#include <errno.h>
 #include "torture.h"
 #include "torture_key.h"
-#include <libssh/session.h>
+#include <errno.h>
 #include <libssh/misc.h>
-#include <libssh/pki_priv.h>
 #include <libssh/options.h>
+#include <libssh/pki.h>
+#include <libssh/pki_priv.h>
+#include <libssh/session.h>
 #ifdef WITH_SERVER
 #include <libssh/bind.h>
 #define LIBSSH_CUSTOM_BIND_CONFIG_FILE "my_bind_config"
@@ -1997,7 +1998,7 @@ static void torture_options_set_verbosity (void **state)
 static void torture_options_set_rsa_min_size(void **state)
 {
     ssh_session session = *state;
-    int min_allowed = 768, key_size, rc;
+    int min_allowed = RSA_MIN_KEY_SIZE, key_size, rc;
 
     /* Check that passing NULL leads to failure */
     rc = ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, NULL);
@@ -2422,7 +2423,7 @@ static void torture_bind_options_set_rsa_min_size(void **state)
 {
     struct bind_st *test_state = NULL;
     ssh_bind bind = NULL;
-    int rc, min_allowed = 768, key_size;
+    int rc, min_allowed = RSA_MIN_KEY_SIZE, key_size;
 
     assert_non_null(state);
     test_state = *((struct bind_st **)state);

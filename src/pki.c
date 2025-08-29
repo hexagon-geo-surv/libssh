@@ -166,6 +166,13 @@ ssh_key pki_key_dup_common_init(const ssh_key key, int demote)
             goto fail;
         }
 
+        if (key->sk_user_id != NULL) {
+            new->sk_user_id = ssh_string_copy(key->sk_user_id);
+            if (new->sk_user_id == NULL) {
+                goto fail;
+            }
+        }
+
         if (!demote) {
             new->sk_flags = key->sk_flags;
 
@@ -232,6 +239,8 @@ void ssh_key_clean (ssh_key key)
         ssh_string_free(key->sk_key_handle);
         ssh_string_burn(key->sk_reserved);
         ssh_string_free(key->sk_reserved);
+        ssh_string_burn(key->sk_user_id);
+        ssh_string_free(key->sk_user_id);
         key->sk_flags = 0;
     }
     key->cert_type = SSH_KEYTYPE_UNKNOWN;
@@ -784,6 +793,10 @@ int ssh_key_cmp(const ssh_key k1,
 
     if (is_sk_key_type(k1->type)) {
         if (ssh_string_cmp(k1->sk_application, k2->sk_application) != 0) {
+            return 1;
+        }
+
+        if (ssh_string_cmp(k1->sk_user_id, k2->sk_user_id) != 0) {
             return 1;
         }
 

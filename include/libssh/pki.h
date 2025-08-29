@@ -95,6 +95,9 @@ struct ssh_key_struct {
     uint8_t sk_flags;
     ssh_string sk_key_handle;
     ssh_string sk_reserved;
+
+    /* Resident key specific metadata */
+    ssh_string sk_user_id;
 };
 
 struct ssh_signature_struct {

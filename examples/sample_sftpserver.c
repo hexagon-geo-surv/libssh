@@ -378,10 +378,11 @@ static void handle_session(ssh_event event, ssh_session session)
     do {
         /* Poll the main event which takes care of the session, the channel and
          * even our child process's stdout/stderr (once it's started). */
-        if (ssh_event_dopoll(event, -1) == SSH_ERROR) {
+        if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
             ssh_channel_close(sdata.channel);
         }
-    } while (ssh_channel_is_open(sdata.channel));
+    } while (ssh_channel_is_open(sdata.channel) &&
+             !ssh_channel_is_eof(sdata.channel));
 
     ssh_channel_send_eof(sdata.channel);
     ssh_channel_close(sdata.channel);

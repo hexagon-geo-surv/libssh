@@ -239,19 +239,9 @@ void sftp_handle_session_cb(ssh_event event,
     int n;
     int rc = 0;
 
-    /* Structure for storing the pty size. */
-    struct winsize wsize = {
-        .ws_row = 0,
-        .ws_col = 0,
-        .ws_xpixel = 0,
-        .ws_ypixel = 0
-    };
-
     /* Our struct holding information about the channel. */
     struct channel_data_st cdata = {
-        .event = NULL,
-        .winsize = &wsize,
-        .sftp = NULL
+        .sftp = NULL,
     };
 
     /* Our struct holding information about the session. */
@@ -260,7 +250,7 @@ void sftp_handle_session_cb(ssh_event event,
         .auth_attempts = 0,
         .authenticated = 0,
         .username = SSHD_DEFAULT_USER,
-        .password = SSHD_DEFAULT_PASSWORD
+        .password = SSHD_DEFAULT_PASSWORD,
     };
 
     struct ssh_channel_callbacks_struct *channel_cb = NULL;
@@ -371,13 +361,6 @@ void sftp_handle_session_cb(ssh_event event,
         if (ssh_event_dopoll(event, -1) == SSH_ERROR) {
             ssh_channel_close(sdata.channel);
         }
-
-        /* If child process's stdout/stderr has been registered with the event,
-         * or the child process hasn't started yet, continue. */
-        if (cdata.event != NULL) {
-            continue;
-        }
-
     } while (ssh_channel_is_open(sdata.channel));
 
     ssh_channel_send_eof(sdata.channel);

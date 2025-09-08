@@ -216,10 +216,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc, NULL, NULL, NULL};
 #endif /* HAVE_ARGP_H */
 
 /* A userdata struct for channel. */
-struct channel_data_struct
-{
-    /* Event which is used to poll the above descriptors. */
-    ssh_event event;
+struct channel_data_struct {
     sftp_session sftp;
 };
 
@@ -384,14 +381,6 @@ static void handle_session(ssh_event event, ssh_session session)
         if (ssh_event_dopoll(event, -1) == SSH_ERROR) {
             ssh_channel_close(sdata.channel);
         }
-
-        /* If child process's stdout/stderr has been registered with the event,
-         * or the child process hasn't started yet, continue. */
-        if (cdata.event != NULL) {
-            continue;
-        }
-        /* FIXME The server keeps hanging in the poll above when the client
-         * closes the channel */
     } while (ssh_channel_is_open(sdata.channel));
 
     ssh_channel_send_eof(sdata.channel);

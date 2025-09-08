@@ -148,6 +148,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     ssh_bind sshbind = state->input;
     static int no_default_keys = 0;
     static int rsa_already_set = 0, ecdsa_already_set = 0;
+    static int verbosity = 0;
 
     switch (key)
     {
@@ -176,8 +177,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         strncpy(authorizedkeys, arg, DEF_STR_SIZE - 1);
         break;
     case 'v':
-        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_LOG_VERBOSITY_STR,
-                             "3");
+        verbosity++;
+        ssh_bind_options_set(sshbind,
+                             SSH_BIND_OPTIONS_LOG_VERBOSITY,
+                             &verbosity);
         break;
     case ARGP_KEY_ARG:
         if (state->arg_num >= 1)

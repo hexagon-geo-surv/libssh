@@ -217,6 +217,7 @@ static void torture_options_set_key_exchange(void **state)
     /* Test known kexes */
     rc = ssh_options_set(session,
                          SSH_OPTIONS_KEY_EXCHANGE,
+                         "sntrup761x25519-sha512,"
                          "sntrup761x25519-sha512@openssh.com,"
                          "curve25519-sha256,curve25519-sha256@libssh.org,"
                          "ecdh-sha2-nistp256,diffie-hellman-group16-sha512,"
@@ -232,6 +233,7 @@ static void torture_options_set_key_exchange(void **state)
                             "diffie-hellman-group14-sha256");
     } else {
         assert_string_equal(session->opts.wanted_methods[SSH_KEX],
+                            "sntrup761x25519-sha512,"
                             "sntrup761x25519-sha512@openssh.com,"
                             "curve25519-sha256,curve25519-sha256@libssh.org,"
                             "ecdh-sha2-nistp256,diffie-hellman-group16-sha512,"
@@ -281,6 +283,7 @@ static void torture_options_get_key_exchange(void **state)
     } else {
         assert_string_equal(value,
                             "curve25519-sha256,curve25519-sha256@libssh.org,"
+                            "sntrup761x25519-sha512,"
                             "sntrup761x25519-sha512@openssh.com,"
                             "ecdh-sha2-nistp256,ecdh-sha2-nistp384,"
                             "ecdh-sha2-nistp521,diffie-hellman-group18-sha512,"

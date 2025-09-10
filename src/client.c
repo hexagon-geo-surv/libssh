@@ -291,6 +291,7 @@ int dh_handshake(ssh_session session)
             break;
 #endif
 #ifdef HAVE_SNTRUP761
+        case SSH_KEX_SNTRUP761X25519_SHA512:
         case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
             rc = ssh_client_sntrup761x25519_init(session);
             break;

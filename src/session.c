@@ -455,6 +455,8 @@ const char* ssh_get_kex_algo(ssh_session session) {
         return "curve25519-sha256@libssh.org";
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         return "sntrup761x25519-sha512@openssh.com";
+    case SSH_KEX_SNTRUP761X25519_SHA512:
+        return "sntrup761x25519-sha512";
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:
         return "diffie-hellman-group-exchange-sha1";

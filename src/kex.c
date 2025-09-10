@@ -97,7 +97,7 @@
 #endif /* HAVE_CURVE25519 */
 
 #ifdef HAVE_SNTRUP761
-#define SNTRUP761X25519 "sntrup761x25519-sha512@openssh.com,"
+#define SNTRUP761X25519 "sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,"
 #else
 #define SNTRUP761X25519 ""
 #endif /* HAVE_SNTRUP761 */
@@ -924,6 +924,8 @@ kex_select_kex_type(const char *kex)
         return SSH_KEX_CURVE25519_SHA256;
     } else if (strcmp(kex, "sntrup761x25519-sha512@openssh.com") == 0) {
         return SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM;
+    } else if (strcmp(kex, "sntrup761x25519-sha512") == 0) {
+        return SSH_KEX_SNTRUP761X25519_SHA512;
     }
     /* should not happen. We should be getting only valid names at this stage */
     return 0;
@@ -965,6 +967,7 @@ static void revert_kex_callbacks(ssh_session session)
         break;
 #endif
 #ifdef HAVE_SNTRUP761
+    case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         ssh_client_sntrup761x25519_remove_callbacks(session);
         break;
@@ -1529,6 +1532,7 @@ int ssh_make_sessionid(ssh_session session)
         break;
 #endif /* HAVE_CURVE25519 */
 #ifdef HAVE_SNTRUP761
+    case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         rc = ssh_buffer_pack(buf,
                              "dPPdPP",
@@ -1552,13 +1556,17 @@ int ssh_make_sessionid(ssh_session session)
         break;
 #endif /* HAVE_SNTRUP761 */
     }
-    if (session->next_crypto->kex_type == SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM) {
+    switch (session->next_crypto->kex_type) {
+    case SSH_KEX_SNTRUP761X25519_SHA512:
+    case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         rc = ssh_buffer_pack(buf,
                              "F",
                              session->next_crypto->shared_secret,
                              SHA512_DIGEST_LEN);
-    } else {
+        break;
+    default:
         rc = ssh_buffer_pack(buf, "B", session->next_crypto->shared_secret);
+        break;
     }
     if (rc != SSH_OK) {
         ssh_set_error(session, SSH_FATAL, "Failed to pack shared secret");
@@ -1618,6 +1626,7 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_DH_GROUP16_SHA512:
     case SSH_KEX_DH_GROUP18_SHA512:
     case SSH_KEX_ECDH_SHA2_NISTP521:
+    case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         session->next_crypto->digest_len = SHA512_DIGEST_LENGTH;
         session->next_crypto->digest_type = SSH_KDF_SHA512;
@@ -1757,11 +1766,15 @@ int ssh_generate_session_keys(ssh_session session)
     size_t intkey_srv_to_cli_len = 0;
     int rc = -1;
 
-    if (session->next_crypto->kex_type == SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM) {
+    switch (session->next_crypto->kex_type) {
+    case SSH_KEX_SNTRUP761X25519_SHA512:
+    case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         k_string = ssh_make_padded_bignum_string(crypto->shared_secret,
                                                  SHA512_DIGEST_LEN);
-    } else {
+        break;
+    default:
         k_string = ssh_make_bignum_string(crypto->shared_secret);
+        break;
     }
     if (k_string == NULL) {
         ssh_set_error_oom(session);

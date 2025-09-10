@@ -286,11 +286,23 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #endif
 
 #ifdef OPENSSH_SNTRUP761X25519_SHA512_OPENSSH_COM
+#define SNTRUP_OPENSSH_NAME "sntrup761x25519-sha512@openssh.com"
+#define PKDTESTS_KEX_SNTRUP761_OPENSSH(f, client, kexcmd) \
+    f(client, rsa_sntrup761x25519_sha512_openssh_com,       kexcmd(SNTRUP_OPENSSH_NAME), setup_rsa,       teardown) \
+    f(client, ecdsa_256_sntrup761x25519_sha512_openssh_com, kexcmd(SNTRUP_OPENSSH_NAME), setup_ecdsa_256, teardown) \
+    f(client, ecdsa_384_sntrup761x25519_sha512_openssh_com, kexcmd(SNTRUP_OPENSSH_NAME), setup_ecdsa_384, teardown) \
+    f(client, ecdsa_521_sntrup761x25519_sha512_openssh_com, kexcmd(SNTRUP_OPENSSH_NAME), setup_ecdsa_521, teardown)
+#else
+#define PKDTESTS_KEX_SNTRUP761_OPENSSH(f, client, kexcmd)
+#endif
+
+#ifdef OPENSSH_SNTRUP761X25519_SHA512
+#define SNTRUP_NAME         "sntrup761x25519-sha512"
 #define PKDTESTS_KEX_SNTRUP761(f, client, kexcmd) \
-    f(client, rsa_sntrup761x25519_sha512_openssh_com, kexcmd("sntrup761x25519-sha512@openssh.com"), setup_rsa,   teardown) \
-    f(client, ecdsa_256_sntrup761x25519_sha512_openssh_com, kexcmd("sntrup761x25519-sha512@openssh.com"), setup_ecdsa_256, teardown) \
-    f(client, ecdsa_384_sntrup761x25519_sha512_openssh_com, kexcmd("sntrup761x25519-sha512@openssh.com"), setup_ecdsa_384, teardown) \
-    f(client, ecdsa_521_sntrup761x25519_sha512_openssh_com, kexcmd("sntrup761x25519-sha512@openssh.com"), setup_ecdsa_521, teardown)
+    f(client, rsa_sntrup761x25519_sha512,                   kexcmd(SNTRUP_NAME),         setup_rsa,       teardown) \
+    f(client, ecdsa_256_sntrup761x25519_sha512,             kexcmd(SNTRUP_NAME),         setup_ecdsa_256, teardown) \
+    f(client, ecdsa_384_sntrup761x25519_sha512,             kexcmd(SNTRUP_NAME),         setup_ecdsa_384, teardown) \
+    f(client, ecdsa_521_sntrup761x25519_sha512,             kexcmd(SNTRUP_NAME),         setup_ecdsa_521, teardown)
 #else
 #define PKDTESTS_KEX_SNTRUP761(f, client, kexcmd)
 #endif
@@ -298,6 +310,7 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_COMMON(f, client, kexcmd) \
     PKDTESTS_KEX_FIPS(f, client, kexcmd) \
     PKDTESTS_KEX_SNTRUP761(f, client, kexcmd) \
+    PKDTESTS_KEX_SNTRUP761_OPENSSH(f, client, kexcmd) \
     f(client, rsa_curve25519_sha256,                  kexcmd("curve25519-sha256"),             setup_rsa,        teardown) \
     f(client, rsa_curve25519_sha256_libssh_org,       kexcmd("curve25519-sha256@libssh.org"),  setup_rsa,        teardown) \
     f(client, rsa_diffie_hellman_group14_sha1,        kexcmd("diffie-hellman-group14-sha1"),   setup_rsa,        teardown) \
@@ -331,8 +344,15 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #endif
 
 #ifdef OPENSSH_SNTRUP761X25519_SHA512_OPENSSH_COM
+#define PKDTESTS_KEX_OPENSSHONLY_SNTRUP761_OPENSSH(f, client, kexcmd) \
+    f(client, ed25519_sntrup761x25519_sha512_openssh_com, kexcmd(SNTRUP_OPENSSH_NAME), setup_ed25519, teardown)
+#else
+#define PKDTESTS_KEX_OPENSSHONLY_SNTRUP761_OPENSSH(f, client, kexcmd)
+#endif
+
+#ifdef OPENSSH_SNTRUP761X25519_SHA512
 #define PKDTESTS_KEX_OPENSSHONLY_SNTRUP761(f, client, kexcmd) \
-    f(client, ed25519_sntrup761x25519_sha512_openssh_com, kexcmd("sntrup761x25519-sha512@openssh.com"), setup_ed25519, teardown)
+    f(client, ed25519_sntrup761x25519_sha512,             kexcmd(SNTRUP_NAME),         setup_ed25519, teardown)
 #else
 #define PKDTESTS_KEX_OPENSSHONLY_SNTRUP761(f, client, kexcmd)
 #endif
@@ -340,6 +360,7 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_OPENSSHONLY(f, client, kexcmd) \
     /* Kex algorithms. */ \
     PKDTESTS_KEX_OPENSSHONLY_SNTRUP761(f, client, kexcmd) \
+    PKDTESTS_KEX_OPENSSHONLY_SNTRUP761_OPENSSH(f, client, kexcmd) \
     f(client, ed25519_curve25519_sha256,              kexcmd("curve25519-sha256"),             setup_ed25519,    teardown) \
     f(client, ed25519_curve25519_sha256_libssh_org,   kexcmd("curve25519-sha256@libssh.org"),  setup_ed25519,    teardown) \
     f(client, ed25519_ecdh_sha2_nistp256,             kexcmd("ecdh-sha2-nistp256"),            setup_ed25519,    teardown) \

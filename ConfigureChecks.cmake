@@ -104,6 +104,11 @@ if (OPENSSL_FOUND)
     check_function_exists(RAND_priv_bytes HAVE_OPENSSL_RAND_PRIV_BYTES)
     check_function_exists(EVP_chacha20 HAVE_OPENSSL_EVP_CHACHA20)
 
+    # Check for ML-KEM768 availability (OpenSSL 3.5+)
+    if (OPENSSL_VERSION VERSION_GREATER_EQUAL "3.5.0")
+        set(HAVE_MLKEM 1)
+    endif ()
+
     unset(CMAKE_REQUIRED_INCLUDES)
     unset(CMAKE_REQUIRED_LIBRARIES)
 endif()

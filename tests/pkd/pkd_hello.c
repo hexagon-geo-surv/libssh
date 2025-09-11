@@ -307,10 +307,21 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_SNTRUP761(f, client, kexcmd)
 #endif
 
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+#define PKDTESTS_KEX_MLKEM768(f, client, kexcmd) \
+    f(client, rsa_mlkem768x25519_sha256,       kexcmd("mlkem768x25519-sha256"), setup_rsa,       teardown) \
+    f(client, ecdsa_256_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_256, teardown) \
+    f(client, ecdsa_384_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_384, teardown) \
+    f(client, ecdsa_521_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_521, teardown)
+#else
+#define PKDTESTS_KEX_MLKEM768(f, client, kexcmd)
+#endif
+
 #define PKDTESTS_KEX_COMMON(f, client, kexcmd) \
     PKDTESTS_KEX_FIPS(f, client, kexcmd) \
     PKDTESTS_KEX_SNTRUP761(f, client, kexcmd) \
     PKDTESTS_KEX_SNTRUP761_OPENSSH(f, client, kexcmd) \
+    PKDTESTS_KEX_MLKEM768(f, client, kexcmd) \
     f(client, rsa_curve25519_sha256,                  kexcmd("curve25519-sha256"),             setup_rsa,        teardown) \
     f(client, rsa_curve25519_sha256_libssh_org,       kexcmd("curve25519-sha256@libssh.org"),  setup_rsa,        teardown) \
     f(client, rsa_diffie_hellman_group14_sha1,        kexcmd("diffie-hellman-group14-sha1"),   setup_rsa,        teardown) \
@@ -357,10 +368,18 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_OPENSSHONLY_SNTRUP761(f, client, kexcmd)
 #endif
 
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+#define PKDTESTS_KEX_OPENSSHONLY_MLKEM768(f, client, kexcmd) \
+    f(client, ed25519_mlkem768x25519_sha256,              kexcmd("mlkem768x25519-sha256"), setup_ed25519, teardown)
+#else
+#define PKDTESTS_KEX_OPENSSHONLY_MLKEM768(f, client, kexcmd)
+#endif
+
 #define PKDTESTS_KEX_OPENSSHONLY(f, client, kexcmd) \
     /* Kex algorithms. */ \
     PKDTESTS_KEX_OPENSSHONLY_SNTRUP761(f, client, kexcmd) \
     PKDTESTS_KEX_OPENSSHONLY_SNTRUP761_OPENSSH(f, client, kexcmd) \
+    PKDTESTS_KEX_OPENSSHONLY_MLKEM768(f, client, kexcmd) \
     f(client, ed25519_curve25519_sha256,              kexcmd("curve25519-sha256"),             setup_ed25519,    teardown) \
     f(client, ed25519_curve25519_sha256_libssh_org,   kexcmd("curve25519-sha256@libssh.org"),  setup_ed25519,    teardown) \
     f(client, ed25519_ecdh_sha2_nistp256,             kexcmd("ecdh-sha2-nistp256"),            setup_ed25519,    teardown) \

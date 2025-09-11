@@ -41,6 +41,9 @@
 #include "libssh/string.h"
 #include "libssh/curve25519.h"
 #include "libssh/sntrup761.h"
+#ifdef HAVE_MLKEM
+#include "libssh/mlkem768.h"
+#endif
 #include "libssh/knownhosts.h"
 #include "libssh/misc.h"
 #include "libssh/pki.h"
@@ -101,6 +104,12 @@
 #else
 #define SNTRUP761X25519 ""
 #endif /* HAVE_SNTRUP761 */
+
+#ifdef HAVE_MLKEM
+#define MLKEM768X25519 "mlkem768x25519-sha256,"
+#else
+#define MLKEM768X25519 ""
+#endif /* HAVE_MLKEM */
 
 #ifdef HAVE_ECC
 #define ECDH "ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,"
@@ -167,6 +176,7 @@
 #define DEFAULT_KEY_EXCHANGE \
     CURVE25519 \
     SNTRUP761X25519 \
+    MLKEM768X25519 \
     ECDH \
     "diffie-hellman-group18-sha512,diffie-hellman-group16-sha512," \
     GEX_SHA256 \
@@ -926,6 +936,10 @@ kex_select_kex_type(const char *kex)
         return SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM;
     } else if (strcmp(kex, "sntrup761x25519-sha512") == 0) {
         return SSH_KEX_SNTRUP761X25519_SHA512;
+#ifdef HAVE_MLKEM
+    } else if (strcmp(kex, "mlkem768x25519-sha256") == 0) {
+        return SSH_KEX_MLKEM768X25519_SHA256;
+#endif
     }
     /* should not happen. We should be getting only valid names at this stage */
     return 0;
@@ -970,6 +984,11 @@ static void revert_kex_callbacks(ssh_session session)
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         ssh_client_sntrup761x25519_remove_callbacks(session);
+        break;
+#endif
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+        ssh_client_mlkem768x25519_remove_callbacks(session);
         break;
 #endif
     }
@@ -1555,6 +1574,33 @@ int ssh_make_sessionid(ssh_session session)
         }
         break;
 #endif /* HAVE_SNTRUP761 */
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+        rc = ssh_buffer_pack(buf,
+                             "dPPdPP",
+                             MLKEM768X25519_CLIENT_PUBKEY_SIZE,
+                             (size_t)MLKEM768_PUBLICKEY_SIZE,
+                             session->next_crypto->mlkem768_client_pubkey,
+                             (size_t)CURVE25519_PUBKEY_SIZE,
+                             session->next_crypto->curve25519_client_pubkey,
+                             MLKEM768X25519_SERVER_RESPONSE_SIZE,
+                             (size_t)MLKEM768_CIPHERTEXT_SIZE,
+                             session->next_crypto->mlkem768_ciphertext,
+                             (size_t)CURVE25519_PUBKEY_SIZE,
+                             session->next_crypto->curve25519_server_pubkey);
+        if (rc != SSH_OK) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Failed to pack ML-KEM768 individual components");
+            goto error;
+        }
+        break;
+#endif /* HAVE_MLKEM */
+    default:
+        /* Handle unsupported kex types - this should not happen in normal operation */
+        rc = SSH_ERROR;
+        ssh_set_error(session, SSH_FATAL, "Unsupported KEX algorithm");
+        goto error;
     }
     switch (session->next_crypto->kex_type) {
     case SSH_KEX_SNTRUP761X25519_SHA512:
@@ -1564,6 +1610,14 @@ int ssh_make_sessionid(ssh_session session)
                              session->next_crypto->shared_secret,
                              SHA512_DIGEST_LEN);
         break;
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+        rc = ssh_buffer_pack(buf,
+                             "F",
+                             session->next_crypto->shared_secret,
+                             SHA256_DIGEST_LEN);
+        break;
+#endif /* HAVE_MLKEM */
     default:
         rc = ssh_buffer_pack(buf, "B", session->next_crypto->shared_secret);
         break;
@@ -1599,6 +1653,9 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_ECDH_SHA2_NISTP256:
     case SSH_KEX_CURVE25519_SHA256:
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+#endif
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA256:
 #endif /* WITH_GEX */
@@ -1639,6 +1696,11 @@ int ssh_make_sessionid(ssh_session session)
                ssh_buffer_get_len(buf),
                session->next_crypto->secret_hash);
         break;
+    default:
+        /* Handle unsupported kex types - this should not happen in normal operation */
+        ssh_set_error(session, SSH_FATAL, "Unsupported KEX algorithm for hash computation");
+        rc = SSH_ERROR;
+        goto error;
     }
 
     /* During the first kex, secret hash and session ID are equal. However, after
@@ -1769,8 +1831,11 @@ int ssh_generate_session_keys(ssh_session session)
     switch (session->next_crypto->kex_type) {
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+#endif /* HAVE_MLKEM */
         k_string = ssh_make_padded_bignum_string(crypto->shared_secret,
-                                                 SHA512_DIGEST_LEN);
+                                                 crypto->digest_len);
         break;
     default:
         k_string = ssh_make_bignum_string(crypto->shared_secret);

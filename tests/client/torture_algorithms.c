@@ -752,6 +752,22 @@ torture_algorithms_ecdh_sntrup761x25519_sha512(void **state)
 }
 #endif /* OPENSSH_SNTRUP761X25519_SHA512 */
 
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+static void torture_algorithms_ecdh_mlkem768x25519_sha256(void **state)
+{
+    struct torture_state *s = *state;
+
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
+    test_algorithm(s->ssh.session,
+                   "mlkem768x25519-sha256",
+                   NULL /*cipher*/,
+                   NULL /*hmac*/);
+}
+#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM768X25519_SHA256) */
+
 static void torture_algorithms_dh_group1(void **state) {
     struct torture_state *s = *state;
 
@@ -1029,6 +1045,11 @@ int torture_run_tests(void) {
                                         session_setup,
                                         session_teardown),
 #endif /* OPENSSH_SNTRUP761X25519_SHA512 */
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+        cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_mlkem768x25519_sha256,
+                                        session_setup,
+                                        session_teardown),
+#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM768X25519_SHA256) */
 #if defined(HAVE_ECC)
         cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_sha2_nistp256,
                                         session_setup,

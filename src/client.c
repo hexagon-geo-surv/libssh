@@ -46,6 +46,9 @@
 #include "libssh/misc.h"
 #include "libssh/pki.h"
 #include "libssh/kex.h"
+#ifdef HAVE_MLKEM
+#include "libssh/mlkem768.h"
+#endif
 
 #ifndef _WIN32
 #ifdef HAVE_PTHREAD
@@ -294,6 +297,11 @@ int dh_handshake(ssh_session session)
         case SSH_KEX_SNTRUP761X25519_SHA512:
         case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
             rc = ssh_client_sntrup761x25519_init(session);
+            break;
+#endif
+#ifdef HAVE_MLKEM
+        case SSH_KEX_MLKEM768X25519_SHA256:
+            rc = ssh_client_mlkem768x25519_init(session);
             break;
 #endif
         default:

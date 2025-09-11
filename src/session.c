@@ -457,6 +457,10 @@ const char* ssh_get_kex_algo(ssh_session session) {
         return "sntrup761x25519-sha512@openssh.com";
     case SSH_KEX_SNTRUP761X25519_SHA512:
         return "sntrup761x25519-sha512";
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+        return "mlkem768x25519-sha256";
+#endif /* HAVE_MLKEM */
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:
         return "diffie-hellman-group-exchange-sha1";

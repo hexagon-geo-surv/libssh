@@ -286,6 +286,13 @@ if (NOT WITH_NACL)
     endif()
 endif (NOT WITH_NACL)
 
+if (HAVE_MLKEM)
+  set(libssh_SRCS
+    ${libssh_SRCS}
+    mlkem768.c
+  )
+endif (HAVE_MLKEM)
+
 # Set the path to the default map file
 set(MAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.map")
 

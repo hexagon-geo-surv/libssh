@@ -51,6 +51,9 @@
 #include "libssh/curve25519.h"
 #include "libssh/ecdh.h"
 #include "libssh/sntrup761.h"
+#ifdef HAVE_MLKEM
+#include "libssh/mlkem768.h"
+#endif
 
 static struct ssh_hmac_struct ssh_hmac_tab[] = {
   { "hmac-sha1",                     SSH_HMAC_SHA1,          false },
@@ -597,6 +600,11 @@ int crypt_set_algorithms_server(ssh_session session){
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         ssh_server_sntrup761x25519_init(session);
+        break;
+#endif
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+        ssh_server_mlkem768x25519_init(session);
         break;
 #endif
     default:

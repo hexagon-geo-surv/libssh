@@ -1376,6 +1376,7 @@ int ssh_analyze_banner(ssh_session session, int server)
 {
     const char *banner = NULL;
     const char *openssh = NULL;
+    const char *ios = NULL;
 
     if (server) {
         banner = session->clientbanner;
@@ -1464,6 +1465,11 @@ int ssh_analyze_banner(ssh_session session, int server)
                     server ? "client" : "server",
                     major, minor, session->openssh);
         }
+    }
+    /* Cisco devices have odd scp implementation which breaks */
+    ios = strstr(banner, "Cisco");
+    if (ios != NULL) {
+        session->flags |= SSH_SESSION_FLAG_SCP_QUOTING_BROKEN;
     }
 
 done:

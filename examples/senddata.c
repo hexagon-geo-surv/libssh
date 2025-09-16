@@ -13,7 +13,7 @@ int main(void)
     int rc;
     uint64_t total = 0;
     uint64_t lastshown = 4096;
-    session = connect_ssh("localhost", NULL, 0);
+    session = connect_ssh("localhost", NULL, NULL, 0);
     if (session == NULL) {
         return 1;
     }

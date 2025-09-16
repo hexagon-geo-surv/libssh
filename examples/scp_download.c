@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     ssh_session session = NULL;
     if (opts(argc, argv) < 0)
         return EXIT_FAILURE;
-    session = connect_ssh(host, NULL, verbosity);
+    session = connect_ssh(host, NULL, NULL, verbosity);
     if (session == NULL)
         return EXIT_FAILURE;
     create_files(session);

@@ -21,7 +21,7 @@ clients must be made or how a client should react.
 #include "examples_common.h"
 #include <stdio.h>
 
-ssh_session connect_ssh(const char *host, const char *user, int verbosity)
+ssh_session connect_ssh(const char *host, const char *port, const char *user, int verbosity)
 {
     ssh_session session = NULL;
     int auth = 0;
@@ -33,6 +33,13 @@ ssh_session connect_ssh(const char *host, const char *user, int verbosity)
 
     if (user != NULL) {
         if (ssh_options_set(session, SSH_OPTIONS_USER, user) < 0) {
+            ssh_free(session);
+            return NULL;
+        }
+    }
+
+    if (port != NULL) {
+        if (ssh_options_set(session, SSH_OPTIONS_PORT_STR, port) < 0) {
             ssh_free(session);
             return NULL;
         }

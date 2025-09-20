@@ -727,8 +727,13 @@ LIBSSH_API uint32_t ssh_key_get_sk_flags(const ssh_key key);
 LIBSSH_API ssh_string ssh_key_get_sk_application(const ssh_key key);
 LIBSSH_API ssh_string ssh_key_get_sk_user_id(const ssh_key key);
 
-LIBSSH_API int ssh_pki_generate(enum ssh_keytypes_e type, int parameter,
-        ssh_key *pkey);
+SSH_DEPRECATED LIBSSH_API int
+ssh_pki_generate(enum ssh_keytypes_e type, int parameter, ssh_key *pkey);
+
+LIBSSH_API int ssh_pki_generate_key(enum ssh_keytypes_e type,
+                                    ssh_pki_ctx pki_context,
+                                    ssh_key *pkey);
+
 LIBSSH_API int ssh_pki_import_privkey_base64(const char *b64_key,
                                              const char *passphrase,
                                              ssh_auth_callback auth_fn,
@@ -929,6 +934,29 @@ enum ssh_pki_options_e {
     SSH_PKI_OPTION_SK_CALLBACKS,
 };
 
+/* FIDO2/U2F Operation Flags */
+
+/** Requires user presence confirmation (tap/touch) */
+#ifndef SSH_SK_USER_PRESENCE_REQD
+#define SSH_SK_USER_PRESENCE_REQD 0x01
+#endif
+
+/** Requires user verification (PIN/biometric) - FIDO2 only */
+#ifndef SSH_SK_USER_VERIFICATION_REQD
+#define SSH_SK_USER_VERIFICATION_REQD 0x04
+#endif
+
+/** Force resident key enrollment even if a resident key with given user ID
+ * already exists - FIDO2 only */
+#ifndef SSH_SK_FORCE_OPERATION
+#define SSH_SK_FORCE_OPERATION 0x10
+#endif
+
+/** Create/use resident key stored on authenticator - FIDO2 only */
+#ifndef SSH_SK_RESIDENT_KEY
+#define SSH_SK_RESIDENT_KEY 0x20
+#endif
+
 LIBSSH_API ssh_pki_ctx ssh_pki_ctx_new(void);
 
 LIBSSH_API int ssh_pki_ctx_options_set(ssh_pki_ctx context,
@@ -962,6 +990,13 @@ LIBSSH_API void ssh_pki_ctx_free(ssh_pki_ctx context);
             x = NULL;            \
         }                        \
     } while (0)
+
+/* Security key resident keys API */
+
+LIBSSH_API int
+ssh_sk_resident_keys_load(const struct ssh_pki_ctx_struct *pki_context,
+                          ssh_key **resident_keys_result,
+                          size_t *num_keys_found_result);
 
 #ifndef LIBSSH_LEGACY_0_4
 #include "libssh/legacy.h"

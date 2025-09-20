@@ -503,4 +503,6 @@ LIBSSH_AFTER_4_10_0
         ssh_key_get_sk_flags;
         ssh_key_get_sk_application;
         ssh_key_get_sk_user_id;
+        ssh_pki_generate_key;
+        ssh_sk_resident_keys_load;
 } LIBSSH_4_10_0;

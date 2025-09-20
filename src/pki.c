@@ -43,15 +43,18 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "libssh/libssh.h"
-#include "libssh/session.h"
-#include "libssh/priv.h"
-#include "libssh/pki.h"
-#include "libssh/pki_priv.h"
-#include "libssh/keys.h"
-#include "libssh/buffer.h"
-#include "libssh/misc.h"
 #include "libssh/agent.h"
+#include "libssh/buffer.h"
+#include "libssh/keys.h"
+#include "libssh/libssh.h"
+#include "libssh/misc.h"
+#include "libssh/pki.h"
+#include "libssh/pki_context.h"
+#include "libssh/pki_priv.h"
+#include "libssh/pki_sk.h"
+#include "libssh/priv.h"
+#include "libssh/session.h"
+#include "libssh/sk_common.h" /* For SK_NOT_SUPPORTED_MSG */
 
 #ifndef MAX_LINE_SIZE
 #define MAX_LINE_SIZE 4096
@@ -2257,7 +2260,9 @@ int ssh_pki_import_cert_file(const char *filename, ssh_key *pkey)
 }
 
 /**
- * @brief Generates a key pair.
+ * @internal
+ *
+ * @brief Internal function to generate a key pair.
  *
  * @param[in] type      Type of key to create
  *
@@ -2268,17 +2273,19 @@ int ssh_pki_import_cert_file(const char *filename, ssh_key *pkey)
  *                      to free the memory using ssh_key_free().
  *
  * @return              SSH_OK on success, SSH_ERROR on error.
- *
- * @warning             Generating a key pair may take some time.
- *
- * @see ssh_key_free()
  */
-int ssh_pki_generate(enum ssh_keytypes_e type, int parameter,
-        ssh_key *pkey)
+static int pki_generate_key_internal(enum ssh_keytypes_e type,
+                                     int parameter,
+                                     ssh_key *pkey)
 {
     int rc;
-    ssh_key key = ssh_key_new();
+    ssh_key key = NULL;
 
+    if (pkey == NULL) {
+        return SSH_ERROR;
+    }
+
+    key = ssh_key_new();
     if (key == NULL) {
         return SSH_ERROR;
     }
@@ -2289,6 +2296,15 @@ int ssh_pki_generate(enum ssh_keytypes_e type, int parameter,
 
     switch(type){
         case SSH_KEYTYPE_RSA:
+            if (parameter != 0 && parameter < RSA_MIN_KEY_SIZE) {
+                SSH_LOG(
+                    SSH_LOG_WARN,
+                    "RSA key size parameter (%d) is below minimum allowed (%d)",
+                    parameter,
+                    RSA_MIN_KEY_SIZE);
+                goto error;
+            }
+
             rc = pki_key_generate_rsa(key, parameter);
             if(rc == SSH_ERROR)
                 goto error;
@@ -2348,6 +2364,105 @@ int ssh_pki_generate(enum ssh_keytypes_e type, int parameter,
 error:
     ssh_key_free(key);
     return SSH_ERROR;
+}
+
+/**
+ * @brief Generates a key pair.
+ *
+ * @param[in] type      Type of key to create
+ *
+ * @param[in] parameter Parameter to the creation of key:
+ *                      rsa : length of the key in bits (e.g. 1024, 2048, 4096)
+ *                      If parameter is 0, then the default size will be used.
+ * @param[out] pkey     A pointer to store the allocated private key. You need
+ *                      to free the memory using ssh_key_free().
+ *
+ * @return              SSH_OK on success, SSH_ERROR on error.
+ *
+ * @warning             Generating a key pair may take some time.
+ *
+ * @see ssh_key_free()
+ */
+int ssh_pki_generate(enum ssh_keytypes_e type, int parameter, ssh_key *pkey)
+{
+    return pki_generate_key_internal(type, parameter, pkey);
+}
+
+/**
+ * @brief Generates a key pair.
+ *
+ * @param[in] type        Type of key to create
+ *
+ * @param[in] pki_context PKI context containing various configuration
+ *                        parameters and sub-contexts. Can be NULL for
+ *                        standard SSH key types (RSA, ECDSA, ED25519) where
+ *                        defaults will be used. Can also be NULL for security
+ *                        key types (SK_*), in which case default callbacks and
+ *                        settings will be used automatically.
+ *
+ * @param[out] pkey       A pointer to store the allocated private key. You need
+ *                        to free the memory using ssh_key_free().
+ *
+ * @return              SSH_OK on success, SSH_ERROR on error.
+ *
+ * @see ssh_pki_ctx_new()
+ * @see ssh_key_free()
+ */
+int ssh_pki_generate_key(enum ssh_keytypes_e type,
+                         ssh_pki_ctx pki_context,
+                         ssh_key *pkey)
+{
+
+    /* Handle Security Key types with the specialized function */
+    if (is_sk_key_type(type)) {
+#ifdef WITH_FIDO2
+        ssh_pki_ctx temp_ctx = NULL;
+        ssh_pki_ctx ctx_to_use = pki_context;
+        int rc;
+
+        /* If no context provided, create a temporary default one */
+        if (pki_context == NULL) {
+            SSH_LOG(SSH_LOG_INFO,
+                    "No PKI context provided, using the default one");
+
+            temp_ctx = ssh_pki_ctx_new();
+            if (temp_ctx == NULL) {
+                SSH_LOG(SSH_LOG_WARN, "Failed to create temporary PKI context");
+                return SSH_ERROR;
+            }
+            ctx_to_use = temp_ctx;
+        }
+
+        /* Verify that we have valid SK callbacks */
+        if (ctx_to_use->sk_callbacks == NULL) {
+            SSH_LOG(SSH_LOG_WARN, "Missing SK callbacks in PKI context");
+            if (temp_ctx != NULL) {
+                SSH_PKI_CTX_FREE(temp_ctx);
+            }
+            return SSH_ERROR;
+        }
+
+        rc = pki_sk_enroll_key(ctx_to_use, type, pkey);
+
+        /* Clean up temporary context if we created one */
+        if (temp_ctx != NULL) {
+            SSH_PKI_CTX_FREE(temp_ctx);
+        }
+
+        return rc;
+#else  /* WITH_FIDO2 */
+        SSH_LOG(SSH_LOG_WARN, SK_NOT_SUPPORTED_MSG);
+        return SSH_ERROR;
+#endif /* WITH_FIDO2 */
+    } else {
+        int parameter = 0;
+
+        if (type == SSH_KEYTYPE_RSA && pki_context != NULL) {
+            parameter = pki_context->rsa_key_size;
+        }
+
+        return pki_generate_key_internal(type, parameter, pkey);
+    }
 }
 
 /**
@@ -3636,10 +3751,38 @@ ssh_string ssh_pki_do_sign(ssh_session session,
     }
 
     /* Generate the signature */
-    sig = pki_do_sign(privkey,
-            ssh_buffer_get(sign_input),
-            ssh_buffer_get_len(sign_input),
-            hash_type);
+    if (is_sk_key_type(privkey->type)) {
+#ifdef WITH_FIDO2
+        if (session->pki_context == NULL ||
+            session->pki_context->sk_callbacks == NULL) {
+            SSH_LOG(SSH_LOG_WARN, "Missing PKI context or SK callbacks");
+            goto end;
+        }
+
+        rc = pki_key_check_hash_compatible(privkey, hash_type);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_WARN,
+                    "Incompatible hash type %d for sk key type %d",
+                    hash_type,
+                    privkey->type);
+            goto end;
+        }
+
+        sig = pki_sk_do_sign(session->pki_context,
+                             privkey,
+                             ssh_buffer_get(sign_input),
+                             ssh_buffer_get_len(sign_input));
+#else
+        SSH_LOG(SSH_LOG_WARN, SK_NOT_SUPPORTED_MSG);
+        goto end;
+#endif /* WITH_FIDO2 */
+    } else {
+        sig = pki_do_sign(privkey,
+                          ssh_buffer_get(sign_input),
+                          ssh_buffer_get_len(sign_input),
+                          hash_type);
+    }
+
     if (sig == NULL) {
         goto end;
     }

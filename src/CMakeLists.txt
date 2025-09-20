@@ -310,6 +310,7 @@ if (WITH_FIDO2)
     set(libssh_SRCS
         ${libssh_SRCS}
         sk_common.c
+        pki_sk.c
     )
 
     if (HAVE_LIBFIDO2)

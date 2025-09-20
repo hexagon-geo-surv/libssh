@@ -1300,6 +1300,10 @@ pki_key_generate(ssh_key key, int parameter, const char *type_s, int type)
 
 int pki_key_generate_rsa(ssh_key key, int parameter)
 {
+    if (parameter == 0) {
+        parameter = RSA_DEFAULT_KEY_SIZE;
+    }
+
     return pki_key_generate(key, parameter, "rsa", SSH_KEYTYPE_RSA);
 }
 

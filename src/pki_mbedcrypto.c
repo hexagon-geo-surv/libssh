@@ -564,6 +564,10 @@ int pki_key_generate_rsa(ssh_key key, int parameter)
     int rc;
     const mbedtls_pk_info_t *info = NULL;
 
+    if (parameter == 0) {
+        parameter = RSA_DEFAULT_KEY_SIZE;
+    }
+
     key->pk = malloc(sizeof(mbedtls_pk_context));
     if (key->pk == NULL) {
         return SSH_ERROR;

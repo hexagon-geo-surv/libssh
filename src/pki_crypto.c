@@ -803,6 +803,10 @@ int pki_key_generate_rsa(ssh_key key, int parameter){
     unsigned e = 65537;
 #endif /* OPENSSL_VERSION_NUMBER */
 
+    if (parameter == 0) {
+        parameter = RSA_DEFAULT_KEY_SIZE;
+    }
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     e = BN_new();
     key_rsa = RSA_new();

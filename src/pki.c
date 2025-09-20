@@ -2182,6 +2182,7 @@ int ssh_pki_import_cert_file(const char *filename, ssh_key *pkey)
  *
  * @param[in] parameter Parameter to the creation of key:
  *                      rsa : length of the key in bits (e.g. 1024, 2048, 4096)
+ *                      If parameter is 0, then the default size will be used.
  * @param[out] pkey     A pointer to store the allocated private key. You need
  *                      to free the memory using ssh_key_free().
  *

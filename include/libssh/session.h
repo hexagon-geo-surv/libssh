@@ -288,6 +288,10 @@ struct ssh_session_struct {
     /* counters */
     ssh_counter socket_counter;
     ssh_counter raw_counter;
+
+    /* PKI context structure containing various parameters to configure PKI
+     * operations */
+    struct ssh_pki_ctx_struct *pki_context;
 };
 
 /** @internal

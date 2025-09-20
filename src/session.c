@@ -108,6 +108,12 @@ ssh_session ssh_new(void)
         goto err;
     }
 
+    /* Initialise a default PKI context */
+    session->pki_context = ssh_pki_ctx_new();
+    if (session->pki_context == NULL) {
+        goto err;
+    }
+
     /* OPTIONS */
     session->opts.StrictHostKeyChecking = 1;
     session->opts.port = 22;
@@ -265,6 +271,8 @@ void ssh_free(ssh_session session)
   crypto_free(session->next_crypto);
 
   ssh_agent_free(session->agent);
+
+  SSH_PKI_CTX_FREE(session->pki_context);
 
   ssh_key_free(session->srv.rsa_key);
   session->srv.rsa_key = NULL;

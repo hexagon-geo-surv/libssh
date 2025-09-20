@@ -282,6 +282,74 @@ enum ssh_keytypes_e ssh_key_type(const ssh_key key)
 }
 
 /**
+ * @brief Get security key (FIDO2) flags for a security key backed ssh_key.
+ *
+ * The returned value contains a bitmask of SSH_SK_* flags (e.g.
+ * SSH_SK_USER_PRESENCE_REQD, SSH_SK_USER_VERIFICATION_REQD, etc.).
+ * If NULL is passed, then 0 is returned.
+ *
+ * @param[in] key  The ssh_key handle.
+ *
+ * @return Bitmask of security key flags, or 0 if not applicable.
+ */
+uint32_t ssh_key_get_sk_flags(const ssh_key key)
+{
+    if (key == NULL) {
+        return 0;
+    }
+    return key->sk_flags;
+}
+
+/**
+ * @brief Get the application (RP ID) associated with a security key.
+ *
+ * This function returns a freshly allocated ssh_string containing a copy of the
+ * application (RP ID). The caller owns the returned ssh_string and must free it
+ * with SSH_STRING_FREE() when no longer needed.
+ *
+ * Returns NULL if the key is NULL, not a security key type or if the field is
+ * not set.
+ *
+ * @param[in] key  The ssh_key handle.
+ *
+ * @return ssh_string copy of the application (RP ID) or NULL if not available.
+ */
+ssh_string ssh_key_get_sk_application(const ssh_key key)
+{
+    if (key == NULL || key->sk_application == NULL) {
+        return NULL;
+    }
+
+    return ssh_string_copy(key->sk_application);
+}
+
+/**
+ * @brief Get a copy of the user ID associated with a resident security key
+ * credential.
+ *
+ * For resident (discoverable) credentials, authenticators may provide a user
+ * id which can be arbitrary binary data to allow for storing multiple keys for
+ * the same Relying Party. This function returns a freshly allocated ssh_string
+ * containing a copy of that user id. The caller owns the returned ssh_string
+ * and must free it with SSH_STRING_FREE() when no longer needed.
+ *
+ * @note This function will only return useful information if the ssh_key
+ * passed represents a resident key loaded using the ssh_sk_resident_keys_load()
+ * function.
+ *
+ * @param[in] key  The ssh_key handle.
+ *
+ * @return ssh_string copy of user id or NULL if not available.
+ */
+ssh_string ssh_key_get_sk_user_id(const ssh_key key)
+{
+    if (key == NULL) {
+        return NULL;
+    }
+    return ssh_string_copy(key->sk_user_id);
+}
+
+/**
  * @brief Convert a signature type to a string.
  *
  * @param[in]  type     The algorithm type to convert.

@@ -500,4 +500,7 @@ LIBSSH_AFTER_4_10_0
         ssh_pki_ctx_sk_callbacks_option_set;
         ssh_pki_ctx_sk_callbacks_options_clear;
         ssh_pki_ctx_get_sk_attestation_buffer;
+        ssh_key_get_sk_flags;
+        ssh_key_get_sk_application;
+        ssh_key_get_sk_user_id;
 } LIBSSH_4_10_0;

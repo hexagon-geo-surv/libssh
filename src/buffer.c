@@ -620,6 +620,53 @@ uint32_t ssh_buffer_get_len(struct ssh_buffer_struct *buffer){
 /**
  * @internal
  *
+ * @brief Duplicate an existing buffer.
+ *
+ * Creates a new ssh_buffer and copies all data from the source buffer.
+ * The new buffer preserves the secure flag setting of the source.
+ *
+ * @param[in]  buffer   The buffer to duplicate. Can be NULL.
+ *
+ * @return              A new buffer containing a copy of the data on success,
+ *                      NULL on failure or if buffer is NULL.
+ *
+ * @see ssh_buffer_free()
+ */
+ssh_buffer ssh_buffer_dup(const ssh_buffer buffer)
+{
+    ssh_buffer new_buffer = NULL;
+    int rc;
+
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    buffer_verify(buffer);
+
+    new_buffer = ssh_buffer_new();
+    if (new_buffer == NULL) {
+        return NULL;
+    }
+
+    new_buffer->secure = buffer->secure;
+
+    if (ssh_buffer_get_len(buffer) > 0) {
+        rc = ssh_buffer_add_data(new_buffer,
+                                 ssh_buffer_get(buffer),
+                                 ssh_buffer_get_len(buffer));
+        if (rc != SSH_OK) {
+            ssh_buffer_free(new_buffer);
+            return NULL;
+        }
+    }
+
+    buffer_verify(new_buffer);
+    return new_buffer;
+}
+
+/**
+ * @internal
+ *
  * @brief Advance the position in the buffer.
  *
  * This has effect to "eat" bytes at head of the buffer.

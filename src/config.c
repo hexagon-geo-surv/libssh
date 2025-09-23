@@ -153,6 +153,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
   { "tunneldevice", SOC_NA},
   { "xauthlocation", SOC_NA},
   { "pubkeyacceptedkeytypes", SOC_PUBKEYACCEPTEDKEYTYPES},
+  { "requiredrsasize", SOC_REQUIRED_RSA_SIZE},
   { NULL, SOC_UNKNOWN }
 };
 
@@ -1437,6 +1438,12 @@ ssh_config_parse_line(ssh_session session,
         p = ssh_config_get_str_tok(&s, NULL);
         if (p && *parsing) {
             ssh_options_set(session, SSH_OPTIONS_CERTIFICATE, p);
+        }
+        break;
+    case SOC_REQUIRED_RSA_SIZE:
+        l = ssh_config_get_long(&s, -1);
+        if (l >= 0 && *parsing) {
+            ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, &l);
         }
         break;
     default:

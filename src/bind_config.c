@@ -105,6 +105,11 @@ ssh_bind_config_keyword_table[] = {
         .allowed_in_match = true
     },
     {
+        .name   = "requiredrsasize",
+        .opcode = BIND_CFG_REQUIRED_RSA_SIZE,
+        .allowed_in_match = true
+    },
+    {
         .opcode = BIND_CFG_UNKNOWN,
     }
 };
@@ -293,6 +298,7 @@ ssh_bind_config_parse_line(ssh_bind bind,
     const char *p = NULL;
     char *s = NULL, *x = NULL;
     char *keyword = NULL;
+    long l;
     size_t len;
 
     int rc = 0;
@@ -591,6 +597,18 @@ ssh_bind_config_parse_line(ssh_bind bind,
                 SSH_LOG(SSH_LOG_TRACE,
                         "line %d: Failed to set HostkeyAlgorithms value '%s'",
                         count, p);
+            }
+        }
+        break;
+    case BIND_CFG_REQUIRED_RSA_SIZE:
+        l = ssh_config_get_long(&s, -1);
+        if (l >= 0 && (*parser_flags & PARSING)) {
+            rc = ssh_bind_options_set(bind, SSH_BIND_OPTIONS_RSA_MIN_SIZE, &l);
+            if (rc != 0) {
+                SSH_LOG(SSH_LOG_TRACE,
+                        "line %d: Failed to set RequiredRSASize value '%ld'",
+                        count,
+                        l);
             }
         }
         break;

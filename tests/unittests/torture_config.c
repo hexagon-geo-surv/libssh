@@ -90,7 +90,8 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tGSSAPIDelegateCredentials yes\n" \
     "\tGSSAPIServerIdentity example.com\n" \
     "\tGSSAPIClientIdentity home.sweet\n" \
-    "\tUserKnownHostsFile "USER_KNOWN_HOSTS"\n"
+    "\tUserKnownHostsFile "USER_KNOWN_HOSTS"\n" \
+    "\tRequiredRSASize 2233\n"
 
 /* authentication methods */
 #define LIBSSH_TESTCONFIG_STRING8 \
@@ -629,6 +630,7 @@ static void torture_config_new(void ** state,
 
     assert_int_equal(ssh_get_log_level(), SSH_LOG_TRACE);
     assert_int_equal(session->common.log_verbosity, SSH_LOG_TRACE);
+    assert_int_equal(session->opts.rsa_min_size, 2233);
 }
 
 static void torture_config_new_file(void **state)

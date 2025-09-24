@@ -100,3 +100,9 @@ void assert_sk_key_valid(ssh_key key,
         break;
     }
 }
+
+const char *torture_get_sk_pin(void)
+{
+    const char *pin = getenv("TORTURE_SK_PIN");
+    return (pin != NULL && pin[0] != '\0') ? pin : NULL;
+}

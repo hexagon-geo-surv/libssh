@@ -36,5 +36,13 @@
 void assert_sk_key_valid(ssh_key key,
                          enum ssh_keytypes_e expected_type,
                          bool private);
+/**
+ * @brief Get security key PIN from environment variable
+ *
+ * Reads the TORTURE_SK_PIN environment variable and returns its value.
+ *
+ * @return Pointer to PIN string if set and non-empty, NULL otherwise
+ */
+const char *torture_get_sk_pin(void);
 
 #endif /* _TORTURE_SK_H */

@@ -6,6 +6,8 @@
 #define DEBUG_BUFFER
 #include "buffer.c"
 
+#include <string.h>
+
 #define LIMIT (8*1024*1024)
 
 static int setup(void **state) {
@@ -300,6 +302,69 @@ static void torture_ssh_buffer_bignum(void **state)
     SSH_BUFFER_FREE(buffer);
 }
 
+static void torture_ssh_buffer_dup(void **state)
+{
+    ssh_buffer buffer = *state;
+    ssh_buffer dup_buffer = NULL;
+    ssh_buffer null_buffer = NULL;
+    const char *test_data = "test data";
+    size_t test_data_len = strlen(test_data);
+    int rc;
+
+    /* test NULL buffer */
+    dup_buffer = ssh_buffer_dup(NULL);
+    assert_null(dup_buffer);
+
+    /* test empty buffer */
+    dup_buffer = ssh_buffer_dup(buffer);
+    assert_non_null(dup_buffer);
+    assert_int_equal(ssh_buffer_get_len(dup_buffer), 0);
+    assert_true(dup_buffer->secure);
+    SSH_BUFFER_FREE(dup_buffer);
+
+    /* test buffer with data */
+    rc = ssh_buffer_add_data(buffer, test_data, test_data_len);
+    assert_int_equal(rc, SSH_OK);
+    dup_buffer = ssh_buffer_dup(buffer);
+    assert_non_null(dup_buffer);
+    assert_int_equal(ssh_buffer_get_len(dup_buffer), test_data_len);
+    assert_memory_equal(ssh_buffer_get(dup_buffer), test_data, test_data_len);
+    assert_true(dup_buffer->secure);
+
+    /* test independence of buffers - modify original buffer */
+    rc = ssh_buffer_add_data(buffer, " more data", 10);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(ssh_buffer_get_len(buffer), test_data_len + 10);
+    assert_int_equal(ssh_buffer_get_len(dup_buffer), test_data_len);
+
+    /* test independence of buffers - modify duplicated buffer */
+    rc = ssh_buffer_add_data(dup_buffer, " different", 10);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(ssh_buffer_get_len(dup_buffer), test_data_len + 10);
+    assert_int_equal(ssh_buffer_get_len(buffer), test_data_len + 10);
+
+    assert_memory_not_equal(ssh_buffer_get(buffer),
+                            ssh_buffer_get(dup_buffer),
+                            test_data_len + 10);
+
+    SSH_BUFFER_FREE(dup_buffer);
+
+    /* test duplicating non-secure buffer */
+    null_buffer = ssh_buffer_new();
+    assert_non_null(null_buffer);
+    rc = ssh_buffer_add_data(null_buffer, "non-secure data", 15);
+    assert_int_equal(rc, SSH_OK);
+
+    dup_buffer = ssh_buffer_dup(null_buffer);
+    assert_non_null(dup_buffer);
+    assert_int_equal(ssh_buffer_get_len(dup_buffer), 15);
+    assert_memory_equal(ssh_buffer_get(dup_buffer), "non-secure data", 15);
+    assert_false(dup_buffer->secure);
+
+    SSH_BUFFER_FREE(dup_buffer);
+    SSH_BUFFER_FREE(null_buffer);
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -326,6 +391,9 @@ int torture_run_tests(void) {
                                         setup,
                                         teardown),
         cmocka_unit_test(torture_ssh_buffer_bignum),
+        cmocka_unit_test_setup_teardown(torture_ssh_buffer_dup,
+                                        setup,
+                                        teardown),
     };
 
     ssh_init();

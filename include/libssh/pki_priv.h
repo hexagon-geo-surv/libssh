@@ -168,6 +168,11 @@ bool ssh_key_size_allowed_rsa(int min_size, ssh_key key);
 /* Security Key Helper Functions */
 int pki_buffer_pack_sk_priv_data(ssh_buffer buffer, const ssh_key key);
 int pki_buffer_unpack_sk_priv_data(ssh_buffer buffer, ssh_key key);
+int pki_sk_signature_buffer_prepare(const ssh_key key,
+                                    const ssh_signature sig,
+                                    const unsigned char *input,
+                                    size_t input_len,
+                                    ssh_buffer *sk_buffer_out);
 
 #ifdef __cplusplus
 }

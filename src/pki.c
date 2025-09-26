@@ -2809,6 +2809,89 @@ int pki_key_check_hash_compatible(ssh_key key,
     return SSH_ERROR;
 }
 
+/**
+ * @brief Prepare buffer for FIDO2/U2F security key signature verification
+ *
+ * This function creates a buffer containing the application hash, flags,
+ * counter, and input hash for FIDO/U2F key signature verification.
+ *
+ * @param key          The SSH key containing sk_application
+ * @param sig          The signature containing sk_flags and sk_counter
+ * @param input        The input data to hash
+ * @param input_len    Length of the input data
+ * @param sk_buffer_out Pointer to store the created buffer
+ *
+ * @return SSH_OK on success, SSH_ERROR on error
+ */
+int pki_sk_signature_buffer_prepare(const ssh_key key,
+                                    const ssh_signature sig,
+                                    const unsigned char *input,
+                                    size_t input_len,
+                                    ssh_buffer *sk_buffer_out)
+{
+    ssh_buffer sk_buffer = NULL;
+    SHA256CTX ctx = NULL;
+    unsigned char application_hash[SHA256_DIGEST_LEN] = {0};
+    unsigned char input_hash[SHA256_DIGEST_LEN] = {0};
+    int rc, ret = SSH_ERROR;
+
+    if (key == NULL || sig == NULL || input == NULL || sk_buffer_out == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Bad parameter(s) provided to %s()", __func__);
+        return SSH_ERROR;
+    }
+
+    *sk_buffer_out = NULL;
+
+    /* Calculate application hash */
+    ctx = sha256_init();
+    if (ctx == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Can not create SHA256CTX for application hash");
+        return SSH_ERROR;
+    }
+    sha256_update(ctx,
+                  ssh_string_data(key->sk_application),
+                  ssh_string_len(key->sk_application));
+    sha256_final(application_hash, ctx);
+
+    /* Calculate input hash */
+    ctx = sha256_init();
+    if (ctx == NULL) {
+        SSH_LOG(SSH_LOG_TRACE, "Can not create SHA256CTX for input hash");
+        goto out;
+    }
+    sha256_update(ctx, input, input_len);
+    sha256_final(input_hash, ctx);
+
+    /* Create and pack the sk_buffer */
+    sk_buffer = ssh_buffer_new();
+    if (sk_buffer == NULL) {
+        goto out;
+    }
+
+    rc = ssh_buffer_pack(sk_buffer,
+                         "PbdP",
+                         (size_t)SHA256_DIGEST_LEN,
+                         application_hash,
+                         sig->sk_flags,
+                         sig->sk_counter,
+                         (size_t)SHA256_DIGEST_LEN,
+                         input_hash);
+    if (rc != SSH_OK) {
+        goto out;
+    }
+
+    *sk_buffer_out = sk_buffer;
+    sk_buffer = NULL;
+    ret = SSH_OK;
+
+out:
+    SSH_BUFFER_FREE(sk_buffer);
+    explicit_bzero(application_hash, SHA256_DIGEST_LEN);
+    explicit_bzero(input_hash, SHA256_DIGEST_LEN);
+
+    return ret;
+}
+
 int ssh_pki_signature_verify(ssh_session session,
                              ssh_signature sig,
                              const ssh_key key,
@@ -2820,8 +2903,7 @@ int ssh_pki_signature_verify(ssh_session session,
     enum ssh_keytypes_e key_type;
 
     if (session == NULL || sig == NULL || key == NULL || input == NULL) {
-        SSH_LOG(SSH_LOG_TRACE, "Bad parameter provided to "
-                               "ssh_pki_signature_verify()");
+        SSH_LOG(SSH_LOG_TRACE, "Bad parameter(s) provided to %s()", __func__);
         return SSH_ERROR;
     }
     key_type = ssh_key_type_plain(key->type);
@@ -2839,8 +2921,11 @@ int ssh_pki_signature_verify(ssh_session session,
 
     allowed = ssh_key_size_allowed(session, key);
     if (!allowed) {
-        ssh_set_error(session, SSH_FATAL, "The '%s' key of size %d is not "
-                      "allowed by RSA_MIN_SIZE", key->type_c, ssh_key_size(key));
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "The '%s' key of size %d is not allowed by RSA_MIN_SIZE",
+                      key->type_c,
+                      ssh_key_size(key));
         return SSH_ERROR;
     }
 
@@ -2852,56 +2937,21 @@ int ssh_pki_signature_verify(ssh_session session,
 
     if (is_sk_key_type(key->type)) {
         ssh_buffer sk_buffer = NULL;
-        SHA256CTX ctx = NULL;
-        unsigned char application_hash[SHA256_DIGEST_LEN] = {0};
-        unsigned char input_hash[SHA256_DIGEST_LEN] = {0};
 
-        ctx = sha256_init();
-        if (ctx == NULL) {
-            SSH_LOG(SSH_LOG_TRACE,
-                    "Can not create SHA256CTX for application hash");
-           return SSH_ERROR;
-        }
-        sha256_update(ctx, ssh_string_data(key->sk_application),
-               ssh_string_len(key->sk_application));
-        sha256_final(application_hash, ctx);
-
-        ctx = sha256_init();
-        if (ctx == NULL) {
-            SSH_LOG(SSH_LOG_TRACE,
-                    "Can not create SHA256CTX for input hash");
-           return SSH_ERROR;
-        }
-        sha256_update(ctx, input, input_len);
-        sha256_final(input_hash, ctx);
-
-        sk_buffer = ssh_buffer_new();
-        if (sk_buffer == NULL) {
-            return SSH_ERROR;
-        }
-
-        rc = ssh_buffer_pack(sk_buffer,
-                             "PbdP",
-                             (size_t)SHA256_DIGEST_LEN,
-                             application_hash,
-                             sig->sk_flags,
-                             sig->sk_counter,
-                             (size_t)SHA256_DIGEST_LEN,
-                             input_hash);
+        rc = pki_sk_signature_buffer_prepare(key,
+                                             sig,
+                                             input,
+                                             input_len,
+                                             &sk_buffer);
         if (rc != SSH_OK) {
-            SSH_BUFFER_FREE(sk_buffer);
-            explicit_bzero(input_hash, SHA256_DIGEST_LEN);
-            explicit_bzero(application_hash, SHA256_DIGEST_LEN);
             return SSH_ERROR;
         }
 
-        rc = pki_verify_data_signature(sig, key, ssh_buffer_get(sk_buffer),
+        rc = pki_verify_data_signature(sig,
+                                       key,
+                                       ssh_buffer_get(sk_buffer),
                                        ssh_buffer_get_len(sk_buffer));
-
         SSH_BUFFER_FREE(sk_buffer);
-        explicit_bzero(input_hash, SHA256_DIGEST_LEN);
-        explicit_bzero(application_hash, SHA256_DIGEST_LEN);
-
         return rc;
     }
 

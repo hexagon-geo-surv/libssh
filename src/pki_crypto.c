@@ -1429,18 +1429,24 @@ int pki_pubkey_build_rsa(ssh_key key,
 #endif /* OPENSSL_VERSION_NUMBER */
 
     be = ssh_make_string_bn(e);
+    if (be == NULL) {
+        rc = SSH_ERROR;
+        goto fail;
+    }
     bn = ssh_make_string_bn(n);
-    if (be == NULL || bn == NULL) {
+    if (bn == NULL) {
         rc = SSH_ERROR;
         goto fail;
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    /* Memory management of bn and be is transferred to RSA object */
     rc = RSA_set0_key(key_rsa, bn, be, NULL);
     if (rc == 0) {
         goto fail;
     }
+    /* Memory management of bn and be is transferred to RSA object */
+    bn = NULL;
+    be = NULL;
 
     key->key = EVP_PKEY_new();
     if (key->key == NULL) {
@@ -1453,10 +1459,6 @@ int pki_pubkey_build_rsa(ssh_key key,
     }
 
     return SSH_OK;
-fail:
-    EVP_PKEY_free(key->key);
-    RSA_free(key_rsa);
-    return SSH_ERROR;
 #else
     rc = OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_RSA_N, bn);
     if (rc != 1) {
@@ -1470,11 +1472,18 @@ fail:
     }
 
     rc = evp_build_pkey("RSA", param_bld, &(key->key), EVP_PKEY_PUBLIC_KEY);
+#endif /* OPENSSL_VERSION_NUMBER */
 
 fail:
-    OSSL_PARAM_BLD_free(param_bld);
     bignum_safe_free(bn);
     bignum_safe_free(be);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+    EVP_PKEY_free(key->key);
+    RSA_free(key_rsa);
+
+    return SSH_ERROR;
+#else
+    OSSL_PARAM_BLD_free(param_bld);
 
     return rc;
 #endif /* OPENSSL_VERSION_NUMBER */

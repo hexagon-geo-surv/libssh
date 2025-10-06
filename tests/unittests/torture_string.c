@@ -89,6 +89,33 @@ static void torture_ssh_string_from_char(void **state)
     assert_int_equal(errno, EINVAL);
 }
 
+static void torture_ssh_string_from_data(void **state)
+{
+    ssh_string s;
+    const unsigned char raw[] = {0x00, 0x01, 0x00, 0x42, 0xFF};
+
+    (void)state;
+
+    /* Basic: copy arbitrary binary data (with embedded NUL) */
+    s = ssh_string_from_data(raw, sizeof(raw));
+    assert_non_null(s);
+    assert_int_equal(ssh_string_len(s), sizeof(raw));
+    assert_memory_equal(ssh_string_data(s), raw, sizeof(raw));
+    ssh_string_free(s);
+
+    /* Empty: len == 0 with NULL data returns empty string */
+    s = ssh_string_from_data(NULL, 0);
+    assert_non_null(s);
+    assert_int_equal(ssh_string_len(s), 0);
+    ssh_string_free(s);
+
+    /* Invalid: len > 0 with NULL data fails and sets errno */
+    errno = 0;
+    s = ssh_string_from_data(NULL, 42);
+    assert_null(s);
+    assert_int_equal(errno, EINVAL);
+}
+
 static void torture_ssh_string_fill(void **state)
 {
     struct ssh_string_struct *str = NULL;
@@ -380,6 +407,7 @@ int torture_run_tests(void)
     struct CMUnitTest tests[] = {
         cmocka_unit_test(torture_ssh_string_new),
         cmocka_unit_test(torture_ssh_string_from_char),
+        cmocka_unit_test(torture_ssh_string_from_data),
         cmocka_unit_test(torture_ssh_string_fill),
         cmocka_unit_test(torture_ssh_string_to_char),
         cmocka_unit_test(torture_ssh_string_copy),

@@ -121,6 +121,7 @@ set(libssh_SRCS
   packet_crypt.c
   pcap.c
   pki.c
+  pki_context.c
   pki_container_openssh.c
   poll.c
   session.c

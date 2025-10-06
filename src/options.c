@@ -35,6 +35,7 @@
 #include "libssh/misc.h"
 #include "libssh/options.h"
 #include "libssh/pki.h"
+#include "libssh/pki_context.h"
 #include "libssh/pki_priv.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"

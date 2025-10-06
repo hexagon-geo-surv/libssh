@@ -493,5 +493,11 @@ LIBSSH_AFTER_4_10_0
         sshsig_verify;
         ssh_string_cmp;
         ssh_string_from_data;
+        ssh_pki_ctx_new;
+        ssh_pki_ctx_free;
+        ssh_pki_ctx_options_set;
+        ssh_pki_ctx_set_sk_pin_callback;
+        ssh_pki_ctx_sk_callbacks_option_set;
+        ssh_pki_ctx_sk_callbacks_options_clear;
+        ssh_pki_ctx_get_sk_attestation_buffer;
 } LIBSSH_4_10_0;
-

@@ -107,6 +107,7 @@ typedef struct ssh_session_struct* ssh_session;
 typedef struct ssh_string_struct* ssh_string;
 typedef struct ssh_event_struct* ssh_event;
 typedef struct ssh_connector_struct * ssh_connector;
+typedef struct ssh_pki_ctx_struct *ssh_pki_ctx;
 typedef void* ssh_gssapi_creds;
 
 /* Socket type */
@@ -910,6 +911,53 @@ LIBSSH_API int sshsig_verify(const void *data,
                              const char *signature,
                              const char *sig_namespace,
                              ssh_key *sign_key);
+
+/* PKI context API */
+
+enum ssh_pki_options_e {
+    SSH_PKI_OPTION_RSA_KEY_SIZE,
+
+    /* Security Key options */
+    SSH_PKI_OPTION_SK_APPLICATION,
+    SSH_PKI_OPTION_SK_FLAGS,
+    SSH_PKI_OPTION_SK_USER_ID,
+    SSH_PKI_OPTION_SK_CHALLENGE,
+    SSH_PKI_OPTION_SK_CALLBACKS,
+};
+
+LIBSSH_API ssh_pki_ctx ssh_pki_ctx_new(void);
+
+LIBSSH_API int ssh_pki_ctx_options_set(ssh_pki_ctx context,
+                                       enum ssh_pki_options_e option,
+                                       const void *value);
+
+LIBSSH_API int ssh_pki_ctx_set_sk_pin_callback(ssh_pki_ctx context,
+                                               ssh_auth_callback pin_callback,
+                                               void *userdata);
+
+#define SSH_SK_OPTION_NAME_DEVICE_PATH "device"
+#define SSH_SK_OPTION_NAME_USER_ID     "user"
+
+LIBSSH_API int ssh_pki_ctx_sk_callbacks_option_set(ssh_pki_ctx context,
+                                                   const char *name,
+                                                   const char *value,
+                                                   bool required);
+
+LIBSSH_API int ssh_pki_ctx_sk_callbacks_options_clear(ssh_pki_ctx context);
+
+LIBSSH_API int
+ssh_pki_ctx_get_sk_attestation_buffer(const struct ssh_pki_ctx_struct *context,
+                                      ssh_buffer *attestation_buffer);
+
+LIBSSH_API void ssh_pki_ctx_free(ssh_pki_ctx context);
+
+#define SSH_PKI_CTX_FREE(x)      \
+    do {                         \
+        if ((x) != NULL) {       \
+            ssh_pki_ctx_free(x); \
+            x = NULL;            \
+        }                        \
+    } while (0)
 
 #ifndef LIBSSH_LEGACY_0_4
 #include "libssh/legacy.h"

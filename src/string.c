@@ -129,6 +129,45 @@ struct ssh_string_struct *ssh_string_from_char(const char *what)
 }
 
 /**
+ * @brief Create a ssh string from an arbitrary data buffer.
+ *
+ * Allocates a new SSH string of length `len` and copies the provided data
+ * into it. If len is 0, returns an empty SSH string. When len > 0, data
+ * must not be NULL.
+ *
+ * @param[in] data     Pointer to the data buffer to copy from. May be NULL
+ *                     only when len == 0.
+ * @param[in] len      Length of the data buffer to copy.
+ *
+ * @return             The newly allocated string, NULL on error.
+ */
+struct ssh_string_struct *ssh_string_from_data(const void *data, size_t len)
+{
+    struct ssh_string_struct *s = NULL;
+    int rc;
+
+    if (len > 0 && data == NULL) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    s = ssh_string_new(len);
+    if (s == NULL) {
+        return NULL;
+    }
+
+    if (len > 0) {
+        rc = ssh_string_fill(s, data, len);
+        if (rc != 0) {
+            ssh_string_free(s);
+            return NULL;
+        }
+    }
+
+    return s;
+}
+
+/**
  * @brief Return the size of a SSH string.
  *
  * @param[in] s         The input SSH string.

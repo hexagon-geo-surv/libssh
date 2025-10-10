@@ -55,6 +55,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TEST_RECURSIVE_INCLUDE "libssh_test_recursive_include.tmp"
 #define LIBSSH_TESTCONFIG_MATCH_COMPLEX "libssh_test_match_complex.tmp"
 #define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING "libssh_test_loglevel_missing.tmp"
+#define LIBSSH_TESTCONFIG_JUMP "libssh_test_jump.tmp"
 
 #define LIBSSH_TESTCONFIG_STRING1 \
     "User "USERNAME"\nInclude "LIBSSH_TESTCONFIG2"\n\n"
@@ -258,6 +259,24 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tHostName complex-match\n"
 
 #define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING_STRING "LogLevel\n"
+#define LIBSSH_TESTCONFIG_JUMP_STRING \
+    "# The jump host\n" \
+    "Host ub-jumphost\n" \
+    "    HostName 1xxxxxx\n" \
+    "    User ubuntu\n" \
+    "    IdentityFile ~/of/temp-libssh.pem\n" \
+    "    Port 23\n" \
+    "    LogLevel DEBUG3\n" \
+    "\n" \
+    "# Cisco Router through Jump Host\n" \
+    "Host cisco-router\n" \
+    "    HostName xx.xxxxxxxxx\n" \
+    "    User username\n" \
+    "    ProxyJump ub-jumphost\n" \
+    "    Port 5555\n" \
+    "    #RequiredRSASize 512\n" \
+    "    PasswordAuthentication yes\n" \
+    "    LogLevel DEBUG3\n"
 
 /**
  * @brief helper function loading configuration from either file or string
@@ -311,6 +330,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TEST_NONEWLINEONELINE);
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
     unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
+    unlink(LIBSSH_TESTCONFIG_JUMP);
 
     torture_write_file(LIBSSH_TESTCONFIG1,
                        LIBSSH_TESTCONFIG_STRING1);
@@ -383,6 +403,8 @@ static int setup_config_files(void **state)
                        LIBSSH_TESTCONFIG_MATCH_COMPLEX_STRING);
     torture_write_file(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING,
                        LIBSSH_TESTCONFIG_LOGLEVEL_MISSING_STRING);
+    torture_write_file(LIBSSH_TESTCONFIG_JUMP,
+                       LIBSSH_TESTCONFIG_JUMP_STRING);
 
     return 0;
 }
@@ -414,6 +436,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TEST_NONEWLINEONELINE);
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
     unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
+    unlink(LIBSSH_TESTCONFIG_JUMP);
 
     return 0;
 }
@@ -2731,6 +2754,101 @@ static void torture_config_loglevel_missing_value(void **state)
     _parse_config(session, LIBSSH_TESTCONFIG_LOGLEVEL_MISSING, NULL, SSH_OK);
 }
 
+static int before_connection(ssh_session jump_session, void *user)
+{
+    char *v = NULL;
+    int ret;
+
+    (void)user;
+
+    /* During the connection, we force parsing the same configuration file
+     * (would be normally parsed automatically during the connection itself)
+     */
+    ret = ssh_config_parse_file(jump_session, LIBSSH_TESTCONFIG_JUMP);
+    assert_return_code(ret, errno);
+
+    /* Test the variable presence */
+    ret = ssh_options_get(jump_session, SSH_OPTIONS_HOST, &v);
+    assert_return_code(ret, errno);
+    assert_string_equal(v, "1xxxxxx");
+    ssh_string_free_char(v);
+
+    ret = ssh_options_get(jump_session, SSH_OPTIONS_USER, &v);
+    assert_return_code(ret, errno);
+    assert_string_equal(v, "ubuntu");
+    ssh_string_free_char(v);
+
+    assert_int_equal(jump_session->opts.port, 23);
+
+    /* Fail the connection -- we are in unit tests so it would fail anyway */
+    return 1;
+}
+
+static int verify_knownhost(ssh_session jump_session, void *user)
+{
+    (void)jump_session;
+    (void)user;
+
+    return 0;
+}
+
+static int authenticate(ssh_session jump_session, void *user)
+{
+    (void)jump_session;
+    (void)user;
+
+    return 0;
+}
+/* Reproducer for complex proxy jump
+ */
+static void torture_config_jump(void **state)
+{
+    ssh_session session = *state;
+    struct ssh_jump_callbacks_struct c = {
+        .before_connection = before_connection,
+        .verify_knownhost = verify_knownhost,
+        .authenticate = authenticate,
+    };
+    char *v = NULL;
+    int ret;
+
+    ssh_options_set(session, SSH_OPTIONS_HOST, "cisco-router");
+
+    _parse_config(session, LIBSSH_TESTCONFIG_JUMP, NULL, SSH_OK);
+
+    /* Test the variable presence */
+    ret = ssh_options_get(session, SSH_OPTIONS_HOST, &v);
+    assert_return_code(ret, errno);
+    assert_string_equal(v, "xx.xxxxxxxxx");
+    ssh_string_free_char(v);
+
+    ret = ssh_options_get(session, SSH_OPTIONS_USER, &v);
+    assert_return_code(ret, errno);
+    assert_string_equal(v, "username");
+    ssh_string_free_char(v);
+
+    assert_int_equal(session->opts.port, 5555);
+
+    /* At this point, the configuration file is not parsed for the jump host so
+     * we are getting just the the hostname -- the port and username will get
+     * pulled during the session connecting to this host */
+    assert_int_equal(ssh_list_count(session->opts.proxy_jumps), 1);
+    helper_proxy_jump_check(session->opts.proxy_jumps->root,
+                            "ub-jumphost",
+                            NULL,
+                            NULL);
+
+    /* Set up the callbacks -- they should verify we are going to connect to the
+     * right host */
+    ret = ssh_options_set(session, SSH_OPTIONS_PROXYJUMP_CB_LIST_APPEND, &c);
+    assert_ssh_return_code(session, ret);
+
+    ret = ssh_connect(session);
+    assert_ssh_return_code_equal(session, ret, SSH_ERROR);
+
+    printf("%s: EOF\n", __func__);
+}
+
 int torture_run_tests(void)
 {
     int rc;
@@ -2880,6 +2998,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_loglevel_missing_value,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_jump,
                                         setup,
                                         teardown),
     };

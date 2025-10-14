@@ -1066,13 +1066,11 @@ ssh_config_parse_line(ssh_session session,
         }
         break;
     case SOC_USERNAME:
-      if (session->opts.username == NULL) {
-          p = ssh_config_get_str_tok(&s, NULL);
-          if (p && *parsing) {
+        p = ssh_config_get_str_tok(&s, NULL);
+        if (p && *parsing) {
             ssh_options_set(session, SSH_OPTIONS_USER, p);
-         }
-      }
-      break;
+        }
+        break;
     case SOC_IDENTITY:
       p = ssh_config_get_str_tok(&s, NULL);
       if (p && *parsing) {

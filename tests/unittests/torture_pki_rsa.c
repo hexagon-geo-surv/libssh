@@ -601,7 +601,13 @@ static void torture_pki_rsa_duplicate_key(void **state)
     SSH_STRING_FREE_CHAR(b64_key_gen);
 }
 
-static void torture_pki_rsa_generate_key(void **state)
+/**
+ * @brief Test RSA key generation using the deprecated ssh_pki_generate API.
+ *
+ * This test is kept for backward compatibility testing of the legacy API.
+ * For testing the new context-based API, see torture_pki_generate_key_rsa().
+ */
+static void torture_pki_generate_rsa_deprecated(void **state)
 {
     int rc;
     ssh_key key = NULL, pubkey = NULL;
@@ -770,6 +776,68 @@ static void torture_pki_rsa_key_size(void **state)
     pubkey = NULL;
 
     ssh_free(session);
+}
+
+/**
+ * @brief Test RSA key generation using the new context-based
+ * ssh_pki_generate_key API.
+ *
+ * This test validates the new ssh_pki_ctx-based key generation API with
+ * both positive and negative test cases.
+ *
+ * For testing the old/deprecated API, see torture_pki_generate_rsa().
+ */
+static void torture_pki_generate_key_rsa(void **state)
+{
+    int rc;
+    ssh_key key = NULL, pubkey = NULL;
+    ssh_pki_ctx ctx = NULL;
+    int desired = 4096;
+    int invalid_size = 512;
+
+    (void)state;
+
+    /* Test with NULL context - should use default size */
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, NULL, &key);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(key);
+    assert_int_equal(ssh_key_type(key), SSH_KEYTYPE_RSA);
+    assert_int_equal(ssh_key_size(key), RSA_DEFAULT_KEY_SIZE);
+    SSH_KEY_FREE(key);
+
+    /* Test with NULL key pointer - should fail */
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &desired);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Test with invalid RSA key size (too small) - should fail */
+    rc = ssh_pki_ctx_options_set(ctx,
+                                 SSH_PKI_OPTION_RSA_KEY_SIZE,
+                                 &invalid_size);
+    assert_int_equal(rc, SSH_ERROR);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &desired);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(key);
+
+    assert_int_equal(ssh_key_type(key), SSH_KEYTYPE_RSA);
+    assert_int_equal(ssh_key_size(key), desired);
+
+    rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(pubkey);
+
+    SSH_KEY_FREE(key);
+    SSH_KEY_FREE(pubkey);
+    SSH_PKI_CTX_FREE(ctx);
 }
 
 static int test_sign_verify_data(ssh_key key,
@@ -1136,8 +1204,9 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_pki_rsa_duplicate_key,
                                         setup_rsa_key,
                                         teardown),
-        cmocka_unit_test(torture_pki_rsa_generate_key),
+        cmocka_unit_test(torture_pki_generate_rsa_deprecated),
         cmocka_unit_test(torture_pki_rsa_key_size),
+        cmocka_unit_test(torture_pki_generate_key_rsa),
         cmocka_unit_test_setup_teardown(torture_pki_rsa_write_privkey,
                                         setup_rsa_key,
                                         teardown),

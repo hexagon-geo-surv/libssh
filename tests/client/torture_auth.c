@@ -34,6 +34,10 @@
 
 #include "torture_auth_common.c"
 
+#ifdef WITH_FIDO2
+#include "torture_sk.h"
+#endif
+
 static int sshd_setup(void **state)
 {
     torture_setup_sshd_server(state, true);
@@ -1094,6 +1098,123 @@ static void torture_auth_pubkey_types_ed25519_nonblocking(void **state)
     SSH_KEY_FREE(privkey);
 }
 
+#ifdef WITH_FIDO2
+
+static void torture_auth_pubkey_types_sk_key(void **state,
+                                             enum ssh_keytypes_e key_type)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    const char *privkey_file_name = NULL;
+    const char *key_type_str = NULL;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    struct passwd *pwd = NULL;
+    const struct ssh_sk_callbacks_struct *sk_dummy_callbacks = NULL;
+    ssh_pki_ctx pki_context = NULL;
+    int rc;
+
+    /* Conditions to skip the test */
+    sk_dummy_callbacks = torture_get_sk_dummy_callbacks();
+    if (sk_dummy_callbacks == NULL) {
+        skip();
+    }
+
+    if (key_type == SSH_KEYTYPE_SK_ED25519 && ssh_fips_mode()) {
+        skip();
+    }
+
+    /* Key type specific setup */
+    switch (key_type) {
+    case SSH_KEYTYPE_SK_ECDSA:
+        privkey_file_name = "id_ecdsa_sk";
+        key_type_str = "sk-ecdsa-sha2-nistp256@openssh.com";
+        break;
+
+    case SSH_KEYTYPE_SK_ED25519:
+        privkey_file_name = "id_ed25519_sk";
+        key_type_str = "sk-ssh-ed25519@openssh.com";
+        break;
+
+    default:
+        /* should never reach here */
+        assert_true(0);
+    }
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key,
+             sizeof(bob_ssh_key),
+             "%s/.ssh/%s",
+             pwd->pw_dir,
+             privkey_file_name);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_ssh_return_code(session, rc);
+
+    pki_context = ssh_pki_ctx_new();
+    assert_non_null(pki_context);
+
+    rc = ssh_pki_ctx_options_set(pki_context,
+                                 SSH_PKI_OPTION_SK_CALLBACKS,
+                                 sk_dummy_callbacks);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PKI_CONTEXT, pki_context);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_userauth_none(session, NULL);
+
+    /* This request should return a SSH_REQUEST_DENIED error */
+    if (rc == SSH_ERROR) {
+        assert_int_equal(ssh_get_error_code(session), SSH_REQUEST_DENIED);
+    }
+
+    rc = ssh_userauth_list(session, NULL);
+    assert_true(rc & SSH_AUTH_METHOD_PUBLICKEY);
+
+    /* Import the private key */
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    /* Enable only RSA keys -- authentication should fail */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES,
+                         "ssh-rsa");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_userauth_publickey(session, NULL, privkey);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Verify we can use the SK key */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PUBLICKEY_ACCEPTED_TYPES,
+                         key_type_str);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_userauth_publickey(session, NULL, privkey);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    SSH_KEY_FREE(privkey);
+    SSH_PKI_CTX_FREE(pki_context);
+}
+
+static void torture_auth_pubkey_types_sk_ecdsa(void **state)
+{
+    torture_auth_pubkey_types_sk_key(state, SSH_KEYTYPE_SK_ECDSA);
+}
+
+static void torture_auth_pubkey_types_sk_ed25519(void **state)
+{
+    torture_auth_pubkey_types_sk_key(state, SSH_KEYTYPE_SK_ED25519);
+}
+
+#endif /* WITH_FIDO2 */
+
 static void torture_auth_pubkey_rsa_key_size(void **state)
 {
     struct torture_state *s = *state;
@@ -1324,6 +1445,14 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_auth_pubkey_types_ed25519_nonblocking,
                                         pubkey_setup,
                                         session_teardown),
+#ifdef WITH_FIDO2
+        cmocka_unit_test_setup_teardown(torture_auth_pubkey_types_sk_ecdsa,
+                                        pubkey_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_pubkey_types_sk_ed25519,
+                                        pubkey_setup,
+                                        session_teardown),
+#endif /* WITH_FIDO2 */
         cmocka_unit_test_setup_teardown(torture_auth_pubkey_rsa_key_size,
                                         pubkey_setup,
                                         session_teardown),

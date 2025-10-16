@@ -1718,6 +1718,7 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
             break;
         case 'v':
             debuglevel++;
+            ssh_set_log_level(debuglevel);
             break;
         case 'r':
             break;
@@ -1782,8 +1783,6 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
         current++;
         optind++;
     }
-
-    ssh_set_log_level(debuglevel);
 
     optind = saveoptind;
 

@@ -406,7 +406,7 @@ static void evp_cipher_init(struct ssh_cipher_struct *cipher)
     if (cipher->ctx == NULL) {
         cipher->ctx = EVP_CIPHER_CTX_new();
     } else {
-        EVP_CIPHER_CTX_init(cipher->ctx);
+        EVP_CIPHER_CTX_reset(cipher->ctx);
     }
 
     switch(cipher->ciphertype){

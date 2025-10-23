@@ -112,6 +112,13 @@ if (UNIX AND NOT WIN32)
     endif (WITH_SERVER)
 endif (UNIX AND NOT WIN32)
 
+if (HAVE_LIBFIDO2)
+    set(LIBSSH_UNIT_TESTS
+        ${LIBSSH_UNIT_TESTS}
+        torture_sk_usbhid
+    )
+endif (HAVE_LIBFIDO2)
+
 foreach(_UNIT_TEST ${LIBSSH_UNIT_TESTS})
     add_cmocka_test(${_UNIT_TEST}
                     SOURCES ${_UNIT_TEST}.c

@@ -23,6 +23,7 @@
 
 #include "torture_sk.h"
 #include "libssh/pki.h"
+#include "libssh/pki_priv.h"
 #include "libssh/sk_api.h" /* For SSH_SK_* flag definitions */
 
 void assert_sk_key_valid(ssh_key key,
@@ -98,6 +99,150 @@ void assert_sk_key_valid(ssh_key key,
         assert_true(0);
         break;
     }
+}
+
+void assert_sk_signature_valid(ssh_signature signature,
+                               enum ssh_keytypes_e expected_type,
+                               ssh_key signing_key,
+                               const uint8_t *data,
+                               size_t data_len)
+{
+    uint8_t valid_flags;
+    const char *expected_type_str = NULL;
+    ssh_string sig_blob = NULL;
+    ssh_signature reconstructed = NULL;
+    ssh_buffer sk_sig_buffer = NULL;
+    int rc;
+
+    /* Basic null and type validation */
+    assert_non_null(signature);
+    assert_int_equal(signature->type, expected_type);
+
+    /* Validate hash type is appropriate for security keys */
+    switch (expected_type) {
+    case SSH_KEYTYPE_SK_ECDSA:
+        assert_int_equal(signature->hash_type, SSH_DIGEST_SHA256);
+        break;
+    case SSH_KEYTYPE_SK_ED25519:
+        assert_int_equal(signature->hash_type, SSH_DIGEST_AUTO);
+        break;
+    default:
+        /* Should not reach here */
+        assert_true(0);
+        break;
+    }
+
+    expected_type_str = ssh_key_type_to_char(expected_type);
+    assert_non_null(signature->type_c);
+    assert_string_equal(signature->type_c, expected_type_str);
+
+    /* Check that only valid SK flags are set */
+    valid_flags = SSH_SK_USER_PRESENCE_REQD | SSH_SK_USER_VERIFICATION_REQD;
+    assert_int_equal(signature->sk_flags & ~valid_flags, 0);
+
+    assert_true(signature->sk_flags & SSH_SK_USER_PRESENCE_REQD);
+    assert_true(signature->sk_counter > 0);
+
+    assert_non_null(signature->raw_sig);
+    assert_true(ssh_string_len(signature->raw_sig) > 0);
+
+    rc = ssh_pki_export_signature_blob(signature, &sig_blob);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(sig_blob);
+
+    assert_non_null(signing_key);
+    rc = ssh_pki_import_signature_blob(sig_blob, signing_key, &reconstructed);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(reconstructed);
+
+    rc = pki_sk_signature_buffer_prepare(signing_key,
+                                         reconstructed,
+                                         data,
+                                         data_len,
+                                         &sk_sig_buffer);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(sk_sig_buffer);
+
+    rc = pki_verify_data_signature(reconstructed,
+                                   signing_key,
+                                   ssh_buffer_get(sk_sig_buffer),
+                                   ssh_buffer_get_len(sk_sig_buffer));
+    assert_int_equal(rc, SSH_OK);
+
+    SSH_BUFFER_FREE(sk_sig_buffer);
+
+    ssh_signature_free(reconstructed);
+    ssh_string_free(sig_blob);
+}
+
+ssh_pki_ctx
+torture_create_sk_pki_ctx(const char *application,
+                          uint8_t flags,
+                          const void *challenge_data,
+                          size_t challenge_len,
+                          ssh_auth_callback pin_callback,
+                          const char *device_path,
+                          const char *user_id,
+                          const struct ssh_sk_callbacks_struct *sk_callbacks)
+{
+    ssh_pki_ctx ctx = NULL;
+    ssh_buffer challenge_buffer = NULL;
+    int rc;
+
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
+    rc = ssh_pki_ctx_options_set(ctx,
+                                 SSH_PKI_OPTION_SK_APPLICATION,
+                                 application);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_SK_FLAGS, &flags);
+    assert_int_equal(rc, SSH_OK);
+
+    if (challenge_data != NULL && challenge_len > 0) {
+        challenge_buffer = ssh_buffer_new();
+        assert_non_null(challenge_buffer);
+
+        rc = ssh_buffer_add_data(challenge_buffer,
+                                 challenge_data,
+                                 challenge_len);
+        assert_int_equal(rc, SSH_OK);
+    }
+
+    rc = ssh_pki_ctx_options_set(ctx,
+                                 SSH_PKI_OPTION_SK_CHALLENGE,
+                                 challenge_buffer);
+    assert_int_equal(rc, SSH_OK);
+
+    SSH_BUFFER_FREE(challenge_buffer);
+
+    rc = ssh_pki_ctx_set_sk_pin_callback(ctx, pin_callback, NULL);
+    assert_int_equal(rc, SSH_OK);
+
+    if (device_path != NULL) {
+        rc = ssh_pki_ctx_sk_callbacks_option_set(ctx,
+                                                 SSH_SK_OPTION_NAME_DEVICE_PATH,
+                                                 device_path,
+                                                 false);
+        assert_int_equal(rc, SSH_OK);
+    }
+    if (user_id != NULL) {
+        rc = ssh_pki_ctx_sk_callbacks_option_set(ctx,
+                                                 SSH_SK_OPTION_NAME_USER_ID,
+                                                 user_id,
+                                                 false);
+        assert_int_equal(rc, SSH_OK);
+    }
+
+    if (sk_callbacks != NULL) {
+        rc = ssh_pki_ctx_options_set(ctx,
+                                     SSH_PKI_OPTION_SK_CALLBACKS,
+                                     sk_callbacks);
+        assert_int_equal(rc, SSH_OK);
+    }
+
+    return ctx;
 }
 
 void assert_sk_enroll_response(struct sk_enroll_response *response, int flags)

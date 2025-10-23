@@ -28,9 +28,10 @@
 
 #define LIBSSH_STATIC
 
-#include "torture.h"
-
 #include "libssh/callbacks.h"
+#include "libssh/pki.h"
+#include "torture.h"
+#include "torture_pki.h"
 
 /**
  * @brief Validate a security key (ssh_key) structure
@@ -45,6 +46,51 @@
 void assert_sk_key_valid(ssh_key key,
                          enum ssh_keytypes_e expected_type,
                          bool private);
+
+/**
+ * @brief Validate a security key signature structure
+ *
+ * Checks that the signature is not NULL, matches the expected key type, and
+ * other internal fields. Also verifies that the signature was produced by the
+ * given signing key.
+ *
+ * @param[in] signature     The signature to validate
+ * @param[in] expected_type The expected key type (e.g., SSH_KEYTYPE_SK_ECDSA)
+ * @param[in] signing_key   The key that should have produced the signature
+ * @param[in] data          The signed data buffer
+ * @param[in] data_len      Length of the signed data
+ */
+void assert_sk_signature_valid(ssh_signature signature,
+                               enum ssh_keytypes_e expected_type,
+                               ssh_key signing_key,
+                               const uint8_t *data,
+                               size_t data_len);
+
+/**
+ * @brief Create and initialize a PKI context configured for security key
+ * operations.
+ *
+ * Parameters:
+ * @param[in] application    Application string
+ * @param[in] flags          SK flags
+ * @param[in] challenge_data Optional challenge bytes (may be NULL)
+ * @param[in] challenge_len  Length of challenge_data
+ * @param[in] pin_callback   Callback used to obtain the PIN (may be NULL)
+ * @param[in] device_path    Optional device path (may be NULL)
+ * @param[in] user_id        Optional user_id string (may be NULL)
+ * @param[in] sk_callbacks   Pointer to SK callbacks (may be NULL)
+ *
+ * @return A configured ssh_pki_ctx on success, or NULL on allocation failure.
+ */
+ssh_pki_ctx
+torture_create_sk_pki_ctx(const char *application,
+                          uint8_t flags,
+                          const void *challenge_data,
+                          size_t challenge_len,
+                          ssh_auth_callback pin_callback,
+                          const char *device_path,
+                          const char *user_id,
+                          const struct ssh_sk_callbacks_struct *sk_callbacks);
 
 /**
  * @brief Validate a security key enrollment response structure

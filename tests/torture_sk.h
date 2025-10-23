@@ -28,14 +28,56 @@
 
 #define LIBSSH_STATIC
 
-#include <stdbool.h>
-
 #include "torture.h"
-#include "torture_pki.h"
 
+/**
+ * @brief Validate a security key (ssh_key) structure
+ *
+ * Checks that the provided key is not NULL, matches the expected key type,
+ * and other internal fields.
+ *
+ * @param[in] key           The key to validate
+ * @param[in] expected_type The expected key type (e.g., SSH_KEYTYPE_SK_ECDSA)
+ * @param[in] private       true if key should be private, false for public
+ */
 void assert_sk_key_valid(ssh_key key,
                          enum ssh_keytypes_e expected_type,
                          bool private);
+
+/**
+ * @brief Validate a security key enrollment response structure
+ *
+ * Validates that an sk_enroll_response contains valid data from a FIDO2
+ * enrollment operation, including public key, key handle, signature,
+ * attestation certificate, and authenticator data.
+ *
+ * @param[in] response The enrollment response to validate
+ * @param[in] flags    The expected flags that should match the response flags
+ */
+void assert_sk_enroll_response(struct sk_enroll_response *response, int flags);
+
+/**
+ * @brief Validate a security key sign response structure
+ *
+ * Validates that an sk_sign_response contains valid signature data from
+ * a FIDO2 sign operation.
+ *
+ * @param[in] response The sign response to validate
+ * @param[in] key_type The key type (e.g., SSH_SK_ECDSA, SSH_SK_ED25519)
+ */
+void assert_sk_sign_response(struct sk_sign_response *response,
+                             enum ssh_keytypes_e key_type);
+
+/**
+ * @brief Validate a security key resident key structure
+ *
+ * Validates that an sk_resident_key contains valid data including application
+ * identifier, user ID, public key, and key handle.
+ *
+ * @param[in] resident_key The resident key to validate
+ */
+void assert_sk_resident_key(struct sk_resident_key *resident_key);
+
 /**
  * @brief Get security key PIN from environment variable
  *

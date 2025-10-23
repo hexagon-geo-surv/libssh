@@ -25,7 +25,6 @@
 #include "libssh/pki.h"
 #include "libssh/sk_api.h" /* For SSH_SK_* flag definitions */
 
-/* Helper function to validate ssh_key structure for security keys */
 void assert_sk_key_valid(ssh_key key,
                          enum ssh_keytypes_e expected_type,
                          bool private)
@@ -99,6 +98,75 @@ void assert_sk_key_valid(ssh_key key,
         assert_true(0);
         break;
     }
+}
+
+void assert_sk_enroll_response(struct sk_enroll_response *response, int flags)
+{
+    assert_non_null(response);
+
+    assert_non_null(response->public_key);
+    assert_true(response->public_key_len > 0);
+
+    assert_non_null(response->key_handle);
+    assert_true(response->key_handle_len > 0);
+
+    assert_non_null(response->signature);
+    assert_true(response->signature_len > 0);
+
+    /*
+     * This check might fail for some authenticators, as returning an
+     * attestation certificate as part of the attestation statement is not
+     * mandated by the FIDO2 standard.
+     */
+    assert_non_null(response->attestation_cert);
+    assert_true(response->attestation_cert_len > 0);
+
+    assert_non_null(response->authdata);
+    assert_true(response->authdata_len > 0);
+
+    assert_int_equal(response->flags, flags);
+}
+
+void assert_sk_sign_response(struct sk_sign_response *response,
+                             enum ssh_keytypes_e key_type)
+{
+    assert_non_null(response);
+
+    assert_non_null(response->sig_r);
+    assert_true(response->sig_r_len > 0);
+
+    /* sig_s is NULL for Ed25519, present for ECDSA */
+    switch (key_type) {
+    case SSH_SK_ECDSA:
+        assert_non_null(response->sig_s);
+        assert_true(response->sig_s_len > 0);
+        break;
+    case SSH_SK_ED25519:
+        assert_null(response->sig_s);
+        assert_int_equal(response->sig_s_len, 0);
+        break;
+    default:
+        /* Should not reach here */
+        assert_true(0);
+        break;
+    }
+}
+
+void assert_sk_resident_key(struct sk_resident_key *resident_key)
+{
+    assert_non_null(resident_key);
+
+    assert_non_null(resident_key->application);
+    assert_true(strlen(resident_key->application) > 0);
+
+    assert_non_null(resident_key->user_id);
+    assert_true(resident_key->user_id_len > 0);
+
+    assert_non_null(resident_key->key.public_key);
+    assert_true(resident_key->key.public_key_len > 0);
+
+    assert_non_null(resident_key->key.key_handle);
+    assert_true(resident_key->key.key_handle_len > 0);
 }
 
 const char *torture_get_sk_pin(void)

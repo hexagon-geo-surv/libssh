@@ -88,6 +88,13 @@ if (UNIX AND NOT WIN32)
         endif()
     endif()
 
+    if (WITH_FIDO2)
+        set(LIBSSH_UNIT_TESTS
+            ${LIBSSH_UNIT_TESTS}
+            torture_pki_sk
+        )
+    endif (WITH_FIDO2)
+
     if (HAVE_ECC)
         set(LIBSSH_UNIT_TESTS
             ${LIBSSH_UNIT_TESTS}

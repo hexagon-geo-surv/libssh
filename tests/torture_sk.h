@@ -30,6 +30,8 @@
 
 #include "torture.h"
 
+#include "libssh/callbacks.h"
+
 /**
  * @brief Validate a security key (ssh_key) structure
  *
@@ -86,5 +88,34 @@ void assert_sk_resident_key(struct sk_resident_key *resident_key);
  * @return Pointer to PIN string if set and non-empty, NULL otherwise
  */
 const char *torture_get_sk_pin(void);
+
+/**
+ * @brief Get dummy security key callbacks for testing
+ *
+ * Returns dummy security key callbacks from openssh's sk-dummy
+ * if available, or NULL if not.
+ *
+ * @return Pointer to ssh_sk_callbacks_struct or NULL if unavailable.
+ *
+ */
+const struct ssh_sk_callbacks_struct *torture_get_sk_dummy_callbacks(void);
+
+/**
+ * @brief Get security key callbacks for testing
+ *
+ * Returns the default sk callbacks if TORTURE_SK_USBHID is set,
+ * otherwise returns dummy callbacks from openssh sk-dummy, or NULL if
+ * unavailable.
+ *
+ * @return Pointer to ssh_sk_callbacks_struct or NULL if unavailable
+ */
+const struct ssh_sk_callbacks_struct *torture_get_sk_callbacks(void);
+
+/**
+ * @brief Check if using sk-dummy callbacks for testing
+ *
+ * @return true if using sk-dummy callbacks, false otherwise
+ */
+bool torture_sk_is_using_sk_dummy(void);
 
 #endif /* _TORTURE_SK_H */

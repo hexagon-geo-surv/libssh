@@ -174,3 +174,77 @@ const char *torture_get_sk_pin(void)
     const char *pin = getenv("TORTURE_SK_PIN");
     return (pin != NULL && pin[0] != '\0') ? pin : NULL;
 }
+
+#ifdef HAVE_SK_DUMMY
+
+/* External declarations for sk-dummy library functions
+ * These match the signatures in openssh sk-api.h */
+extern uint32_t sk_api_version(void);
+
+extern int sk_enroll(uint32_t alg,
+                     const uint8_t *challenge,
+                     size_t challenge_len,
+                     const char *application,
+                     uint8_t flags,
+                     const char *pin,
+                     struct sk_option **options,
+                     struct sk_enroll_response **enroll_response);
+
+extern int sk_sign(uint32_t alg,
+                   const uint8_t *data,
+                   size_t data_len,
+                   const char *application,
+                   const uint8_t *key_handle,
+                   size_t key_handle_len,
+                   uint8_t flags,
+                   const char *pin,
+                   struct sk_option **options,
+                   struct sk_sign_response **sign_response);
+
+extern int sk_load_resident_keys(const char *pin,
+                                 struct sk_option **options,
+                                 struct sk_resident_key ***resident_keys,
+                                 size_t *num_keys_found);
+
+static struct ssh_sk_callbacks_struct sk_dummy_callbacks = {
+    .api_version = sk_api_version,
+    .enroll = sk_enroll,
+    .sign = sk_sign,
+    .load_resident_keys = sk_load_resident_keys,
+};
+
+#endif /* HAVE_SK_DUMMY */
+
+#ifdef WITH_FIDO2
+
+const struct ssh_sk_callbacks_struct *torture_get_sk_dummy_callbacks(void)
+{
+#ifdef HAVE_SK_DUMMY
+    ssh_callbacks_init(&sk_dummy_callbacks);
+    return &sk_dummy_callbacks;
+#else
+    return NULL;
+#endif /* HAVE_SK_DUMMY */
+}
+
+const struct ssh_sk_callbacks_struct *torture_get_sk_callbacks(void)
+{
+    const char *env = getenv("TORTURE_SK_USBHID");
+    bool torture_sk_usbhid = (env != NULL && env[0] != '\0');
+
+    if (torture_sk_usbhid) {
+        return ssh_sk_get_default_callbacks();
+    } else {
+        return torture_get_sk_dummy_callbacks();
+    }
+}
+
+#endif /* WITH_FIDO2 */
+
+bool torture_sk_is_using_sk_dummy(void)
+{
+    const char *env = getenv("TORTURE_SK_USBHID");
+    /* Return true if using sk-dummy callbacks (when TORTURE_SK_USBHID is NOT
+     * set) */
+    return (env == NULL || env[0] == '\0');
+}

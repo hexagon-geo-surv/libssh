@@ -735,6 +735,49 @@ ssh_match_localnetwork(const char *addrlist, bool negate)
 }
 #endif /* HAVE_IFADDRS_H */
 
+
+
+static enum ssh_options_e
+ssh_config_get_auth_option(enum ssh_config_opcode_e opcode)
+{
+    struct auth_option_map {
+        enum ssh_config_opcode_e opcode;
+        const char *name;
+        enum ssh_options_e option;
+    };
+
+    static struct auth_option_map auth_options[] = {
+        {
+            SOC_GSSAPIAUTHENTICATION,
+            "GSSAPIAuthentication",
+            SSH_OPTIONS_GSSAPI_AUTH,
+        },
+        {
+            SOC_KBDINTERACTIVEAUTHENTICATION,
+            "KbdInteractiveAuthentication",
+            SSH_OPTIONS_KBDINT_AUTH,
+        },
+        {
+            SOC_PASSWORDAUTHENTICATION,
+            "PasswordAuthentication",
+            SSH_OPTIONS_PASSWORD_AUTH,
+        },
+        {
+            SOC_PUBKEYAUTHENTICATION,
+            "PubkeyAuthentication",
+            SSH_OPTIONS_PUBKEY_AUTH,
+        },
+        {0, NULL, 0},
+    };
+
+    for (struct auth_option_map *map = auth_options; map->name != NULL; map++) {
+        if (map->opcode == opcode) {
+            return map->option;
+        }
+    }
+    return -1;
+}
+
 static int
 ssh_config_parse_line(ssh_session session,
                       const char *line,
@@ -1355,28 +1398,15 @@ ssh_config_parse_line(ssh_session session,
     case SOC_GSSAPIAUTHENTICATION:
     case SOC_KBDINTERACTIVEAUTHENTICATION:
     case SOC_PASSWORDAUTHENTICATION:
-    case SOC_PUBKEYAUTHENTICATION:
+    case SOC_PUBKEYAUTHENTICATION: {
+        enum ssh_options_e option = ssh_config_get_auth_option(opcode);
         i = ssh_config_get_yesno(&s, 0);
-        if (i>=0 && *parsing) {
-            switch(opcode){
-            case SOC_GSSAPIAUTHENTICATION:
-                ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &i);
-                break;
-            case SOC_KBDINTERACTIVEAUTHENTICATION:
-                ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &i);
-                break;
-            case SOC_PASSWORDAUTHENTICATION:
-                ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &i);
-                break;
-            case SOC_PUBKEYAUTHENTICATION:
-                ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &i);
-                break;
-            /* make gcc happy */
-            default:
-                break;
-            }
+
+        if (i >= 0 && *parsing) {
+            ssh_options_set(session, option, &i);
         }
         break;
+    }
     case SOC_NA:
       SSH_LOG(SSH_LOG_TRACE, "Unapplicable option: %s, line: %d",
               keyword, count);

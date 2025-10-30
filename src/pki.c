@@ -3415,9 +3415,15 @@ cleanup:
  * @param data            The data to sign
  * @param data_length     The length of the data
  * @param privkey         The private key to sign with
+ * @param pki_context     The PKI context. For non-SK keys, this parameter is
+ *                        ignored and can be NULL. For SK keys, can be NULL in
+ *                        which case a default context with default callbacks
+ *                        will be used. If provided, the context must have
+ *                        sk_callbacks set with a valid sign callback
+ *                        implementation. See ssh_pki_ctx_set_sk_callbacks().
+ * @param sig_namespace   The signature namespace (e.g. "file", "email", etc.)
  * @param hash_alg        The hash algorithm to use (SSHSIG_DIGEST_SHA2_256 or
  *                        SSHSIG_DIGEST_SHA2_512)
- * @param sig_namespace   The signature namespace (e.g. "file", "email", etc.)
  * @param signature       Pointer to store the allocated signature string in the
  *                        armored format. Must be freed with
  *                        ssh_string_free_char()
@@ -3427,6 +3433,7 @@ cleanup:
 int sshsig_sign(const void *data,
                 size_t data_length,
                 ssh_key privkey,
+                ssh_pki_ctx pki_context,
                 const char *sig_namespace,
                 enum sshsig_digest_e hash_alg,
                 char **signature)
@@ -3436,6 +3443,8 @@ int sshsig_sign(const void *data,
     ssh_signature sig = NULL;
     ssh_string sig_string = NULL;
     ssh_string pub_blob = NULL;
+    ssh_pki_ctx temp_ctx = NULL;
+    ssh_pki_ctx ctx_to_use = NULL;
     enum ssh_digest_e digest_type;
     const char *hash_alg_str = NULL;
     int rc = SSH_ERROR;
@@ -3451,6 +3460,31 @@ int sshsig_sign(const void *data,
                 "Invalid parameters provided to sshsig_sign: empty namespace "
                 "string");
         return SSH_ERROR;
+    }
+
+    /* Check if this is an SK key that requires a PKI context */
+    if (is_sk_key_type(privkey->type)) {
+        /* If no context provided, create a temporary default one */
+        if (pki_context == NULL) {
+            SSH_LOG(SSH_LOG_INFO,
+                    "No PKI context provided, using the default one");
+
+            temp_ctx = ssh_pki_ctx_new();
+            if (temp_ctx == NULL) {
+                SSH_LOG(SSH_LOG_WARN, "Failed to create temporary PKI context");
+                return SSH_ERROR;
+            }
+            ctx_to_use = temp_ctx;
+        } else {
+            ctx_to_use = pki_context;
+        }
+
+        /* Verify that we have valid SK callbacks */
+        if (ctx_to_use->sk_callbacks == NULL) {
+            SSH_LOG(SSH_LOG_WARN,
+                    "Security Key callbacks not configured in PKI context");
+            goto cleanup;
+        }
     }
 
     *signature = NULL;
@@ -3474,11 +3508,24 @@ int sshsig_sign(const void *data,
         goto cleanup;
     }
 
-    digest_type = key_type_to_hash(ssh_key_type_plain(privkey->type));
-    sig = pki_sign_data(privkey,
-                        digest_type,
-                        ssh_buffer_get(tosign),
-                        ssh_buffer_get_len(tosign));
+    /* Use appropriate signing method based on key type */
+    if (is_sk_key_type(privkey->type)) {
+#ifdef WITH_FIDO2
+        sig = pki_sk_do_sign(ctx_to_use,
+                             privkey,
+                             ssh_buffer_get(tosign),
+                             ssh_buffer_get_len(tosign));
+#else
+        SSH_LOG(SSH_LOG_WARN, SK_NOT_SUPPORTED_MSG);
+        goto cleanup;
+#endif
+    } else {
+        digest_type = key_type_to_hash(ssh_key_type_plain(privkey->type));
+        sig = pki_sign_data(privkey,
+                            digest_type,
+                            ssh_buffer_get(tosign),
+                            ssh_buffer_get_len(tosign));
+    }
     if (sig == NULL) {
         SSH_LOG(SSH_LOG_TRACE, "Failed to sign data with private key");
         goto cleanup;
@@ -3529,6 +3576,11 @@ cleanup:
     SSH_SIGNATURE_FREE(sig);
     SSH_STRING_FREE(sig_string);
     SSH_STRING_FREE(pub_blob);
+
+    /* Clean up temporary context if we created one */
+    if (temp_ctx != NULL) {
+        SSH_PKI_CTX_FREE(temp_ctx);
+    }
 
     return rc;
 }
@@ -3665,10 +3717,29 @@ int sshsig_verify(const void *data,
         goto cleanup;
     }
 
-    rc = pki_verify_data_signature(signature_obj,
-                                   key,
-                                   ssh_buffer_get(tosign),
-                                   ssh_buffer_get_len(tosign));
+    if (is_sk_key_type(key->type)) {
+        ssh_buffer sk_buffer = NULL;
+        rc = pki_sk_signature_buffer_prepare(key,
+                                             signature_obj,
+                                             ssh_buffer_get(tosign),
+                                             ssh_buffer_get_len(tosign),
+                                             &sk_buffer);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_TRACE, "Failed to prepare sk signature buffer");
+            goto cleanup;
+        }
+
+        rc = pki_verify_data_signature(signature_obj,
+                                       key,
+                                       ssh_buffer_get(sk_buffer),
+                                       ssh_buffer_get_len(sk_buffer));
+        SSH_BUFFER_FREE(sk_buffer);
+    } else {
+        rc = pki_verify_data_signature(signature_obj,
+                                       key,
+                                       ssh_buffer_get(tosign),
+                                       ssh_buffer_get_len(tosign));
+    }
     if (rc != SSH_OK) {
         SSH_LOG(SSH_LOG_TRACE, "Signature verification failed");
         goto cleanup;

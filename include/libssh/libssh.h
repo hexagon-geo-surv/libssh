@@ -912,6 +912,7 @@ enum sshsig_digest_e {
 LIBSSH_API int sshsig_sign(const void *data,
                            size_t data_length,
                            ssh_key privkey,
+                           ssh_pki_ctx pki_context,
                            const char *sig_namespace,
                            enum sshsig_digest_e hash_alg,
                            char **signature);

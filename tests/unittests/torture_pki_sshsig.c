@@ -8,9 +8,24 @@
 #include "torture_key.h"
 #include "torture_pki.h"
 
+#ifdef WITH_FIDO2
+#include "libssh/libssh.h"
+#include "torture_sk.h"
+#endif
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+
+/**
+ * The tests for the sk-type keys can also be configured to run with
+ * the sk-usbhid callbacks instead of the default sk-dummy callbacks which can
+ * run in a CI environment.
+ *
+ * To run these tests with the sk-usbhid callbacks, at least one FIDO2 device
+ * must be connected and the environment variables TORTURE_SK_USBHID must be
+ * set.
+ */
 
 static const char template[] = "tmp_XXXXXX";
 static const char input[] = "Test input\0string with null byte";
@@ -38,6 +53,13 @@ struct sshsig_st {
     ssh_key rsa_key;
     ssh_key ed25519_key;
     ssh_key ecdsa_key;
+
+#ifdef WITH_FIDO2
+    ssh_pki_ctx pki_ctx;
+    ssh_key sk_ecdsa_key;
+    ssh_key sk_ed25519_key;
+#endif
+
     const char *ssh_keygen_path;
     const struct key_hash_combo *test_combinations;
     size_t num_combinations;
@@ -51,6 +73,15 @@ static struct key_hash_combo test_combinations[] = {
 #ifdef HAVE_ECC
     {SSH_KEYTYPE_ECDSA_P256, SSHSIG_DIGEST_SHA2_256, "ecdsa"},
     {SSH_KEYTYPE_ECDSA_P256, SSHSIG_DIGEST_SHA2_512, "ecdsa"},
+# ifdef WITH_FIDO2
+    {SSH_KEYTYPE_SK_ECDSA, SSHSIG_DIGEST_SHA2_256, "sk_ecdsa"},
+    {SSH_KEYTYPE_SK_ECDSA, SSHSIG_DIGEST_SHA2_512, "sk_ecdsa"},
+# endif /* WITH_FIDO2 */
+#endif /* HAVE_ECC */
+
+#ifdef WITH_FIDO2
+    {SSH_KEYTYPE_SK_ED25519, SSHSIG_DIGEST_SHA2_256, "sk_ed25519"},
+    {SSH_KEYTYPE_SK_ED25519, SSHSIG_DIGEST_SHA2_512, "sk_ed25519"},
 #endif
 };
 
@@ -69,6 +100,19 @@ static ssh_key get_test_key(struct sshsig_st *test_state,
 #ifdef HAVE_ECC
     case SSH_KEYTYPE_ECDSA_P256:
         return test_state->ecdsa_key;
+# ifdef WITH_FIDO2
+    case SSH_KEYTYPE_SK_ECDSA:
+        return test_state->sk_ecdsa_key;
+# endif /* WITH_FIDO2 */
+#endif /* HAVE_ECC */
+
+#ifdef WITH_FIDO2
+    case SSH_KEYTYPE_SK_ED25519:
+        if (ssh_fips_mode()) {
+            return NULL;
+        } else {
+            return test_state->sk_ed25519_key;
+        }
 #endif
     default:
         return NULL;
@@ -81,6 +125,10 @@ static int setup_sshsig_compat(void **state)
     char *original_cwd = NULL;
     char *temp_dir = NULL;
     int rc = 0;
+
+#ifdef WITH_FIDO2
+    const struct ssh_sk_callbacks_struct *sk_callbacks = NULL;
+#endif
 
     test_state = calloc(1, sizeof(struct sshsig_st));
     assert_non_null(test_state);
@@ -142,6 +190,35 @@ static int setup_sshsig_compat(void **state)
     assert_int_equal(rc, SSH_OK);
 #endif
 
+#ifdef WITH_FIDO2
+    /* Create and configure PKI context for SK operations */
+    sk_callbacks = torture_get_sk_callbacks();
+    if (sk_callbacks != NULL) {
+        test_state->pki_ctx = ssh_pki_ctx_new();
+        assert_non_null(test_state->pki_ctx);
+
+        rc = ssh_pki_ctx_options_set(test_state->pki_ctx,
+                                     SSH_PKI_OPTION_SK_CALLBACKS,
+                                     sk_callbacks);
+        assert_int_equal(rc, SSH_OK);
+
+# ifdef HAVE_ECC
+        rc = ssh_pki_generate_key(SSH_KEYTYPE_SK_ECDSA,
+                                  test_state->pki_ctx,
+                                  &test_state->sk_ecdsa_key);
+        assert_int_equal(rc, SSH_OK);
+# endif /* HAVE_ECC */
+
+        if (!ssh_fips_mode()) {
+            rc = ssh_pki_generate_key(SSH_KEYTYPE_SK_ED25519,
+                                      test_state->pki_ctx,
+                                      &test_state->sk_ed25519_key);
+            assert_int_equal(rc, SSH_OK);
+        }
+    }
+
+#endif /* WITH_FIDO2 */
+
     /* Write keys to files for openssh compatibility testing */
     if (test_state->ssh_keygen_path != NULL) {
         torture_write_file("test_rsa", torture_get_testkey(SSH_KEYTYPE_RSA, 0));
@@ -161,7 +238,56 @@ static int setup_sshsig_compat(void **state)
                            torture_get_testkey(SSH_KEYTYPE_ECDSA_P256, 0));
         torture_write_file("test_ecdsa.pub",
                            torture_get_testkey_pub(SSH_KEYTYPE_ECDSA_P256));
-#endif
+#endif /* HAVE_ECC */
+
+#ifdef WITH_FIDO2
+# ifdef HAVE_ECC
+        /* Write SK keys to files if they were successfully generated */
+        if (test_state->sk_ecdsa_key != NULL) {
+            char *sk_ecdsa_priv = NULL;
+            char *sk_ecdsa_pub = NULL;
+
+            rc = ssh_pki_export_privkey_base64(test_state->sk_ecdsa_key,
+                                               NULL,
+                                               NULL,
+                                               NULL,
+                                               &sk_ecdsa_priv);
+            assert_int_equal(rc, SSH_OK);
+
+            rc = ssh_pki_export_pubkey_base64(test_state->sk_ecdsa_key,
+                                              &sk_ecdsa_pub);
+            assert_int_equal(rc, SSH_OK);
+
+            torture_write_file("test_sk_ecdsa", sk_ecdsa_priv);
+            torture_write_file("test_sk_ecdsa.pub", sk_ecdsa_pub);
+
+            SAFE_FREE(sk_ecdsa_priv);
+            SAFE_FREE(sk_ecdsa_pub);
+        }
+# endif /* HAVE_ECC */
+
+        if (!ssh_fips_mode() && test_state->sk_ed25519_key != NULL) {
+            char *sk_ed25519_priv = NULL;
+            char *sk_ed25519_pub = NULL;
+
+            rc = ssh_pki_export_privkey_base64(test_state->sk_ed25519_key,
+                                               NULL,
+                                               NULL,
+                                               NULL,
+                                               &sk_ed25519_priv);
+            assert_int_equal(rc, SSH_OK);
+
+            rc = ssh_pki_export_pubkey_base64(test_state->sk_ed25519_key,
+                                              &sk_ed25519_pub);
+            assert_int_equal(rc, SSH_OK);
+
+            torture_write_file("test_sk_ed25519", sk_ed25519_priv);
+            torture_write_file("test_sk_ed25519.pub", sk_ed25519_pub);
+
+            SAFE_FREE(sk_ed25519_priv);
+            SAFE_FREE(sk_ed25519_pub);
+        }
+#endif /* WITH_FIDO2 */
 
         rc = chmod("test_rsa", 0600);
         assert_return_code(rc, errno);
@@ -173,6 +299,20 @@ static int setup_sshsig_compat(void **state)
         rc = chmod("test_ecdsa", 0600);
         assert_return_code(rc, errno);
 #endif
+
+#ifdef WITH_FIDO2
+        /* Set permissions for SK key files */
+# ifdef HAVE_ECC
+        if (test_state->sk_ecdsa_key != NULL) {
+            rc = chmod("test_sk_ecdsa", 0600);
+            assert_return_code(rc, errno);
+        }
+# endif /* HAVE_ECC */
+        if (!ssh_fips_mode() && test_state->sk_ed25519_key != NULL) {
+            rc = chmod("test_sk_ed25519", 0600);
+            assert_return_code(rc, errno);
+        }
+#endif /* WITH_FIDO2 */
     }
 
     return 0;
@@ -189,6 +329,12 @@ static int teardown_sshsig_compat(void **state)
     ssh_key_free(test_state->ed25519_key);
     ssh_key_free(test_state->ecdsa_key);
 
+#ifdef WITH_FIDO2
+    SSH_PKI_CTX_FREE(test_state->pki_ctx);
+    ssh_key_free(test_state->sk_ecdsa_key);
+    ssh_key_free(test_state->sk_ed25519_key);
+#endif
+
     rc = torture_change_dir(test_state->original_cwd);
     assert_int_equal(rc, 0);
 
@@ -204,7 +350,25 @@ static int teardown_sshsig_compat(void **state)
 
 static int run_openssh_command(const char *cmd)
 {
-    int rc = system(cmd);
+    char full_cmd[2048];
+    int rc;
+
+#if defined(WITH_FIDO2) && defined(SK_DUMMY_LIBRARY_PATH)
+    /* Set SSH_SK_PROVIDER to sk-dummy library when using sk-dummy callbacks */
+    if (torture_sk_is_using_sk_dummy()) {
+        snprintf(full_cmd,
+                 sizeof(full_cmd),
+                 "SSH_SK_PROVIDER=\"%s\" %s",
+                 SK_DUMMY_LIBRARY_PATH,
+                 cmd);
+    } else {
+        snprintf(full_cmd, sizeof(full_cmd), "%s", cmd);
+    }
+#else
+    snprintf(full_cmd, sizeof(full_cmd), "%s", cmd);
+#endif
+
+    rc = system(full_cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : -1;
 }
 
@@ -287,18 +451,35 @@ static void test_libssh_sign_verify_combo(struct sshsig_st *test_state,
     char *signature = NULL;
     ssh_key verify_key = NULL;
     ssh_key test_key = NULL;
+    ssh_pki_ctx pki_context = NULL;
     int rc;
 
-    if (combo->key_type == SSH_KEYTYPE_ED25519 && ssh_fips_mode()) {
+    if ((combo->key_type == SSH_KEYTYPE_ED25519 ||
+         combo->key_type == SSH_KEYTYPE_SK_ED25519) &&
+        ssh_fips_mode()) {
         skip();
     }
 
     test_key = get_test_key(test_state, combo->key_type);
+    if (is_sk_key_type(combo->key_type) && test_key == NULL) {
+        /* Skip if SK key type is requested but SK callbacks are not available
+         */
+        skip();
+    }
+
     assert_non_null(test_key);
+
+#ifdef WITH_FIDO2
+    /* Use PKI context for SK keys */
+    if (is_sk_key_type(combo->key_type)) {
+        pki_context = test_state->pki_ctx;
+    }
+#endif
 
     rc = sshsig_sign(input,
                      input_len,
                      test_key,
+                     pki_context,
                      test_namespace,
                      combo->hash_alg,
                      &signature);
@@ -324,10 +505,20 @@ test_openssh_sign_libssh_verify_combo(struct sshsig_st *test_state,
     char cmd[1024];
     char *openssh_sig = NULL;
     ssh_key verify_key = NULL;
+    ssh_key test_key = NULL;
     FILE *fp = NULL;
     int rc;
 
-    if (combo->key_type == SSH_KEYTYPE_ED25519 && ssh_fips_mode()) {
+    if ((combo->key_type == SSH_KEYTYPE_ED25519 ||
+         combo->key_type == SSH_KEYTYPE_SK_ED25519) &&
+        ssh_fips_mode()) {
+        skip();
+    }
+
+    test_key = get_test_key(test_state, combo->key_type);
+    if (is_sk_key_type(combo->key_type) && test_key == NULL) {
+        /* Skip if SK key type is requested but SK callbacks are not available
+         */
         skip();
     }
 
@@ -377,14 +568,29 @@ test_libssh_sign_openssh_verify_combo(struct sshsig_st *test_state,
     int rc;
     char *pubkey_b64 = NULL;
     ssh_key test_key = NULL;
+    ssh_pki_ctx pki_context = NULL;
 
-    if (combo->key_type == SSH_KEYTYPE_ED25519 && ssh_fips_mode()) {
+    if ((combo->key_type == SSH_KEYTYPE_ED25519 ||
+         combo->key_type == SSH_KEYTYPE_SK_ED25519) &&
+        ssh_fips_mode()) {
         skip();
     }
 
     printf("Testing key type: %s\n", combo->key_name);
     test_key = get_test_key(test_state, combo->key_type);
+    if (is_sk_key_type(combo->key_type) && test_key == NULL) {
+        /* Skip if SK key type is requested but SK callbacks are not available
+         */
+        skip();
+    }
     assert_non_null(test_key);
+
+#ifdef WITH_FIDO2
+    /* Use PKI context for SK keys */
+    if (is_sk_key_type(combo->key_type)) {
+        pki_context = test_state->pki_ctx;
+    }
+#endif
 
     fp = fopen("test_message.txt", "wb");
     assert_non_null(fp);
@@ -397,6 +603,7 @@ test_libssh_sign_openssh_verify_combo(struct sshsig_st *test_state,
     rc = sshsig_sign(input,
                      input_len,
                      test_key,
+                     pki_context,
                      test_namespace,
                      combo->hash_alg,
                      &libssh_sig);
@@ -494,17 +701,32 @@ static void torture_sshsig_error_cases_all_combinations(void **state)
     for (i = 0; i < test_state->num_combinations; i++) {
         const struct key_hash_combo *combo = &test_state->test_combinations[i];
         ssh_key test_key = NULL;
+        ssh_pki_ctx pki_context = NULL;
 
-        if (combo->key_type == SSH_KEYTYPE_ED25519 && ssh_fips_mode()) {
+        if ((combo->key_type == SSH_KEYTYPE_ED25519 ||
+             combo->key_type == SSH_KEYTYPE_SK_ED25519) &&
+            ssh_fips_mode()) {
             continue;
         }
 
         test_key = get_test_key(test_state, combo->key_type);
+        if (is_sk_key_type(combo->key_type) && test_key == NULL) {
+            /* Skip if SK key type is requested but SK callbacks are not
+             * available */
+            continue;
+        }
         assert_non_null(test_key);
+
+#ifdef WITH_FIDO2
+        if (is_sk_key_type(combo->key_type)) {
+            pki_context = test_state->pki_ctx;
+        }
+#endif
 
         rc = sshsig_sign(input,
                          input_len,
                          test_key,
+                         pki_context,
                          "", /* Test empty string namespace */
                          combo->hash_alg,
                          &signature);
@@ -514,6 +736,7 @@ static void torture_sshsig_error_cases_all_combinations(void **state)
         rc = sshsig_sign(input,
                          input_len,
                          test_key,
+                         pki_context,
                          test_namespace,
                          combo->hash_alg,
                          &signature);
@@ -552,6 +775,7 @@ static void torture_sshsig_error_cases_all_combinations(void **state)
     rc = sshsig_sign(input,
                      input_len,
                      test_state->rsa_key,
+                     NULL, /* pki_context */
                      test_namespace,
                      2,
                      &signature);
@@ -561,6 +785,7 @@ static void torture_sshsig_error_cases_all_combinations(void **state)
     rc = sshsig_sign(input,
                      input_len,
                      NULL,
+                     NULL, /* pki_context */
                      test_namespace,
                      SSHSIG_DIGEST_SHA2_256,
                      &signature);

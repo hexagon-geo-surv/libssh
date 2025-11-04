@@ -290,13 +290,11 @@
    fun:malloc
    ...
    fun:krb5_gss_save_error_string
-   fun:UnknownInlinedFun
+   ...
    fun:acquire_cred_context.isra.0
    fun:acquire_cred_from.isra.0
    fun:gss_add_cred_from
    fun:gss_acquire_cred_from
-   ...
-   fun:gss_acquire_cred
 }
 {
    error string from gss init sec context
@@ -305,7 +303,7 @@
    fun:malloc
    ...
    fun:krb5_gss_save_error_string
-   fun:UnknownInlinedFun
+   ...
    fun:krb5_gss_init_sec_context_ext
    fun:krb5_gss_init_sec_context
    fun:gss_init_sec_context

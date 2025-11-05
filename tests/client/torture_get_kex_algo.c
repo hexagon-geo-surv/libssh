@@ -11,6 +11,9 @@
 #define DIFFIE_HELLMAN_GROUP_14_SHA_1 "diffie-hellman-group14-sha1"
 #define KEX_DH_GEX_SHA1 "diffie-hellman-group-exchange-sha1"
 #define KEX_DH_GEX_SHA256 "diffie-hellman-group-exchange-sha256"
+#define SNTRUP761X25519 "sntrup761x25519-sha512"
+#define SNTRUP761X25519_OPENSSH "sntrup761x25519-sha512@openssh.com"
+#define MLKEM768X25519 "mlkem768x25519-sha256"
 
 static int sshd_setup(void **state)
 {
@@ -71,6 +74,9 @@ static void torture_kex_basic_functionality(void **state)
     ssh_session session = NULL;
     const char *kex_algo = NULL;
     const char *valid_algorithms[] = {
+        SNTRUP761X25519,
+        SNTRUP761X25519_OPENSSH,
+        MLKEM768X25519,
         CURVE25519_SHA256,
         ECDH_SHA2_NISTP256,
         DIFFIE_HELLMAN_GROUP_14_SHA_1,

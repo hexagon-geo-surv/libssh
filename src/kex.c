@@ -174,9 +174,9 @@
 #define CHACHA20 "chacha20-poly1305@openssh.com,"
 
 #define DEFAULT_KEY_EXCHANGE \
-    CURVE25519 \
-    SNTRUP761X25519 \
     MLKEM768X25519 \
+    SNTRUP761X25519 \
+    CURVE25519 \
     ECDH \
     "diffie-hellman-group18-sha512,diffie-hellman-group16-sha512," \
     GEX_SHA256 \

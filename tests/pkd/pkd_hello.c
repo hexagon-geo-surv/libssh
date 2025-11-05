@@ -592,9 +592,21 @@ PKDTESTS_MAC_OPENSSHONLY(emit_keytest, openssh_ed, OPENSSH_MAC_CMD)
 #undef CLIENT_ID_FILE
 
 #define CLIENT_ID_FILE DROPBEAR_RSA_TESTKEY
-PKDTESTS_DEFAULT(emit_keytest, dropbear, DROPBEAR_CMD)
-PKDTESTS_CIPHER(emit_keytest, dropbear, DROPBEAR_CIPHER_CMD)
-PKDTESTS_MAC(emit_keytest, dropbear, DROPBEAR_MAC_CMD)
+PKDTESTS_DEFAULT(emit_keytest, dropbear_rsa, DROPBEAR_CMD)
+PKDTESTS_CIPHER(emit_keytest, dropbear_rsa, DROPBEAR_CIPHER_CMD)
+PKDTESTS_MAC(emit_keytest, dropbear_rsa, DROPBEAR_MAC_CMD)
+#undef CLIENT_ID_FILE
+
+#define CLIENT_ID_FILE DROPBEAR_ECDSA256_TESTKEY
+PKDTESTS_DEFAULT(emit_keytest, dropbear_e256, DROPBEAR_CMD)
+PKDTESTS_CIPHER(emit_keytest, dropbear_e256, DROPBEAR_CIPHER_CMD)
+PKDTESTS_MAC(emit_keytest, dropbear_e256, DROPBEAR_MAC_CMD)
+#undef CLIENT_ID_FILE
+
+#define CLIENT_ID_FILE DROPBEAR_ED25519_TESTKEY
+PKDTESTS_DEFAULT(emit_keytest, dropbear_ed, DROPBEAR_CMD)
+PKDTESTS_CIPHER(emit_keytest, dropbear_ed, DROPBEAR_CIPHER_CMD)
+PKDTESTS_MAC(emit_keytest, dropbear_ed, DROPBEAR_MAC_CMD)
 #undef CLIENT_ID_FILE
 
 /*
@@ -648,9 +660,17 @@ struct {
     PKDTESTS_MAC_OPENSSHONLY(emit_testmap, openssh_ed, OPENSSH_MAC_CMD)
 
     /* Dropbear */
-    PKDTESTS_DEFAULT(emit_testmap, dropbear, DROPBEAR_CMD)
-    PKDTESTS_CIPHER(emit_testmap, dropbear, DROPBEAR_CIPHER_CMD)
-    PKDTESTS_MAC(emit_testmap, dropbear, DROPBEAR_MAC_CMD)
+    PKDTESTS_DEFAULT(emit_testmap, dropbear_rsa, DROPBEAR_CMD)
+    PKDTESTS_CIPHER(emit_testmap, dropbear_rsa, DROPBEAR_CIPHER_CMD)
+    PKDTESTS_MAC(emit_testmap, dropbear_rsa, DROPBEAR_MAC_CMD)
+
+    PKDTESTS_DEFAULT(emit_testmap, dropbear_e256, DROPBEAR_CMD)
+    PKDTESTS_CIPHER(emit_testmap, dropbear_e256, DROPBEAR_CIPHER_CMD)
+    PKDTESTS_MAC(emit_testmap, dropbear_e256, DROPBEAR_MAC_CMD)
+
+    PKDTESTS_DEFAULT(emit_testmap, dropbear_ed, DROPBEAR_CMD)
+    PKDTESTS_CIPHER(emit_testmap, dropbear_ed, DROPBEAR_CIPHER_CMD)
+    PKDTESTS_MAC(emit_testmap, dropbear_ed, DROPBEAR_MAC_CMD)
 
     /* Noop */
     emit_testmap(client, noop, "", setup_noop, teardown)
@@ -701,9 +721,17 @@ static int pkd_run_tests(void) {
      * through cli (see 'man dbclient')
      */
     const struct CMUnitTest dropbear_tests[] = {
-        PKDTESTS_DEFAULT(emit_unit_test_comma, dropbear, DROPBEAR_CMD)
-        PKDTESTS_CIPHER(emit_unit_test_comma, dropbear, DROPBEAR_CIPHER_CMD)
-        PKDTESTS_MAC(emit_unit_test_comma, dropbear, DROPBEAR_MAC_CMD)
+        PKDTESTS_DEFAULT(emit_unit_test_comma, dropbear_rsa, DROPBEAR_CMD)
+        PKDTESTS_CIPHER(emit_unit_test_comma, dropbear_rsa, DROPBEAR_CIPHER_CMD)
+        PKDTESTS_MAC(emit_unit_test_comma, dropbear_rsa, DROPBEAR_MAC_CMD)
+
+        PKDTESTS_DEFAULT(emit_unit_test_comma, dropbear_e256, DROPBEAR_CMD)
+        PKDTESTS_CIPHER(emit_unit_test_comma, dropbear_e256, DROPBEAR_CIPHER_CMD)
+        PKDTESTS_MAC(emit_unit_test_comma, dropbear_e256, DROPBEAR_MAC_CMD)
+
+        PKDTESTS_DEFAULT(emit_unit_test_comma, dropbear_ed, DROPBEAR_CMD)
+        PKDTESTS_CIPHER(emit_unit_test_comma, dropbear_ed, DROPBEAR_CIPHER_CMD)
+        PKDTESTS_MAC(emit_unit_test_comma, dropbear_ed, DROPBEAR_MAC_CMD)
     };
 
     const struct CMUnitTest openssh_fips_tests[] = {
@@ -748,7 +776,7 @@ static int pkd_run_tests(void) {
     }
 
     if (is_dropbear_client_enabled()) {
-        setup_dropbear_client_rsa_key();
+        setup_dropbear_client_keys();
         if (!ssh_fips_mode()) {
             memcpy(&all_tests[tindex], &dropbear_tests[0], sizeof(dropbear_tests));
             tindex += (sizeof(dropbear_tests) / sizeof(dropbear_tests[0]));
@@ -800,7 +828,7 @@ static int pkd_run_tests(void) {
 
     /* Clean up client keys for each enabled client. */
     if (is_dropbear_client_enabled()) {
-        cleanup_dropbear_client_rsa_key();
+        cleanup_dropbear_client_keys();
     }
 
     if (is_openssh_client_enabled()) {

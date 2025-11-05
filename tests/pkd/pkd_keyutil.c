@@ -167,15 +167,31 @@ void cleanup_openssh_client_keys(void) {
     }
 }
 
-void setup_dropbear_client_rsa_key(void) {
+void setup_dropbear_client_keys(void)
+{
     int rc = 0;
     if (access(DROPBEAR_RSA_TESTKEY, F_OK) != 0) {
         rc = system_checked(DROPBEAR_KEYGEN " -t rsa -f "
                             DROPBEAR_RSA_TESTKEY " 1>/dev/null 2>/dev/null");
     }
     assert_int_equal(rc, 0);
+    if (access(DROPBEAR_ECDSA256_TESTKEY, F_OK) != 0) {
+        rc = system_checked(DROPBEAR_KEYGEN " -t ecdsa -f "
+                            DROPBEAR_ECDSA256_TESTKEY
+                            " 1>/dev/null 2>/dev/null");
+    }
+    assert_int_equal(rc, 0);
+    if (access(DROPBEAR_ED25519_TESTKEY, F_OK) != 0) {
+        rc = system_checked(DROPBEAR_KEYGEN " -t ed25519 -f "
+                            DROPBEAR_ED25519_TESTKEY
+                            " 1>/dev/null 2>/dev/null");
+    }
+    assert_int_equal(rc, 0);
 }
 
-void cleanup_dropbear_client_rsa_key(void) {
-    unlink(DROPBEAR_RSA_TESTKEY);
+void cleanup_dropbear_client_keys(void)
+{
+    cleanup_key(DROPBEAR_RSA_TESTKEY);
+    cleanup_key(DROPBEAR_ECDSA256_TESTKEY);
+    cleanup_key(DROPBEAR_ED25519_TESTKEY);
 }

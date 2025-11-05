@@ -32,12 +32,14 @@ void cleanup_ecdsa_keys(void);
 #define OPENSSH_CA_TESTKEY        "libssh_testkey.ca"
 
 #define DROPBEAR_RSA_TESTKEY      "dropbear_testkey.id_rsa"
+#define DROPBEAR_ECDSA256_TESTKEY "dropbear_testkey.id_ecdsa256"
+#define DROPBEAR_ED25519_TESTKEY  "dropbear_testkey.id_ed25519"
 
 void setup_openssh_client_keys(void);
 void cleanup_openssh_client_keys(void);
 
-void setup_dropbear_client_rsa_key(void);
-void cleanup_dropbear_client_rsa_key(void);
+void setup_dropbear_client_keys(void);
+void cleanup_dropbear_client_keys(void);
 
 #define cleanup_file(name) do {\
     if (access((name), F_OK) != -1) {\

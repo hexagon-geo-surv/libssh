@@ -352,7 +352,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         break;
     case SSH2_MSG_KEXDH_INIT:                         // 30
       // SSH2_MSG_KEX_ECDH_INIT:                      // 30
-      // SSH2_MSG_ECMQV_INIT:                         // 30
+      // SSH2_MSG_KEX_HYBRID_INIT:                    // 30
       // SSH2_MSG_KEX_DH_GEX_REQUEST_OLD:             // 30
 
         /* Server only */
@@ -388,7 +388,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         break;
     case SSH2_MSG_KEXDH_REPLY:                        // 31
       // SSH2_MSG_KEX_ECDH_REPLY:                     // 31
-      // SSH2_MSG_ECMQV_REPLY:                        // 31
+      // SSH2_MSG_KEX_HYBRID_REPLY:                   // 31
       // SSH2_MSG_KEX_DH_GEX_GROUP:                   // 31
 
         /* Client only */

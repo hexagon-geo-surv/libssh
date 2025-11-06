@@ -79,6 +79,7 @@ static int mlkem768_keypair_gen(ssh_mlkem768_pubkey pubkey,
         SSH_LOG(SSH_LOG_WARNING,
                 "Failed to initialize ML-KEM-768 keygen: %s",
                 ERR_error_string(ERR_get_error(), NULL));
+        goto cleanup;
     }
 
     rc = EVP_PKEY_keygen(ctx, &pkey);
@@ -86,6 +87,7 @@ static int mlkem768_keypair_gen(ssh_mlkem768_pubkey pubkey,
         SSH_LOG(SSH_LOG_WARNING,
                 "Failed to perform ML-KEM-768 keygen: %s",
                 ERR_error_string(ERR_get_error(), NULL));
+        goto cleanup;
     }
 
     rc = EVP_PKEY_get_raw_public_key(pkey, pubkey, &pubkey_len);
@@ -93,6 +95,7 @@ static int mlkem768_keypair_gen(ssh_mlkem768_pubkey pubkey,
         SSH_LOG(SSH_LOG_WARNING,
                 "Failed to extract ML-KEM-768 public key: %s",
                 ERR_error_string(ERR_get_error(), NULL));
+        goto cleanup;
     }
 
     rc = EVP_PKEY_get_raw_private_key(pkey, privkey, &privkey_len);
@@ -100,6 +103,7 @@ static int mlkem768_keypair_gen(ssh_mlkem768_pubkey pubkey,
         SSH_LOG(SSH_LOG_WARNING,
                 "Failed to extract ML-KEM-768 private key: %s",
                 ERR_error_string(ERR_get_error(), NULL));
+        goto cleanup;
     }
 
     ret = SSH_OK;
@@ -184,6 +188,7 @@ static int mlkem768_decapsulate(const ssh_mlkem768_privkey privkey,
         SSH_LOG(SSH_LOG_WARNING,
                 "Failed to create ML-KEM-768 context: %s",
                 ERR_error_string(ERR_get_error(), NULL));
+        goto cleanup;
     }
 
     ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);

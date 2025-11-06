@@ -593,10 +593,10 @@ int ssh_options_set_algo(ssh_session session,
  *              - SSH_OPTIONS_RSA_MIN_SIZE
  *                Set the minimum RSA key size in bits to be accepted by the
  *                client for both authentication and hostkey verification.
- *                The values under 768 bits are not accepted even with this
+ *                The values under 1024 bits are not accepted even with this
  *                configuration option as they are considered completely broken.
  *                Setting 0 will revert the value to defaults.
- *                Default is 1024 bits or 2048 bits in FIPS mode.
+ *                Default is 3072 bits or 2048 bits in FIPS mode.
  *                (int)
 
  *              - SSH_OPTIONS_IDENTITY_AGENT
@@ -2201,11 +2201,11 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                      - SSH_BIND_OPTIONS_RSA_MIN_SIZE
  *                        Set the minimum RSA key size in bits to be accepted by
  *                        the server for both authentication and hostkey
- *                        operations. The values under 768 bits are not accepted
+ *                        operations. The values under 1024 bits are not accepted
  *                        even with this configuration option as they are
  *                        considered completely broken. Setting 0 will revert
  *                        the value to defaults.
- *                        Default is 1024 bits or 2048 bits in FIPS mode.
+ *                        Default is 3072 bits or 2048 bits in FIPS mode.
  *                        (int)
  *
  *

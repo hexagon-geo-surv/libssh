@@ -449,7 +449,7 @@ bool ssh_key_size_allowed_rsa(int min_size, ssh_key key)
 
     if (min_size < RSA_MIN_KEY_SIZE) {
         if (ssh_fips_mode()) {
-            min_size = 2048;
+            min_size = RSA_MIN_FIPS_KEY_SIZE;
         } else {
             min_size = RSA_MIN_KEY_SIZE;
         }

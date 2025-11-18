@@ -207,11 +207,35 @@ static ssh_string ssh_ecdh_generate(ssh_session session)
 }
 
 /** @internal
+ * @brief Set up a nistp{256,384,521} key pair for ECDH key exchange.
+ */
+int ssh_ecdh_init(ssh_session session)
+{
+    ssh_string pubkey = NULL;
+    ssh_string *pubkey_loc = NULL;
+
+    pubkey = ssh_ecdh_generate(session);
+    if (pubkey == NULL) {
+        return SSH_ERROR;
+    }
+
+    if (session->server) {
+        pubkey_loc = &session->next_crypto->ecdh_server_pubkey;
+    } else {
+        pubkey_loc = &session->next_crypto->ecdh_client_pubkey;
+    }
+
+    ssh_string_free(*pubkey_loc);
+    *pubkey_loc = pubkey;
+
+    return SSH_OK;
+}
+
+/** @internal
  * @brief Starts ecdh-sha2-nistp256 key exchange
  */
 int ssh_client_ecdh_init(ssh_session session)
 {
-    ssh_string client_pubkey = NULL;
     int rc;
 
     rc = ssh_buffer_add_u8(session->out_buffer, SSH2_MSG_KEX_ECDH_INIT);
@@ -219,19 +243,16 @@ int ssh_client_ecdh_init(ssh_session session)
         return SSH_ERROR;
     }
 
-    client_pubkey = ssh_ecdh_generate(session);
-    if (client_pubkey == NULL) {
-        return SSH_ERROR;
-    }
-
-    rc = ssh_buffer_add_ssh_string(session->out_buffer, client_pubkey);
+    rc = ssh_ecdh_init(session);
     if (rc < 0) {
-        ssh_string_free(client_pubkey);
         return SSH_ERROR;
     }
 
-    ssh_string_free(session->next_crypto->ecdh_client_pubkey);
-    session->next_crypto->ecdh_client_pubkey = client_pubkey;
+    rc = ssh_buffer_add_ssh_string(session->out_buffer,
+                                   session->next_crypto->ecdh_client_pubkey);
+    if (rc < 0) {
+        return SSH_ERROR;
+    }
 
     /* register the packet callbacks */
     ssh_packet_set_callbacks(session, &ssh_ecdh_client_callbacks);
@@ -454,7 +475,6 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init)
 {
     /* ECDH keys */
     ssh_string q_c_string = NULL;
-    ssh_string q_s_string = NULL;
     /* SSH host keys (rsa, ed25519 and ecdsa) */
     ssh_key privkey = NULL;
     enum ssh_digest_e digest = SSH_DIGEST_AUTO;
@@ -475,12 +495,10 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init)
     }
     session->next_crypto->ecdh_client_pubkey = q_c_string;
 
-    q_s_string = ssh_ecdh_generate(session);
-    if (q_s_string == NULL) {
+    rc = ssh_ecdh_init(session);
+    if (rc < 0) {
         goto error;
     }
-
-    session->next_crypto->ecdh_server_pubkey = q_s_string;
 
     /* build k and session_id */
     rc = ecdh_build_k(session);
@@ -518,7 +536,7 @@ SSH_PACKET_CALLBACK(ssh_packet_server_ecdh_init)
                          "bSSS",
                          SSH2_MSG_KEXDH_REPLY,
                          pubkey_blob, /* host's pubkey */
-                         q_s_string, /* ecdh public key */
+                         session->next_crypto->ecdh_server_pubkey, /* ecdh public key */
                          sig_blob); /* signature blob */
 
     SSH_STRING_FREE(sig_blob);

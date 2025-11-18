@@ -307,21 +307,45 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #endif
 
 #if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
-#define PKDTESTS_KEX_MLKEM768(f, client, kexcmd) \
+#define PKDTESTS_KEX_MLKEM768X25519(f, client, kexcmd) \
     f(client, rsa_mlkem768x25519_sha256,       kexcmd("mlkem768x25519-sha256"), setup_rsa,       teardown) \
     f(client, ecdsa_256_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_256, teardown) \
     f(client, ecdsa_384_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_384, teardown) \
     f(client, ecdsa_521_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_521, teardown) \
     f(client, ed25519_mlkem768x25519_sha256,   kexcmd("mlkem768x25519-sha256"), setup_ed25519,   teardown)
 #else
-#define PKDTESTS_KEX_MLKEM768(f, client, kexcmd)
+#define PKDTESTS_KEX_MLKEM768X25519(f, client, kexcmd)
+#endif
+
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768NISTP256_SHA256)
+#define PKDTESTS_KEX_MLKEM768NISTP256(f, client, kexcmd) \
+    f(client, rsa_mlkem768nistp256_sha256,       kexcmd("mlkem768nistp256-sha256"), setup_rsa,       teardown) \
+    f(client, ecdsa_256_mlkem768nistp256_sha256, kexcmd("mlkem768nistp256-sha256"), setup_ecdsa_256, teardown) \
+    f(client, ecdsa_384_mlkem768nistp256_sha256, kexcmd("mlkem768nistp256-sha256"), setup_ecdsa_384, teardown) \
+    f(client, ecdsa_521_mlkem768nistp256_sha256, kexcmd("mlkem768nistp256-sha256"), setup_ecdsa_521, teardown) \
+    f(client, ed25519_mlkem768nistp256_sha256,   kexcmd("mlkem768nistp256-sha256"), setup_ed25519,   teardown)
+#else
+#define PKDTESTS_KEX_MLKEM768NISTP256(f, client, kexcmd)
+#endif
+
+#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
+#define PKDTESTS_KEX_MLKEM1024NISTP384(f, client, kexcmd) \
+    f(client, rsa_mlkem1024nistp384_sha384,       kexcmd("mlkem1024nistp384-sha384"), setup_rsa,       teardown) \
+    f(client, ecdsa_256_mlkem1024nistp384_sha384, kexcmd("mlkem1024nistp384-sha384"), setup_ecdsa_256, teardown) \
+    f(client, ecdsa_384_mlkem1024nistp384_sha384, kexcmd("mlkem1024nistp384-sha384"), setup_ecdsa_384, teardown) \
+    f(client, ecdsa_521_mlkem1024nistp384_sha384, kexcmd("mlkem1024nistp384-sha384"), setup_ecdsa_521, teardown) \
+    f(client, ed25519_mlkem1024nistp384_sha384,   kexcmd("mlkem1024nistp384-sha384"), setup_ed25519,   teardown)
+#else
+#define PKDTESTS_KEX_MLKEM1024NISTP384(f, client, kexcmd)
 #endif
 
 #define PKDTESTS_KEX_COMMON(f, client, kexcmd) \
     PKDTESTS_KEX_FIPS(f, client, kexcmd) \
     PKDTESTS_KEX_SNTRUP761(f, client, kexcmd) \
     PKDTESTS_KEX_SNTRUP761_OPENSSH(f, client, kexcmd) \
-    PKDTESTS_KEX_MLKEM768(f, client, kexcmd) \
+    PKDTESTS_KEX_MLKEM768X25519(f, client, kexcmd) \
+    PKDTESTS_KEX_MLKEM768NISTP256(f, client, kexcmd) \
+    PKDTESTS_KEX_MLKEM1024NISTP384(f, client, kexcmd) \
     f(client, rsa_curve25519_sha256,                  kexcmd("curve25519-sha256"),             setup_rsa,        teardown) \
     f(client, rsa_curve25519_sha256_libssh_org,       kexcmd("curve25519-sha256@libssh.org"),  setup_rsa,        teardown) \
     f(client, rsa_diffie_hellman_group14_sha1,        kexcmd("diffie-hellman-group14-sha1"),   setup_rsa,        teardown) \

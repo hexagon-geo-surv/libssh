@@ -50,9 +50,6 @@
 #include "libssh/ecdh.h"
 #include "libssh/kex.h"
 #include "libssh/sntrup761.h"
-#ifdef HAVE_MLKEM
-#include "libssh/mlkem768.h"
-#endif
 
 #define DIGEST_MAX_LEN 64
 
@@ -93,6 +90,10 @@ enum ssh_key_exchange_e {
 #ifdef HAVE_MLKEM
     /* mlkem768x25519-sha256 */
     SSH_KEX_MLKEM768X25519_SHA256,
+    /* mlkem768nistp256-sha256 */
+    SSH_KEX_MLKEM768NISTP256_SHA256,
+    /* mlkem1024nistp384-sha384 */
+    SSH_KEX_MLKEM1024NISTP384_SHA384,
 #endif /* HAVE_MLKEM */
 };
 
@@ -117,6 +118,9 @@ struct dh_ctx;
 
 struct ssh_crypto_struct {
     bignum shared_secret;
+    ssh_string hybrid_client_init;
+    ssh_string hybrid_server_reply;
+    ssh_string hybrid_shared_secret;
     struct dh_ctx *dh_ctx;
 #ifdef WITH_GEX
     size_t dh_pmin; size_t dh_pn; size_t dh_pmax; /* preferred group parameters */
@@ -148,9 +152,9 @@ struct ssh_crypto_struct {
     ssh_curve25519_pubkey curve25519_server_pubkey;
 #endif
 #ifdef HAVE_MLKEM
-    ssh_mlkem768_privkey mlkem768_client_privkey;
-    ssh_mlkem768_pubkey mlkem768_client_pubkey;
-    ssh_mlkem768_ciphertext mlkem768_ciphertext;
+    EVP_PKEY *mlkem_privkey;
+    ssh_string mlkem_client_pubkey;
+    ssh_string mlkem_ciphertext;
 #endif
 #ifdef HAVE_SNTRUP761
     ssh_sntrup761_privkey sntrup761_privkey;

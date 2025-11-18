@@ -52,7 +52,7 @@
 #include "libssh/ecdh.h"
 #include "libssh/sntrup761.h"
 #ifdef HAVE_MLKEM
-#include "libssh/mlkem768.h"
+#include "libssh/hybrid_mlkem.h"
 #endif
 
 static struct ssh_hmac_struct ssh_hmac_tab[] = {
@@ -228,6 +228,16 @@ void crypto_free(struct ssh_crypto_struct *crypto)
         SAFE_FREE(crypto->server_kex.methods[i]);
         SAFE_FREE(crypto->kex_methods[i]);
     }
+
+#ifdef HAVE_MLKEM
+    EVP_PKEY_free(crypto->mlkem_privkey);
+    ssh_string_burn(crypto->hybrid_shared_secret);
+    ssh_string_free(crypto->mlkem_client_pubkey);
+    ssh_string_free(crypto->mlkem_ciphertext);
+    ssh_string_free(crypto->hybrid_client_init);
+    ssh_string_free(crypto->hybrid_server_reply);
+    ssh_string_free(crypto->hybrid_shared_secret);
+#endif
 
     explicit_bzero(crypto, sizeof(struct ssh_crypto_struct));
 
@@ -604,7 +614,9 @@ int crypt_set_algorithms_server(ssh_session session){
 #endif
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
-        ssh_server_mlkem768x25519_init(session);
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+        ssh_server_hybrid_mlkem_init(session);
         break;
 #endif
     default:

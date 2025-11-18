@@ -491,6 +491,10 @@ const char* ssh_get_kex_algo(ssh_session session) {
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
         return "mlkem768x25519-sha256";
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+        return "mlkem768nistp256-sha256";
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+        return "mlkem1024nistp384-sha384";
 #endif /* HAVE_MLKEM */
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA1:

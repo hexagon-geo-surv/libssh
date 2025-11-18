@@ -302,7 +302,9 @@ endif (NOT WITH_NACL)
 if (HAVE_MLKEM)
   set(libssh_SRCS
     ${libssh_SRCS}
-    mlkem768.c
+    hybrid_mlkem.c
+    mlkem_crypto.c
+    mlkem.c
   )
 endif (HAVE_MLKEM)
 

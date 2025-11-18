@@ -284,6 +284,8 @@ static void torture_options_get_key_exchange(void **state)
 #ifdef HAVE_MLKEM
         assert_string_equal(value,
                             "mlkem768x25519-sha256,"
+                            "mlkem768nistp256-sha256,"
+                            "mlkem1024nistp384-sha384,"
                             "sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,"
                             "curve25519-sha256,curve25519-sha256@libssh.org,"
                             "ecdh-sha2-nistp256,ecdh-sha2-nistp384,"

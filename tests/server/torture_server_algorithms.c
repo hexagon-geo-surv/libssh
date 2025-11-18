@@ -339,6 +339,71 @@ static void torture_algorithm_aes128gcm_with_no_hmac_overlap(void **state)
     test_algorithm_no_hmac_overlap(state, "aes128-gcm@openssh.com");
 }
 
+#ifdef HAVE_MLKEM
+/*
+ * Check the self-compatibility of a given key exchange method.
+ */
+static void test_kex_self_compat(void **state, const char *kex)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    ssh_session session = NULL;
+    int rc;
+
+    assert_non_null(tss);
+    s = tss->state;
+    assert_non_null(s);
+
+    rc = start_server(state);
+    assert_int_equal(rc, 0);
+
+    rc = session_setup(state);
+    assert_int_equal(rc, 0);
+
+    session = s->ssh.session;
+    assert_non_null(session);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KEY_EXCHANGE, kex);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_userauth_publickey_auto(session, NULL, NULL);
+    assert_ssh_return_code(session, rc);
+
+    rc = session_teardown(state);
+    assert_int_equal(rc, 0);
+
+    rc = stop_server(state);
+    assert_int_equal(rc, 0);
+}
+
+static void torture_algorithm_mlkem768x25119_self_compat(void **state)
+{
+    if (ssh_fips_mode()) {
+        skip();
+    }
+    test_kex_self_compat(state, "mlkem768x25519-sha256");
+}
+
+static void torture_algorithm_mlkem768nistp256_self_compat(void **state)
+{
+    if (ssh_fips_mode()) {
+        skip();
+    }
+    test_kex_self_compat(state, "mlkem768nistp256-sha256");
+}
+
+static void torture_algorithm_mlkem1024nistp384_self_compat(void **state)
+{
+    if (ssh_fips_mode()) {
+        skip();
+    }
+    test_kex_self_compat(state, "mlkem1024nistp384-sha384");
+}
+#endif /* HAVE_MLKEM */
+
 int torture_run_tests(void)
 {
     int rc;
@@ -349,6 +414,14 @@ int torture_run_tests(void)
                                         setup_temp_dir, teardown_temp_dir),
         cmocka_unit_test_setup_teardown(torture_algorithm_aes128gcm_with_no_hmac_overlap,
                                         setup_temp_dir, teardown_temp_dir),
+#ifdef HAVE_MLKEM
+        cmocka_unit_test_setup_teardown(torture_algorithm_mlkem768x25119_self_compat,
+                                        setup_temp_dir, teardown_temp_dir),
+        cmocka_unit_test_setup_teardown(torture_algorithm_mlkem768nistp256_self_compat,
+                                        setup_temp_dir, teardown_temp_dir),
+        cmocka_unit_test_setup_teardown(torture_algorithm_mlkem1024nistp384_self_compat,
+                                        setup_temp_dir, teardown_temp_dir),
+#endif /* HAVE_MLKEM */
     };
 
     ssh_init();

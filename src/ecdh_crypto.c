@@ -51,18 +51,26 @@ static int ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type) {
 #else
 static const char *ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type) {
 #endif /* OPENSSL_VERSION_NUMBER */
-    if (kex_type == SSH_KEX_ECDH_SHA2_NISTP256) {
-        return NISTP256;
-    } else if (kex_type == SSH_KEX_ECDH_SHA2_NISTP384) {
-        return NISTP384;
-    } else if (kex_type == SSH_KEX_ECDH_SHA2_NISTP521) {
-        return NISTP521;
-    }
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-    return SSH_ERROR;
-#else
-    return NULL;
+    switch (kex_type) {
+    case SSH_KEX_ECDH_SHA2_NISTP256:
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
 #endif
+        return NISTP256;
+    case SSH_KEX_ECDH_SHA2_NISTP384:
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
+        return NISTP384;
+    case SSH_KEX_ECDH_SHA2_NISTP521:
+        return NISTP521;
+    default:
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+        return SSH_ERROR;
+#else
+        return NULL;
+#endif
+    }
 }
 
 /* @internal

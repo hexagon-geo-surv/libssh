@@ -42,7 +42,7 @@
 #include "libssh/curve25519.h"
 #include "libssh/sntrup761.h"
 #ifdef HAVE_MLKEM
-#include "libssh/mlkem768.h"
+#include "libssh/hybrid_mlkem.h"
 #endif
 #include "libssh/knownhosts.h"
 #include "libssh/misc.h"
@@ -106,9 +106,11 @@
 #endif /* HAVE_SNTRUP761 */
 
 #ifdef HAVE_MLKEM
-#define MLKEM768X25519 "mlkem768x25519-sha256,"
+#define HYBRID_MLKEM "mlkem768x25519-sha256," \
+                     "mlkem768nistp256-sha256," \
+                     "mlkem1024nistp384-sha384,"
 #else
-#define MLKEM768X25519 ""
+#define HYBRID_MLKEM ""
 #endif /* HAVE_MLKEM */
 
 #ifdef HAVE_ECC
@@ -174,7 +176,7 @@
 #define CHACHA20 "chacha20-poly1305@openssh.com,"
 
 #define DEFAULT_KEY_EXCHANGE \
-    MLKEM768X25519 \
+    HYBRID_MLKEM \
     SNTRUP761X25519 \
     CURVE25519 \
     ECDH \
@@ -939,6 +941,10 @@ kex_select_kex_type(const char *kex)
 #ifdef HAVE_MLKEM
     } else if (strcmp(kex, "mlkem768x25519-sha256") == 0) {
         return SSH_KEX_MLKEM768X25519_SHA256;
+    } else if (strcmp(kex, "mlkem768nistp256-sha256") == 0) {
+        return SSH_KEX_MLKEM768NISTP256_SHA256;
+    } else if (strcmp(kex, "mlkem1024nistp384-sha384") == 0) {
+        return SSH_KEX_MLKEM1024NISTP384_SHA384;
 #endif
     }
     /* should not happen. We should be getting only valid names at this stage */
@@ -988,7 +994,9 @@ static void revert_kex_callbacks(ssh_session session)
 #endif
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
-        ssh_client_mlkem768x25519_remove_callbacks(session);
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+        ssh_client_hybrid_mlkem_remove_callbacks(session);
         break;
 #endif
     }
@@ -1576,22 +1584,16 @@ int ssh_make_sessionid(ssh_session session)
 #endif /* HAVE_SNTRUP761 */
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
         rc = ssh_buffer_pack(buf,
-                             "dPPdPP",
-                             MLKEM768X25519_CLIENT_PUBKEY_SIZE,
-                             (size_t)MLKEM768_PUBLICKEY_SIZE,
-                             session->next_crypto->mlkem768_client_pubkey,
-                             (size_t)CURVE25519_PUBKEY_SIZE,
-                             session->next_crypto->curve25519_client_pubkey,
-                             MLKEM768X25519_SERVER_RESPONSE_SIZE,
-                             (size_t)MLKEM768_CIPHERTEXT_SIZE,
-                             session->next_crypto->mlkem768_ciphertext,
-                             (size_t)CURVE25519_PUBKEY_SIZE,
-                             session->next_crypto->curve25519_server_pubkey);
+                             "SS",
+                             session->next_crypto->hybrid_client_init,
+                             session->next_crypto->hybrid_server_reply);
         if (rc != SSH_OK) {
             ssh_set_error(session,
                           SSH_FATAL,
-                          "Failed to pack ML-KEM768 individual components");
+                          "Failed to pack ML-KEM individual components");
             goto error;
         }
         break;
@@ -1612,10 +1614,9 @@ int ssh_make_sessionid(ssh_session session)
         break;
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
-        rc = ssh_buffer_pack(buf,
-                             "F",
-                             session->next_crypto->shared_secret,
-                             SHA256_DIGEST_LEN);
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+        rc = ssh_buffer_pack(buf, "S", session->next_crypto->hybrid_shared_secret);
         break;
 #endif /* HAVE_MLKEM */
     default:
@@ -1655,6 +1656,7 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
 #ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
 #endif
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA256:
@@ -1670,6 +1672,9 @@ int ssh_make_sessionid(ssh_session session)
                                      session->next_crypto->secret_hash);
         break;
     case SSH_KEX_ECDH_SHA2_NISTP384:
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         session->next_crypto->digest_len = SHA384_DIGEST_LENGTH;
         session->next_crypto->digest_type = SSH_KDF_SHA384;
         session->next_crypto->secret_hash = malloc(session->next_crypto->digest_len);
@@ -1831,12 +1836,16 @@ int ssh_generate_session_keys(ssh_session session)
     switch (session->next_crypto->kex_type) {
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
-#ifdef HAVE_MLKEM
-    case SSH_KEX_MLKEM768X25519_SHA256:
-#endif /* HAVE_MLKEM */
         k_string = ssh_make_padded_bignum_string(crypto->shared_secret,
                                                  crypto->digest_len);
         break;
+#ifdef HAVE_MLKEM
+    case SSH_KEX_MLKEM768X25519_SHA256:
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_KEX_MLKEM1024NISTP384_SHA384:
+        k_string = ssh_string_copy(crypto->hybrid_shared_secret);
+        break;
+#endif /* HAVE_MLKEM */
     default:
         k_string = ssh_make_bignum_string(crypto->shared_secret);
         break;

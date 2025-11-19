@@ -633,7 +633,6 @@ freebsd/openssl_1.1.1/x86_64:
     - branches@libssh/libssh-mirror
     - branches@cryptomilk/libssh-mirror
     - branches@jjelen/libssh-mirror
-    - branches@marco.fortina/libssh-mirror
 
 
 ###############################################################################
@@ -752,7 +751,6 @@ coverity:
     - branches@libssh/libssh-mirror
     - branches@cryptomilk/libssh-mirror
     - branches@jjelen/libssh-mirror
-    - branches@marco.fortina/libssh-mirror
 
 # TODO add -DFUZZ_TESTING=ON clang cant find _LLVMFuzzerInitialize on arm64
 macos-m1:

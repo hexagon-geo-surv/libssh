@@ -31,6 +31,7 @@
 #else
 #include <winsock2.h>
 #endif
+#include "libssh/config.h"
 #include "libssh/config_parser.h"
 #include "libssh/misc.h"
 #include "libssh/options.h"
@@ -1698,6 +1699,7 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     int compress = 0;
     int cont = 1;
     size_t current = 0;
+    int opt_rc = 0;
     int saveoptind = optind; /* need to save 'em */
     int saveopterr = opterr;
     int opt;
@@ -1708,7 +1710,7 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     }
 
     opterr = 0; /* shut up getopt */
-    while((opt = getopt(argc, argv, "c:i:Cl:p:vb:r12")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:o:Cl:p:vb:r12")) != -1) {
         switch(opt) {
         case 'l':
             user = optarg;
@@ -1730,6 +1732,9 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
             break;
         case 'C':
             compress++;
+            break;
+        case 'o':
+            opt_rc = ssh_config_parse_line_cli(session, optarg);
             break;
         case '2':
             break;
@@ -1762,6 +1767,9 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
                 }
             }
         } /* switch */
+        if (opt_rc == SSH_ERROR) {
+            break;
+        }
     } /* while */
     opterr = saveopterr;
     tmp = realloc(save, (current + (argc - optind)) * sizeof(char*));
@@ -1785,6 +1793,11 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     }
 
     optind = saveoptind;
+
+    if (opt_rc == SSH_ERROR) {
+        SAFE_FREE(save);
+        return SSH_ERROR;
+    }
 
     if(!cont) {
         SAFE_FREE(save);

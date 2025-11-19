@@ -24,6 +24,7 @@
 #ifndef LIBSSH_CONFIG_H_
 #define LIBSSH_CONFIG_H_
 
+#include "libssh/libssh.h"
 
 enum ssh_config_opcode_e {
     /* Unknown opcode */
@@ -70,4 +71,7 @@ enum ssh_config_opcode_e {
 
     SOC_MAX /* Keep this one last in the list */
 };
+enum ssh_config_opcode_e ssh_config_get_opcode(char *keyword);
+int ssh_config_parse_line_cli(ssh_session session, const char *line);
+
 #endif /* LIBSSH_CONFIG_H_ */

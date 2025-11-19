@@ -11,6 +11,7 @@
 #include "torture.h"
 #include "torture_key.h"
 #include <errno.h>
+#include <libssh/config.h>
 #include <libssh/misc.h>
 #include <libssh/options.h>
 #include <libssh/pki.h>
@@ -1615,6 +1616,108 @@ static void torture_options_getopt(void **state)
 #endif /* _NSC_VER */
 }
 
+static void torture_options_getopt_o_option(void **state)
+{
+#ifndef _MSC_VER
+    ssh_session session = *state;
+    int rc;
+    enum ssh_config_opcode_e opcode =
+        ssh_config_get_opcode((char *)"compression");
+    const char *argv[6] = {EXECUTABLE_NAME, "-o", "Compression nah", NULL};
+    int argc = 3;
+
+    // Test: -o with invalid value (e.g., "-o Compression nah")
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    session->opts.options_seen[opcode] = 0;
+
+    // Test: -o with valid value (e.g., "-o Compression yes")
+    argv[1] = "-o";
+    argv[2] = "compression yes";
+    argv[3] = NULL;
+    argc = 3;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.options_seen[opcode], 1);
+
+#ifdef WITH_ZLIB
+    assert_string_equal(session->opts.wanted_methods[SSH_COMP_C_S],
+                        "zlib@openssh.com,none");
+    assert_string_equal(session->opts.wanted_methods[SSH_COMP_S_C],
+                        "zlib@openssh.com,none");
+#else
+    assert_string_equal(session->opts.wanted_methods[SSH_COMP_C_S], "none");
+    assert_string_equal(session->opts.wanted_methods[SSH_COMP_S_C], "none");
+#endif
+
+    // Test: -o with missing value (e.g., "-o =")
+    argv[1] = "-o";
+    argv[2] = "=";
+    argv[3] = NULL;
+    argc = 3;
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+
+    // Test: -o with only option name, no value (e.g., "-o Compression")
+    session->opts.options_seen[opcode] = 0;
+    argv[1] = "-o";
+    argv[2] = "Compression";
+    argv[3] = NULL;
+    argc = 3;
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    // Test: -o with empty string (e.g., "-o ")
+    argv[1] = "-o";
+    argv[2] = "";
+    argv[3] = NULL;
+    argc = 3;
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    // Test: -o with unsupported option on the cli
+    argv[1] = "-o";
+    argv[2] = "match *";
+    argv[3] = NULL;
+    argc = 3;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    // Test: multiple -o options together, one invalid
+    session->opts.options_seen[opcode] = 0;
+    argv[1] = "-o";
+    argv[2] = "compression yes";
+    argv[3] = "-o";
+    argv[4] = "enablesshkeysign yes";
+    argv[5] = NULL;
+    argc = 5;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    // Test: multiple -o options together, all valid
+    session->opts.options_seen[opcode] = 0;
+    argv[1] = "-o";
+    argv[2] = "compression no";
+    argv[3] = "-o";
+    argv[4] = "rekeylimit 1G 1h";
+    argv[5] = NULL;
+    argc = 5;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+
+    opcode = ssh_config_get_opcode((char *)"compression");
+    assert_int_equal(session->opts.options_seen[opcode], 1);
+
+    opcode = ssh_config_get_opcode((char *)"rekeylimit");
+    assert_int_equal(session->opts.options_seen[opcode], 1);
+#endif /* _MSC_VER */
+}
+
 static void torture_options_plus_sign(void **state)
 {
     ssh_session session = *state;
@@ -3024,6 +3127,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_getopt,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_getopt_o_option,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_plus_sign,

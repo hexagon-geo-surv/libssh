@@ -250,9 +250,10 @@ fedora/openssl_3.x/x86_64/minimal:
       -DWITH_SERVER=OFF
       -DWITH_ZLIB=OFF
       -DWITH_PCAP=OFF
+      -DWITH_GSSAPI=OFF
+      -DWITH_GEX=OFF
       -DUNIT_TESTING=ON
-      -DCLIENT_TESTING=ON
-      -DWITH_GEX=OFF .. &&
+      -DCLIENT_TESTING=ON .. &&
       make -j$(nproc)
 
 .valgrind:

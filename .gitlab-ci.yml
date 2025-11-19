@@ -382,6 +382,7 @@ fedora/mingw32:
   stage: analysis
   variables:
     GIT_DEPTH: "100"
+    CSCPPC_ADD_OPTS: "--library=./.gitlab-ci/cmocka.cfg"
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
   before_script:
     - |

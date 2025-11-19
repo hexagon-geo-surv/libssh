@@ -130,8 +130,8 @@ centos10s/openssl_3.5.x/x86_64:
   extends: .tests
   variables:
     CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON -DWITH_PKCS11_PROVIDER=ON
+    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
-    - export OPENSSL_ENABLE_SHA1_SIGNATURES=1
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       ctest --output-on-failure
@@ -141,8 +141,8 @@ centos10s/openssl_3.5.x/x86_64/fips:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS10_BUILD
   variables:
     CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON -DWITH_PKCS11_PROVIDER=ON
+    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
-    - export OPENSSL_ENABLE_SHA1_SIGNATURES=1
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure
@@ -152,8 +152,8 @@ centos9s/openssl_3.5.x/x86_64:
   extends: .tests
   variables:
     CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON
+    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
-    - export OPENSSL_ENABLE_SHA1_SIGNATURES=1
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       ctest --output-on-failure
@@ -167,8 +167,9 @@ centos9s/mbedtls_2.x/x86_64:
 centos9s/openssl_3.5.x/x86_64/fips:
   extends: .fips
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS9_BUILD
+  variables:
+    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
-    - export OPENSSL_ENABLE_SHA1_SIGNATURES=1
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure
@@ -208,8 +209,10 @@ fedora/docs:
 fedora/ninja:
   extends: .fedora
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  variables:
+    CTEST_OUTPUT_ON_FAILURE: 1
   script:
-    - cmake -G Ninja $CMAKE_OPTIONS ../ && ninja && CTEST_OUTPUT_ON_FAILURE=1 ninja test
+    - cmake -G Ninja $CMAKE_OPTIONS ../ && ninja && ninja test
 
 fedora/coverage:
   extends: .fedora
@@ -343,9 +346,10 @@ fedora/mbedtls_2.x/x86_64:
 fedora/mingw64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
   extends: .tests
+  variables:
+    WINEPATH: /usr/x86_64-w64-mingw32/sys-root/mingw/bin
+    WINEDEBUG: -all
   script:
-    - export WINEPATH=/usr/x86_64-w64-mingw32/sys-root/mingw/bin
-    - export WINEDEBUG=-all
     - mingw64-cmake $CMAKE_DEFAULT_OPTIONS
       -DWITH_SFTP=ON
       -DWITH_SERVER=ON
@@ -361,9 +365,10 @@ fedora/mingw64:
 fedora/mingw32:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
   extends: .tests
+  variables:
+    WINEPATH: /usr/i686-w64-mingw32/sys-root/mingw/bin
+    WINEDEBUG: -all
   script:
-    - export WINEPATH=/usr/i686-w64-mingw32/sys-root/mingw/bin
-    - export WINEDEBUG=-all
     - mingw32-cmake $CMAKE_DEFAULT_OPTIONS
       -DWITH_SFTP=ON
       -DWITH_SERVER=ON
@@ -579,9 +584,10 @@ tumbleweed/static-analysis:
   extends: .tests
   stage: analysis
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  variables:
+    CCC_CC: clang
+    CCC_CXX: clang++
   script:
-    - export CCC_CC=clang
-    - export CCC_CXX=clang++
     - scan-build cmake
       -DCMAKE_BUILD_TYPE=Debug
       -DCMAKE_C_COMPILER=clang

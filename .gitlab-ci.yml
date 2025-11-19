@@ -17,7 +17,7 @@ stages:
   - analysis
 
 # This is some black magic to select between branch pipelines and
-# merge request pipelines to avoid running same pipelines in twice
+# merge request pipelines to avoid running same pipelines twice
 workflow:
   rules:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
@@ -84,6 +84,36 @@ workflow:
   extends: .tests
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
 
+.centos:
+  extends: .tests
+  variables:
+    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
+
+.centos10:
+  extends: .centos
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS10_BUILD
+
+.centos9:
+  extends: .centos
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS9_BUILD
+
+# Unit testing only, no client and pkd testing, because cwrap is not available
+# for MinGW
+.mingw:
+  extends: .tests
+  variables:
+    WINEDEBUG: -all
+  script:
+    - $WINEBIN $CMAKE_DEFAULT_OPTIONS
+      -DWITH_SFTP=ON
+      -DWITH_SERVER=ON
+      -DWITH_ZLIB=ON
+      -DWITH_PCAP=ON
+      -DWITH_FIDO2=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure -E torture_rand
+
 .fips:
   extends: .tests
   variables:
@@ -126,11 +156,9 @@ review:
 #                               CentOS builds                                 #
 ###############################################################################
 centos10s/openssl_3.5.x/x86_64:
-  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS10_BUILD
-  extends: .tests
+  extends: .centos10
   variables:
     CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON -DWITH_PKCS11_PROVIDER=ON
-    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
@@ -148,11 +176,9 @@ centos10s/openssl_3.5.x/x86_64/fips:
       OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure
 
 centos9s/openssl_3.5.x/x86_64:
-  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS9_BUILD
-  extends: .tests
+  extends: .centos9
   variables:
     CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON
-    OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
@@ -335,51 +361,26 @@ fedora/undefined-sanitizer:
 fedora/libgcrypt/x86_64:
   extends: .fedora
   variables:
-    CMAKE_ADDITIONAL_OPTIONS: "-DWITH_GCRYPT=ON -DWITH_DEBUG_CRYPTO=ON"
+    CMAKE_ADDITIONAL_OPTIONS: "-DWITH_GCRYPT=ON"
 
-fedora/mbedtls_2.x/x86_64:
+fedora/mbedtls_3.x/x86_64:
   extends: .fedora
   variables:
-    CMAKE_ADDITIONAL_OPTIONS: "-DWITH_MBEDTLS=ON -DWITH_DEBUG_CRYPTO=ON "
+    CMAKE_ADDITIONAL_OPTIONS: "-DWITH_MBEDTLS=ON"
 
-# Unit testing only, no client and pkd testing, because cwrap is not available
-# for MinGW
 fedora/mingw64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
-  extends: .tests
+  extends: .mingw
   variables:
     WINEPATH: /usr/x86_64-w64-mingw32/sys-root/mingw/bin
-    WINEDEBUG: -all
-  script:
-    - mingw64-cmake $CMAKE_DEFAULT_OPTIONS
-      -DWITH_SFTP=ON
-      -DWITH_SERVER=ON
-      -DWITH_ZLIB=ON
-      -DWITH_PCAP=ON
-      -DWITH_FIDO2=ON
-      -DUNIT_TESTING=ON .. &&
-      make -j$(nproc) &&
-      ctest --output-on-failure -E torture_rand
+    WINEBIN: mingw64-cmake
 
-# Unit testing only, no client and pkd testing, because cwrap is not available
-# for MinGW
 fedora/mingw32:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
-  extends: .tests
+  extends: .mingw
   variables:
     WINEPATH: /usr/i686-w64-mingw32/sys-root/mingw/bin
-    WINEDEBUG: -all
-  script:
-    - mingw32-cmake $CMAKE_DEFAULT_OPTIONS
-      -DWITH_SFTP=ON
-      -DWITH_SERVER=ON
-      -DWITH_ZLIB=ON
-      -DWITH_PCAP=ON
-      -DWITH_FIDO2=ON
-      -DUNIT_TESTING=ON .. &&
-      make -j$(nproc) &&
-      ctest --output-on-failure -E torture_rand
-
+    WINEBIN: mingw32-cmake
 
 ###############################################################################
 #                               Fedora csbuild                                #
@@ -389,6 +390,7 @@ fedora/mingw32:
   variables:
     GIT_DEPTH: "100"
     CSCPPC_ADD_OPTS: "--library=./.gitlab-ci/cmocka.cfg"
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON -DCLIENT_TESTING=ON -DSERVER_TESTING=ON -DFUZZ_TESTING=ON"
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
   before_script:
     - |
@@ -406,6 +408,14 @@ fedora/mingw32:
       git branch --contains $CI_COMMIT_BEFORE_SHA 2>/dev/null || export CI_COMMIT_BEFORE_SHA=$(git rev-parse "${CI_COMMIT_SHA}~20")
 
       export CI_COMMIT_RANGE="$CI_COMMIT_BEFORE_SHA..$CI_COMMIT_SHA"
+  script:
+    - csbuild
+      --build-dir=obj-csbuild
+      --build-cmd "rm -rf CMakeFiles CMakeCache.txt && cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS @SRCDIR@ && make clean && make -j$(nproc)"
+      --git-commit-range $CI_COMMIT_RANGE
+      --color
+      --print-current --print-fixed
+
   tags:
     - saas-linux-small-amd64
   except:
@@ -420,33 +430,16 @@ fedora/mingw32:
 
 fedora/csbuild/openssl_3.x:
   extends: .csbuild
-  script:
-    - csbuild
-      --build-dir=obj-csbuild
-      --build-cmd "rm -rf CMakeFiles CMakeCache.txt && cmake -DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON -DCLIENT_TESTING=ON -DSERVER_TESTING=ON -DFUZZ_TESTING=ON @SRCDIR@ && make clean && make -j$(nproc)"
-      --git-commit-range $CI_COMMIT_RANGE
-      --color
-      --print-current --print-fixed
 
 fedora/csbuild/libgcrypt:
   extends: .csbuild
-  script:
-    - csbuild
-      --build-dir=obj-csbuild
-      --build-cmd "rm -rf CMakeFiles CMakeCache.txt && cmake -DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON -DCLIENT_TESTING=ON -DSERVER_TESTING=ON -DFUZZ_TESTING=ON -DWITH_GCRYPT=ON @SRCDIR@ && make clean && make -j$(nproc)"
-      --git-commit-range $CI_COMMIT_RANGE
-      --color
-      --print-current --print-fixed
+  variables:
+    CMAKE_ADDITIONAL_OPTIONS: -DWITH_GCRYPT=ON
 
 fedora/csbuild/mbedtls:
   extends: .csbuild
-  script:
-    - csbuild
-      --build-dir=obj-csbuild
-      --build-cmd "rm -rf CMakeFiles CMakeCache.txt && cmake -DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON -DCLIENT_TESTING=ON -DSERVER_TESTING=ON -DFUZZ_TESTING=ON -DWITH_MBEDTLS=ON @SRCDIR@ && make clean && make -j$(nproc)"
-      --git-commit-range $CI_COMMIT_RANGE
-      --color
-      --print-current --print-fixed
+  variables:
+    CMAKE_ADDITIONAL_OPTIONS: -DWITH_MBEDTLS=ON
 
 ###############################################################################
 #                               Fedora abidiff                                #
@@ -612,19 +605,12 @@ tumbleweed/static-analysis:
 freebsd/openssl_1.1.1/x86_64:
   image:
   extends: .tests
+  variables:
+    CMAKE_OPTIONS: $CMAKE_DEFAULT_OPTIONS -DWITH_SFTP=ON -DWITH_SERVER=ON -DWITH_ZLIB=ON -DWITH_PCAP=ON -DUNIT_TESTING=ON
   before_script:
-    - mkdir -p obj && cd obj && cmake
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo
-      -DPICKY_DEVELOPER=ON
-      -DWITH_SFTP=ON -DWITH_SERVER=ON -DWITH_ZLIB=ON -DWITH_PCAP=ON
-      -DUNIT_TESTING=ON ..
+    - mkdir -p obj && cd obj && cmake $CMAKE_OPTIONS ..
   script:
-    - cmake $CMAKE_DEFAULT_OPTIONS
-      -DWITH_SFTP=ON
-      -DWITH_SERVER=ON
-      -DWITH_ZLIB=ON
-      -DWITH_PCAP=ON
-      -DUNIT_TESTING=ON .. &&
+    - cmake $CMAKE_OPTIONS .. &&
       make &&
       ctest --output-on-failure
   tags:
@@ -740,6 +726,7 @@ coverity:
 #                                  MacOS                                      #
 ###############################################################################
 .macos:
+  extends: .build_options
   tags:
     - saas-macos-medium-m1
   image: macos-14-xcode-15
@@ -758,10 +745,7 @@ macos-m1:
   extends: .macos
   variables:
     HOMEBREW_NO_AUTO_UPDATE: 1
-    CMAKE_DEFAULT_OPTIONS: "-DCMAKE_BUILD_TYPE=RelWithDebInfo -DPICKY_DEVELOPER=ON"
-    CMAKE_BUILD_OPTIONS: "-DWITH_BLOWFISH_CIPHER=ON -DWITH_SFTP=ON -DWITH_SERVER=ON -DWITH_ZLIB=ON -DWITH_PCAP=ON -DWITH_DEBUG_CRYPTO=ON -DWITH_DEBUG_PACKET=ON -DWITH_DEBUG_CALLTRACE=ON"
     CMAKE_TEST_OPTIONS: "-DUNIT_TESTING=ON"
-    CMAKE_OPTIONS: $CMAKE_DEFAULT_OPTIONS $CMAKE_BUILD_OPTIONS $CMAKE_TEST_OPTIONS
   stage: test
   script:
     - cmake $CMAKE_OPTIONS .. &&

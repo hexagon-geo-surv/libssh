@@ -153,7 +153,7 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
 
     rc = ssh_curve25519_create_k(session, k);
     if (rc != SSH_OK) {
-        return SSH_ERROR;
+        goto cleanup;
     }
 
 #ifdef DEBUG_CRYPTO
@@ -176,7 +176,8 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
             SSH_LOG(SSH_LOG_TRACE,
                     "Failed to encapsulate sntrup761 shared secret: %s",
                     gpg_strerror(err));
-            return SSH_ERROR;
+            rc = SSH_ERROR;
+            goto cleanup;
         }
     } else {
         gcry_error_t err;
@@ -193,7 +194,8 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
             SSH_LOG(SSH_LOG_TRACE,
                     "Failed to decapsulate sntrup761 shared secret: %s",
                     gpg_strerror(err));
-            return SSH_ERROR;
+            rc = SSH_ERROR;
+            goto cleanup;
         }
     }
 #else
@@ -204,7 +206,8 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
                       &rc,
                       crypto_random);
         if (rc != 1) {
-            return SSH_ERROR;
+            rc = SSH_ERROR;
+            goto cleanup;
         }
     } else {
         sntrup761_dec(ssk,
@@ -224,7 +227,8 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
 
     bignum_bin2bn(hss, sizeof hss, &session->next_crypto->shared_secret);
     if (session->next_crypto->shared_secret == NULL) {
-        return SSH_ERROR;
+        rc = SSH_ERROR;
+        goto cleanup;
     }
 
 #ifdef DEBUG_CRYPTO
@@ -232,6 +236,11 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
 #endif
 
     return 0;
+cleanup:
+    ssh_burn(ssk, sizeof ssk);
+    ssh_burn(hss, sizeof hss);
+
+    return rc;
 }
 
 /** @internal

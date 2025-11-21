@@ -227,7 +227,7 @@ void ssh_key_clean (ssh_key key)
 
 #ifndef HAVE_LIBCRYPTO
     if (key->ed25519_privkey != NULL) {
-        explicit_bzero(key->ed25519_privkey, sizeof(ed25519_privkey));
+        ssh_burn(key->ed25519_privkey, sizeof(ed25519_privkey));
         SAFE_FREE(key->ed25519_privkey);
     }
     SAFE_FREE(key->ed25519_pubkey);
@@ -3082,8 +3082,8 @@ int pki_sk_signature_buffer_prepare(const ssh_key key,
 
 out:
     SSH_BUFFER_FREE(sk_buffer);
-    explicit_bzero(application_hash, SHA256_DIGEST_LEN);
-    explicit_bzero(input_hash, SHA256_DIGEST_LEN);
+    ssh_burn(application_hash, SHA256_DIGEST_LEN);
+    ssh_burn(input_hash, SHA256_DIGEST_LEN);
 
     return ret;
 }

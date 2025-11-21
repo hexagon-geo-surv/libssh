@@ -199,11 +199,11 @@ void crypto_free(struct ssh_crypto_struct *crypto)
 #endif
     SAFE_FREE(crypto->dh_server_signature);
     if (crypto->session_id != NULL) {
-        explicit_bzero(crypto->session_id, crypto->session_id_len);
+        ssh_burn(crypto->session_id, crypto->session_id_len);
         SAFE_FREE(crypto->session_id);
     }
     if (crypto->secret_hash != NULL) {
-        explicit_bzero(crypto->secret_hash, crypto->digest_len);
+        ssh_burn(crypto->secret_hash, crypto->digest_len);
         SAFE_FREE(crypto->secret_hash);
     }
     compress_cleanup(crypto);
@@ -212,11 +212,11 @@ void crypto_free(struct ssh_crypto_struct *crypto)
     SAFE_FREE(crypto->encryptMAC);
     SAFE_FREE(crypto->decryptMAC);
     if (crypto->encryptkey != NULL) {
-        explicit_bzero(crypto->encryptkey, crypto->out_cipher->keysize / 8);
+        ssh_burn(crypto->encryptkey, crypto->out_cipher->keysize / 8);
         SAFE_FREE(crypto->encryptkey);
     }
     if (crypto->decryptkey != NULL) {
-        explicit_bzero(crypto->decryptkey, crypto->in_cipher->keysize / 8);
+        ssh_burn(crypto->decryptkey, crypto->in_cipher->keysize / 8);
         SAFE_FREE(crypto->decryptkey);
     }
 
@@ -239,7 +239,7 @@ void crypto_free(struct ssh_crypto_struct *crypto)
     ssh_string_free(crypto->hybrid_shared_secret);
 #endif
 
-    explicit_bzero(crypto, sizeof(struct ssh_crypto_struct));
+    ssh_burn(crypto, sizeof(struct ssh_crypto_struct));
 
     SAFE_FREE(crypto);
 }

@@ -487,7 +487,7 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_hybrid_mlkem_reply)
     session->dh_handshake_state = DH_STATE_NEWKEYS_SENT;
 
 cleanup:
-    explicit_bzero(mlkem_shared_secret, sizeof(mlkem_shared_secret));
+    ssh_burn(mlkem_shared_secret, sizeof(mlkem_shared_secret));
     ssh_string_burn(ecdh_shared_secret);
     ssh_string_free(ecdh_shared_secret);
     ssh_string_free(pubkey_blob);
@@ -851,7 +851,7 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_hybrid_mlkem_init)
     session->dh_handshake_state = DH_STATE_NEWKEYS_SENT;
 
 cleanup:
-    explicit_bzero(mlkem_shared_secret, sizeof(mlkem_shared_secret));
+    ssh_burn(mlkem_shared_secret, sizeof(mlkem_shared_secret));
     ssh_string_burn(ecdh_shared_secret);
     ssh_string_free(ecdh_shared_secret);
     ssh_string_free(pubkey_blob);

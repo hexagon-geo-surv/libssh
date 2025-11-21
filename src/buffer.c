@@ -156,10 +156,10 @@ void ssh_buffer_free(struct ssh_buffer_struct *buffer)
 
     if (buffer->secure && buffer->allocated > 0) {
         /* burn the data */
-        explicit_bzero(buffer->data, buffer->allocated);
+        ssh_burn(buffer->data, buffer->allocated);
         SAFE_FREE(buffer->data);
 
-        explicit_bzero(buffer, sizeof(struct ssh_buffer_struct));
+        ssh_burn(buffer, sizeof(struct ssh_buffer_struct));
     } else {
         SAFE_FREE(buffer->data);
     }
@@ -205,7 +205,7 @@ static int realloc_buffer(struct ssh_buffer_struct *buffer, uint32_t needed)
             return -1;
         }
         memcpy(new, buffer->data, buffer->used);
-        explicit_bzero(buffer->data, buffer->used);
+        ssh_burn(buffer->data, buffer->used);
         SAFE_FREE(buffer->data);
     } else {
         new = realloc(buffer->data, needed);
@@ -241,7 +241,7 @@ static void buffer_shift(ssh_buffer buffer)
 
     if (buffer->secure) {
         void *ptr = buffer->data + buffer->used;
-        explicit_bzero(ptr, burn_pos);
+        ssh_burn(ptr, burn_pos);
     }
 
     buffer_verify(buffer);
@@ -266,7 +266,7 @@ int ssh_buffer_reinit(struct ssh_buffer_struct *buffer)
     buffer_verify(buffer);
 
     if (buffer->secure && buffer->allocated > 0) {
-        explicit_bzero(buffer->data, buffer->allocated);
+        ssh_burn(buffer->data, buffer->allocated);
     }
     buffer->used = 0;
     buffer->pos = 0;
@@ -1352,28 +1352,28 @@ cleanup:
             case 'b':
                 o.byte = va_arg(ap_copy, uint8_t *);
                 if (buffer->secure) {
-                    explicit_bzero(o.byte, sizeof(uint8_t));
+                    ssh_burn(o.byte, sizeof(uint8_t));
                     break;
                 }
                 break;
             case 'w':
                 o.word = va_arg(ap_copy, uint16_t *);
                 if (buffer->secure) {
-                    explicit_bzero(o.word, sizeof(uint16_t));
+                    ssh_burn(o.word, sizeof(uint16_t));
                     break;
                 }
                 break;
             case 'd':
                 o.dword = va_arg(ap_copy, uint32_t *);
                 if (buffer->secure) {
-                    explicit_bzero(o.dword, sizeof(uint32_t));
+                    ssh_burn(o.dword, sizeof(uint32_t));
                     break;
                 }
                 break;
             case 'q':
                 o.qword = va_arg(ap_copy, uint64_t *);
                 if (buffer->secure) {
-                    explicit_bzero(o.qword, sizeof(uint64_t));
+                    ssh_burn(o.qword, sizeof(uint64_t));
                     break;
                 }
                 break;
@@ -1391,7 +1391,7 @@ cleanup:
             case 's':
                 o.cstring = va_arg(ap_copy, char **);
                 if (buffer->secure) {
-                    explicit_bzero(*o.cstring, strlen(*o.cstring));
+                    ssh_burn(*o.cstring, strlen(*o.cstring));
                 }
                 SAFE_FREE(*o.cstring);
                 break;
@@ -1399,7 +1399,7 @@ cleanup:
                 len = va_arg(ap_copy, size_t);
                 o.data = va_arg(ap_copy, void **);
                 if (buffer->secure) {
-                    explicit_bzero(*o.data, len);
+                    ssh_burn(*o.data, len);
                 }
                 SAFE_FREE(*o.data);
                 break;

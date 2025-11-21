@@ -1845,7 +1845,7 @@ void ssh_kbdint_free(ssh_kbdint kbd)
     if (kbd->prompts) {
         for (i = 0; i < n; i++) {
             if (kbd->prompts[i] != NULL) {
-                explicit_bzero(kbd->prompts[i], strlen(kbd->prompts[i]));
+                ssh_burn(kbd->prompts[i], strlen(kbd->prompts[i]));
             }
             SAFE_FREE(kbd->prompts[i]);
         }
@@ -1856,7 +1856,7 @@ void ssh_kbdint_free(ssh_kbdint kbd)
     if (kbd->answers) {
         for (i = 0; i < n; i++) {
             if (kbd->answers[i] != NULL) {
-                explicit_bzero(kbd->answers[i], strlen(kbd->answers[i]));
+                ssh_burn(kbd->answers[i], strlen(kbd->answers[i]));
             }
             SAFE_FREE(kbd->answers[i]);
         }
@@ -1881,7 +1881,7 @@ void ssh_kbdint_clean(ssh_kbdint kbd)
     n = kbd->nprompts;
     if (kbd->prompts) {
         for (i = 0; i < n; i++) {
-            explicit_bzero(kbd->prompts[i], strlen(kbd->prompts[i]));
+            ssh_burn(kbd->prompts[i], strlen(kbd->prompts[i]));
             SAFE_FREE(kbd->prompts[i]);
         }
         SAFE_FREE(kbd->prompts);
@@ -1891,7 +1891,7 @@ void ssh_kbdint_clean(ssh_kbdint kbd)
 
     if (kbd->answers) {
         for (i = 0; i < n; i++) {
-            explicit_bzero(kbd->answers[i], strlen(kbd->answers[i]));
+            ssh_burn(kbd->answers[i], strlen(kbd->answers[i]));
             SAFE_FREE(kbd->answers[i]);
         }
         SAFE_FREE(kbd->answers);
@@ -2372,8 +2372,8 @@ ssh_userauth_kbdint_setanswer(ssh_session session, unsigned int i,
     }
 
     if (session->kbdint->answers[i]) {
-        explicit_bzero(session->kbdint->answers[i],
-                strlen(session->kbdint->answers[i]));
+        ssh_burn(session->kbdint->answers[i],
+                 strlen(session->kbdint->answers[i]));
         SAFE_FREE(session->kbdint->answers[i]);
     }
 

@@ -129,7 +129,7 @@ torture_packet(const char *cipher, const char *mac_type,
     assert_int_equal(rc, encrypted_packet_len);
 
     ssh_packet_set_callbacks(session, &cb);
-    explicit_bzero(response, sizeof(response));
+    ssh_burn(response, sizeof(response));
     rc = ssh_packet_socket_callback(buffer, encrypted_packet_len, session);
     assert_int_not_equal(rc, SSH_ERROR);
     if(payload_len > 0){

@@ -139,6 +139,7 @@ check_function_exists(strncpy HAVE_STRNCPY)
 check_function_exists(strndup HAVE_STRNDUP)
 check_function_exists(strtoull HAVE_STRTOULL)
 check_function_exists(explicit_bzero HAVE_EXPLICIT_BZERO)
+check_function_exists(memset_explicit HAVE_MEMSET_EXPLICIT)
 check_function_exists(memset_s HAVE_MEMSET_S)
 
 if (HAVE_GLOB_H)

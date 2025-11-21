@@ -417,7 +417,7 @@ void ssh_free(ssh_session session)
   _ssh_remove_legacy_log_cb();
 
   /* burn connection, it could contain sensitive data */
-  explicit_bzero(session, sizeof(struct ssh_session_struct));
+  ssh_burn(session, sizeof(struct ssh_session_struct));
   SAFE_FREE(session);
 }
 

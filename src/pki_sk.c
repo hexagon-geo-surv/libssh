@@ -350,7 +350,7 @@ int pki_sk_enroll_key(ssh_pki_ctx context,
             pin_to_use = pin_buf;
         } else {
             SSH_LOG(SSH_LOG_WARN, "Failed to fetch PIN from callback");
-            explicit_bzero(pin_buf, sizeof(pin_buf));
+            ssh_burn(pin_buf, sizeof(pin_buf));
             goto out;
         }
     } else {
@@ -365,7 +365,7 @@ int pki_sk_enroll_key(ssh_pki_ctx context,
                               pin_to_use,
                               context->sk_callbacks_options,
                               &enroll_response);
-    explicit_bzero(pin_buf, sizeof(pin_buf));
+    ssh_burn(pin_buf, sizeof(pin_buf));
     if (rc != SSH_OK) {
         SSH_LOG(SSH_LOG_WARN,
                 "Security key enroll callback failed: %s (%d)",
@@ -407,7 +407,7 @@ int pki_sk_enroll_key(ssh_pki_ctx context,
 
 out:
     if (challenge == random_challenge) {
-        explicit_bzero(random_challenge, sizeof(random_challenge));
+        ssh_burn(random_challenge, sizeof(random_challenge));
     }
 
     SK_ENROLL_RESPONSE_FREE(enroll_response);
@@ -697,7 +697,7 @@ ssh_signature pki_sk_do_sign(ssh_pki_ctx context,
             pin_to_use = pin_buf;
         } else {
             SSH_LOG(SSH_LOG_WARN, "Failed to fetch PIN from callback");
-            explicit_bzero(pin_buf, sizeof(pin_buf));
+            ssh_burn(pin_buf, sizeof(pin_buf));
             goto error;
         }
     } else {
@@ -714,7 +714,7 @@ ssh_signature pki_sk_do_sign(ssh_pki_ctx context,
                             pin_to_use,
                             context->sk_callbacks_options,
                             &sign_response);
-    explicit_bzero(pin_buf, sizeof(pin_buf));
+    ssh_burn(pin_buf, sizeof(pin_buf));
     if (rc != SSH_OK) {
         SSH_LOG(SSH_LOG_WARN,
                 "Security key sign callback failed: %s (%d)",
@@ -833,7 +833,7 @@ int ssh_sk_resident_keys_load(const struct ssh_pki_ctx_struct *pki_context,
             pin_to_use = pin_buf;
         } else {
             SSH_LOG(SSH_LOG_WARN, "Failed to fetch PIN from callback");
-            explicit_bzero(pin_buf, sizeof(pin_buf));
+            ssh_burn(pin_buf, sizeof(pin_buf));
             goto out;
         }
     } else {
@@ -844,7 +844,7 @@ int ssh_sk_resident_keys_load(const struct ssh_pki_ctx_struct *pki_context,
                                           ctx_to_use->sk_callbacks_options,
                                           &raw_resident_keys,
                                           &raw_keys_count);
-    explicit_bzero(pin_buf, sizeof(pin_buf));
+    ssh_burn(pin_buf, sizeof(pin_buf));
     if (rc != SSH_OK) {
         SSH_LOG(SSH_LOG_WARN,
                 "Security key load_resident_keys callback failed: %s (%d)",

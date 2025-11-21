@@ -62,7 +62,7 @@ void sk_enroll_response_burn(struct sk_enroll_response *enroll_response)
               enroll_response->attestation_cert_len);
     BURN_FREE(enroll_response->authdata, enroll_response->authdata_len);
 
-    explicit_bzero(enroll_response, sizeof(*enroll_response));
+    ssh_burn(enroll_response, sizeof(*enroll_response));
 }
 
 void sk_enroll_response_free(struct sk_enroll_response *enroll_response)

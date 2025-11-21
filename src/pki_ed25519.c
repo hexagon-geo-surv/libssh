@@ -331,8 +331,8 @@ int pki_ed25519_verify(const ssh_key pubkey,
                                   hlen + ED25519_SIG_LEN,
                                   *pubkey->ed25519_pubkey);
 
-    explicit_bzero(buffer, hlen + ED25519_SIG_LEN);
-    explicit_bzero(buffer2, hlen);
+    ssh_burn(buffer, hlen + ED25519_SIG_LEN);
+    ssh_burn(buffer2, hlen);
     SAFE_FREE(buffer);
     SAFE_FREE(buffer2);
     if (rc == 0) {

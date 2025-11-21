@@ -1806,7 +1806,7 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             if (rc == SSH_ERROR) {
                 goto fail;
             }
-            explicit_bzero(ed25519_privkey, ED25519_KEY_LEN);
+            ssh_burn(ed25519_privkey, ED25519_KEY_LEN);
             SAFE_FREE(ed25519_privkey);
         } else if (type == SSH_KEY_PRIVATE &&
                    key->type == SSH_KEYTYPE_SK_ED25519) {
@@ -2038,7 +2038,7 @@ fail:
 #endif /* OPENSSL_VERSION_NUMBER */
     free(ed25519_pubkey);
     if (ed25519_privkey) {
-        explicit_bzero(ed25519_privkey, ED25519_KEY_LEN);
+        ssh_burn(ed25519_privkey, ED25519_KEY_LEN);
         free(ed25519_privkey);
     }
 
@@ -2231,7 +2231,7 @@ static int pki_signature_from_rsa_blob(const ssh_key pubkey,
         }
 
         /* front-pad the buffer with zeroes */
-        explicit_bzero(blob_padded_data, pad_len);
+        ssh_burn(blob_padded_data, pad_len);
         /* fill the rest with the actual signature blob */
         memcpy(blob_padded_data + pad_len, blob_orig, len);
 
@@ -2360,17 +2360,17 @@ static int pki_signature_from_ecdsa_blob(UNUSED_PARAM(const ssh_key pubkey),
 
     sig->raw_sig = ssh_string_new(raw_sig_len);
     if (sig->raw_sig == NULL) {
-        explicit_bzero(raw_sig_data, raw_sig_len);
+        ssh_burn(raw_sig_data, raw_sig_len);
         goto error;
     }
 
     rc = ssh_string_fill(sig->raw_sig, raw_sig_data, raw_sig_len);
     if (rc < 0) {
-        explicit_bzero(raw_sig_data, raw_sig_len);
+        ssh_burn(raw_sig_data, raw_sig_len);
         goto error;
     }
 
-    explicit_bzero(raw_sig_data, raw_sig_len);
+    ssh_burn(raw_sig_data, raw_sig_len);
     SAFE_FREE(raw_sig_data);
     ECDSA_SIG_free(ecdsa_sig);
     return SSH_OK;
@@ -2649,7 +2649,7 @@ out:
         EVP_MD_CTX_free(ctx);
     }
     if (raw_sig_data != NULL) {
-        explicit_bzero(raw_sig_data, raw_sig_len);
+        ssh_burn(raw_sig_data, raw_sig_len);
     }
     SAFE_FREE(raw_sig_data);
     EVP_PKEY_free(pkey);

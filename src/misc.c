@@ -1608,23 +1608,6 @@ int ssh_timeout_update(struct ssh_timestamp *ts, int timeout)
   return ret >= 0 ? ret: 0;
 }
 
-#if !defined(HAVE_EXPLICIT_BZERO)
-void explicit_bzero(void *s, size_t n)
-{
-#if defined(HAVE_MEMSET_S)
-    memset_s(s, n, '\0', n);
-#elif defined(HAVE_SECURE_ZERO_MEMORY)
-    SecureZeroMemory(s, n);
-#else
-    memset(s, '\0', n);
-#if defined(HAVE_GCC_VOLATILE_MEMORY_PROTECTION)
-    /* See http://llvm.org/bugs/show_bug.cgi?id=15495 */
-    __asm__ volatile("" : : "g"(s) : "memory");
-#endif /* HAVE_GCC_VOLATILE_MEMORY_PROTECTION */
-#endif
-}
-#endif /* !HAVE_EXPLICIT_BZERO */
-
 /**
  * @brief Securely free memory by overwriting it before deallocation
  *
@@ -1642,7 +1625,7 @@ void burn_free(void *ptr, size_t len)
         return;
     }
 
-    explicit_bzero(ptr, len);
+    ssh_burn(ptr, len);
     free(ptr);
 }
 

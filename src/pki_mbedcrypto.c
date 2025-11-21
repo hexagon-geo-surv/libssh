@@ -1297,7 +1297,7 @@ static ssh_signature pki_signature_from_rsa_blob(const ssh_key pubkey, const
         blob_padded_data = (char *) ssh_string_data(sig_blob_padded);
         blob_orig = (char *) ssh_string_data(sig_blob);
 
-        explicit_bzero(blob_padded_data, pad_len);
+        ssh_burn(blob_padded_data, pad_len);
         memcpy(blob_padded_data + pad_len, blob_orig, len);
 
         sig->rsa_sig = sig_blob_padded;
@@ -1486,7 +1486,7 @@ static ssh_string rsa_do_sign_hash(const unsigned char *digest,
     }
 
     ok = ssh_string_fill(sig_blob, sig, slen);
-    explicit_bzero(sig, slen);
+    ssh_burn(sig, slen);
     SAFE_FREE(sig);
     if (ok < 0) {
         SSH_STRING_FREE(sig_blob);

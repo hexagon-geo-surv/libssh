@@ -344,7 +344,7 @@ void ssh_string_burn(struct ssh_string_struct *s)
         return;
     }
 
-    explicit_bzero(s->data, ssh_string_len(s));
+    ssh_burn(s->data, ssh_string_len(s));
 }
 
 /**

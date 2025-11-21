@@ -179,6 +179,9 @@
 /* Define to 1 if you have the `explicit_bzero' function. */
 #cmakedefine HAVE_EXPLICIT_BZERO 1
 
+/* Define to 1 if you have the `memset_explicit' function. */
+#cmakedefine HAVE_MEMSET_EXPLICIT 1
+
 /* Define to 1 if you have the `memset_s' function. */
 #cmakedefine HAVE_MEMSET_S 1
 

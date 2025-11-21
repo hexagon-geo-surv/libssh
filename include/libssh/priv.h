@@ -365,9 +365,29 @@ int ssh_connector_remove_event(ssh_connector connector);
 /** Get the size of an array */
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
-#ifndef HAVE_EXPLICIT_BZERO
-void explicit_bzero(void *s, size_t n);
-#endif /* !HAVE_EXPLICIT_BZERO */
+/** Securely zero memory in a way that won't be optimized away */
+#if defined(HAVE_MEMSET_EXPLICIT)
+#define ssh_burn(ptr, len) memset_explicit((ptr), '\0', (len))
+#elif defined(HAVE_EXPLICIT_BZERO)
+#define ssh_burn(ptr, len) explicit_bzero((ptr), (len))
+#elif defined(HAVE_MEMSET_S)
+#define ssh_burn(ptr, len) memset_s((ptr), (len), '\0', (len))
+#elif defined(HAVE_SECURE_ZERO_MEMORY)
+#define ssh_burn(ptr, len) SecureZeroMemory((ptr), (len))
+#else
+#if defined(HAVE_GCC_VOLATILE_MEMORY_PROTECTION)
+#define ssh_burn(ptr, len)                            \
+    do {                                              \
+        memset((ptr), '\0', (len));                   \
+        __asm__ volatile("" : : "g"(ptr) : "memory"); \
+    } while (0)
+#else
+#define ssh_burn(ptr, len)          \
+    do {                            \
+        memset((ptr), '\0', (len)); \
+    } while (0)
+#endif
+#endif
 
 void burn_free(void *ptr, size_t len);
 

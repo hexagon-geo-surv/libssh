@@ -602,7 +602,7 @@ static void chacha20_poly1305_aead_encrypt(struct ssh_cipher_struct *cipher,
     }
 
 out:
-    explicit_bzero(poly_key, sizeof(poly_key));
+    ssh_burn(poly_key, sizeof(poly_key));
 }
 
 static int chacha20_poly1305_aead_decrypt_length(
@@ -714,7 +714,7 @@ static int chacha20_poly1305_aead_decrypt(struct ssh_cipher_struct *cipher,
     ret = SSH_OK;
 
 out:
-    explicit_bzero(poly_key, sizeof(poly_key));
+    ssh_burn(poly_key, sizeof(poly_key));
     return ret;
 }
 #endif /* HAVE_GCRYPT_CHACHA_POLY */

@@ -376,25 +376,23 @@ struct ssh_list *ssh_known_hosts_get_algorithms(ssh_session session)
         }
     }
 
-    host_port = ssh_session_get_host_port(session);
-    if (host_port == NULL) {
-        return NULL;
-    }
-
     list = ssh_list_new();
     if (list == NULL) {
         ssh_set_error_oom(session);
-        SAFE_FREE(host_port);
         return NULL;
+    }
+
+    host_port = ssh_session_get_host_port(session);
+    if (host_port == NULL) {
+        goto error;
     }
 
     rc = ssh_known_hosts_read_entries(host_port,
                                       session->opts.knownhosts,
                                       &entry_list);
     if (rc != 0) {
-        ssh_list_free(entry_list);
-        ssh_list_free(list);
-        return NULL;
+        SAFE_FREE(host_port);
+        goto error;
     }
 
     rc = ssh_known_hosts_read_entries(host_port,
@@ -402,21 +400,16 @@ struct ssh_list *ssh_known_hosts_get_algorithms(ssh_session session)
                                       &entry_list);
     SAFE_FREE(host_port);
     if (rc != 0) {
-        ssh_list_free(entry_list);
-        ssh_list_free(list);
-        return NULL;
+        goto error;
     }
 
     if (entry_list == NULL) {
-        ssh_list_free(list);
-        return NULL;
+        goto error;
     }
 
     count = ssh_list_count(entry_list);
     if (count == 0) {
-        ssh_list_free(list);
-        ssh_list_free(entry_list);
-        return NULL;
+        goto error;
     }
 
     for (it = ssh_list_get_iterator(entry_list);
@@ -460,6 +453,7 @@ struct ssh_list *ssh_known_hosts_get_algorithms(ssh_session session)
 
     return list;
 error:
+    ssh_list_free(entry_list);
     ssh_list_free(list);
     return NULL;
 }

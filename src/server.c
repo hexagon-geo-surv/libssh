@@ -497,6 +497,11 @@ static size_t callback_receive_banner(const void *data, size_t len, void *user)
             buffer[i] = '\0';
 
             str = strdup(buffer);
+            if (str == NULL) {
+                session->session_state = SSH_SESSION_STATE_ERROR;
+                ssh_set_error_oom(session);
+                return 0;
+            }
             /* number of bytes read */
             processed = i + 1;
             session->clientbanner = str;

@@ -39,7 +39,8 @@
 #ifdef HAVE_ECDH
 
 static mbedtls_ecp_group_id ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type) {
-    if (kex_type == SSH_KEX_ECDH_SHA2_NISTP256) {
+    if (kex_type == SSH_KEX_ECDH_SHA2_NISTP256 ||
+        kex_type == SSH_GSS_KEX_ECDH_NISTP256_SHA256) {
         return MBEDTLS_ECP_DP_SECP256R1;
     } else if (kex_type == SSH_KEX_ECDH_SHA2_NISTP384) {
         return MBEDTLS_ECP_DP_SECP384R1;

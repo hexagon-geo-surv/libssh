@@ -31,7 +31,7 @@
 #endif
 
 #include "libssh/buffer.h"
-#include "libssh/dh-gss.h"
+#include "libssh/kex-gss.h"
 #include "libssh/dh.h"
 #include "libssh/options.h"
 #include "libssh/packet.h"
@@ -271,7 +271,9 @@ int dh_handshake(ssh_session session)
 #ifdef WITH_GSSAPI
         case SSH_GSS_KEX_DH_GROUP14_SHA256:
         case SSH_GSS_KEX_DH_GROUP16_SHA512:
-            rc = ssh_client_gss_dh_init(session);
+        case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+        case SSH_GSS_KEX_CURVE25519_SHA256:
+            rc = ssh_client_gss_kex_init(session);
             break;
 #endif
         case SSH_KEX_DH_GROUP1_SHA1:

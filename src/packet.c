@@ -434,7 +434,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
              *
              * Transitions:
              * - session->dh_handshake_state = DH_STATE_INIT_SENT
-             * then calls ssh_packet_client_gss_dh_reply which triggers:
+             * then calls ssh_packet_client_gss_kex_reply which triggers:
              * - session->dh_handshake_state = DH_STATE_NEWKEYS_SENT
              * */
 

@@ -95,7 +95,10 @@ static void setup_config(void **state)
 
     /* Enable GSSAPI key exchange */
     ss->gssapi_key_exchange = true;
-    ss->gssapi_key_exchange_algs = "gss-group14-sha256-,gss-group16-sha512-";
+    ss->gssapi_key_exchange_algs = "gss-group14-sha256-,"
+                                   "gss-group16-sha512-,"
+                                   "gss-nistp256-sha256-,"
+                                   "gss-curve25519-sha256-";
 
     tss->state = s;
     tss->ss = ss;

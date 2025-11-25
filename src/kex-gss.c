@@ -1,5 +1,5 @@
 /*
- * dh-gss.c - diffie-hellman GSSAPI key exchange
+ * kex-gss.c - GSSAPI key exchange
  *
  * This file is part of the SSH Library
  *
@@ -30,50 +30,112 @@
 
 #include "libssh/buffer.h"
 #include "libssh/crypto.h"
-#include "libssh/dh-gss.h"
+#include "libssh/kex-gss.h"
+#include "libssh/bignum.h"
+#include "libssh/curve25519.h"
+#include "libssh/ecdh.h"
 #include "libssh/dh.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
 #include "libssh/ssh2.h"
 
-static SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply);
+static SSH_PACKET_CALLBACK(ssh_packet_client_gss_kex_reply);
 
-static ssh_packet_callback gss_dh_client_callbacks[] = {
-    ssh_packet_client_gss_dh_reply,
+static ssh_packet_callback gss_kex_client_callbacks[] = {
+    ssh_packet_client_gss_kex_reply,
 };
 
-static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callbacks = {
+static struct ssh_packet_callbacks_struct ssh_gss_kex_client_callbacks = {
     .start = SSH2_MSG_KEXGSS_COMPLETE,
     .n_callbacks = 1,
-    .callbacks = gss_dh_client_callbacks,
+    .callbacks = gss_kex_client_callbacks,
     .user = NULL,
 };
 
-static SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey);
+static SSH_PACKET_CALLBACK(ssh_packet_client_gss_kex_hostkey);
 
-static ssh_packet_callback gss_dh_client_callback_hostkey[] = {
-    ssh_packet_client_gss_dh_hostkey,
+static ssh_packet_callback gss_kex_client_callback_hostkey[] = {
+    ssh_packet_client_gss_kex_hostkey,
 };
 
-static struct ssh_packet_callbacks_struct ssh_gss_dh_client_callback_hostkey = {
+static struct ssh_packet_callbacks_struct ssh_gss_kex_client_callback_hostkey = {
     .start = SSH2_MSG_KEXGSS_HOSTKEY,
     .n_callbacks = 1,
-    .callbacks = gss_dh_client_callback_hostkey,
+    .callbacks = gss_kex_client_callback_hostkey,
     .user = NULL,
 };
+
+static ssh_string dh_init(ssh_session session)
+{
+    int rc, keypair;
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
+    const_bignum const_pubkey;
+#endif
+    bignum pubkey = NULL;
+    ssh_string pubkey_string = NULL;
+    struct ssh_crypto_struct *crypto = session->next_crypto;
+
+    if (session->server) {
+        keypair = DH_SERVER_KEYPAIR;
+    } else {
+        keypair = DH_CLIENT_KEYPAIR;
+    }
+
+    rc = ssh_dh_init_common(crypto);
+    if (rc != SSH_OK) {
+        goto end;
+    }
+
+    rc = ssh_dh_keypair_gen_keys(crypto->dh_ctx, keypair);
+    if (rc != SSH_OK) {
+        goto end;
+    }
+
+#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
+    rc = ssh_dh_keypair_get_keys(crypto->dh_ctx, keypair, NULL, &const_pubkey);
+    bignum_dup(const_pubkey, &pubkey);
+#else
+    rc = ssh_dh_keypair_get_keys(crypto->dh_ctx, keypair, NULL, &pubkey);
+#endif
+    if (rc != SSH_OK) {
+        goto end;
+    }
+
+    pubkey_string = ssh_make_bignum_string(pubkey);
+
+end:
+    bignum_safe_free(pubkey);
+    return pubkey_string;
+}
+
+static int dh_import_peer_key(ssh_session session, ssh_string peer_key)
+{
+    int rc, keypair;
+    bignum peer_key_bn;
+    struct ssh_crypto_struct *crypto = session->next_crypto;
+
+    if (session->server) {
+        keypair = DH_CLIENT_KEYPAIR;
+    } else {
+        keypair = DH_SERVER_KEYPAIR;
+    }
+
+    peer_key_bn = ssh_make_string_bn(peer_key);
+    rc = ssh_dh_keypair_set_keys(crypto->dh_ctx, keypair, NULL, peer_key_bn);
+    if (rc != SSH_OK) {
+        bignum_safe_free(peer_key_bn);
+    }
+
+    return rc;
+}
 
 /** @internal
  * @brief Starts gssapi key exchange
  */
-int ssh_client_gss_dh_init(ssh_session session)
+int ssh_client_gss_kex_init(ssh_session session)
 {
     struct ssh_crypto_struct *crypto = session->next_crypto;
-#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
-    const_bignum pubkey;
-#else
-    bignum pubkey = NULL;
-#endif /* OPENSSL_VERSION_NUMBER */
-    int rc;
+    int rc, ret = SSH_ERROR;
     /* oid selected for authentication */
     gss_OID_set selected = GSS_C_NO_OID_SET;
     OM_uint32 maj_stat, min_stat;
@@ -81,27 +143,52 @@ int ssh_client_gss_dh_init(ssh_session session)
     gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
     OM_uint32 oflags;
+    ssh_string pubkey = NULL;
 
-    rc = ssh_dh_init_common(crypto);
-    if (rc == SSH_ERROR) {
-        goto error;
-    }
-
-    rc = ssh_dh_keypair_gen_keys(crypto->dh_ctx, DH_CLIENT_KEYPAIR);
-    if (rc == SSH_ERROR) {
-        goto error;
-    }
-    rc = ssh_dh_keypair_get_keys(crypto->dh_ctx,
-                                 DH_CLIENT_KEYPAIR,
-                                 NULL,
-                                 &pubkey);
-    if (rc != SSH_OK) {
-        goto error;
+    switch (crypto->kex_type) {
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
+        pubkey = dh_init(session);
+        if (pubkey == NULL) {
+            ssh_set_error(session, SSH_FATAL, "Failed to generate DH keypair");
+            goto out;
+        }
+        break;
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+        rc = ssh_ecdh_init(session);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to generate ECDH keypair");
+            goto out;
+        }
+        pubkey = ssh_string_copy(crypto->ecdh_client_pubkey);
+        break;
+    case SSH_GSS_KEX_CURVE25519_SHA256:
+        rc = ssh_curve25519_init(session);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to generate Curve25519 keypair");
+            goto out;
+        }
+        pubkey = ssh_string_new(CURVE25519_PUBKEY_SIZE);
+        if (pubkey == NULL) {
+            ssh_set_error_oom(session);
+            goto out;
+        }
+        rc = ssh_string_fill(pubkey,
+                             crypto->curve25519_client_pubkey,
+                             CURVE25519_PUBKEY_SIZE);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to copy Curve25519 pubkey");
+            goto out;
+        }
+        break;
+    default:
+        ssh_set_error(session, SSH_FATAL, "Unsupported GSSAPI KEX method");
+        goto out;
     }
 
     rc = ssh_gssapi_init(session);
-    if (rc == SSH_ERROR) {
-        goto error;
+    if (rc != SSH_OK) {
+        goto out;
     }
 
     if (session->opts.gss_server_identity != NULL) {
@@ -110,12 +197,12 @@ int ssh_client_gss_dh_init(ssh_session session)
 
     rc = ssh_gssapi_import_name(session->gssapi, gss_host);
     if (rc != SSH_OK) {
-        goto error;
+        goto out;
     }
 
     rc = ssh_gssapi_client_identity(session, &selected);
-    if (rc == SSH_ERROR) {
-        goto error;
+    if (rc != SSH_OK) {
+        goto out;
     }
 
     session->gssapi->client.flags = GSS_C_MUTUAL_FLAG | GSS_C_INTEG_FLAG;
@@ -129,61 +216,58 @@ int ssh_client_gss_dh_init(ssh_session session)
                              "Initializing gssapi context",
                              maj_stat,
                              min_stat);
-        goto error;
+        goto out;
     }
     if (!(oflags & GSS_C_INTEG_FLAG) || !(oflags & GSS_C_MUTUAL_FLAG)) {
         SSH_LOG(SSH_LOG_WARN,
                 "GSSAPI(init) integrity and mutual flags were not set");
-        goto error;
+        goto out;
     }
 
     rc = ssh_buffer_pack(session->out_buffer,
-                         "bdPB",
+                         "bdPS",
                          SSH2_MSG_KEXGSS_INIT,
                          output_token.length,
                          (size_t)output_token.length,
                          output_token.value,
                          pubkey);
     if (rc != SSH_OK) {
-        goto error;
+        goto out;
     }
-    gss_release_buffer(&min_stat, &output_token);
-#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    bignum_safe_free(pubkey);
-#endif
 
     /* register the packet callbacks */
-    ssh_packet_set_callbacks(session, &ssh_gss_dh_client_callbacks);
-    ssh_packet_set_callbacks(session, &ssh_gss_dh_client_callback_hostkey);
+    ssh_packet_set_callbacks(session, &ssh_gss_kex_client_callbacks);
+    ssh_packet_set_callbacks(session, &ssh_gss_kex_client_callback_hostkey);
     session->dh_handshake_state = DH_STATE_INIT_SENT;
 
     rc = ssh_packet_send(session);
-    return rc;
-error:
-#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    bignum_safe_free(pubkey);
-#endif
+    if (rc != SSH_OK) {
+        goto out;
+    }
+
+    ret = SSH_OK;
+
+out:
     gss_release_buffer(&min_stat, &output_token);
-    ssh_dh_cleanup(crypto);
-    return SSH_ERROR;
+    ssh_string_free(pubkey);
+    return ret;
 }
 
-void ssh_client_gss_dh_remove_callbacks(ssh_session session)
+void ssh_client_gss_kex_remove_callbacks(ssh_session session)
 {
-    ssh_packet_remove_callbacks(session, &ssh_gss_dh_client_callbacks);
+    ssh_packet_remove_callbacks(session, &ssh_gss_kex_client_callbacks);
 }
 
-void ssh_client_gss_dh_remove_callback_hostkey(ssh_session session)
+void ssh_client_gss_kex_remove_callback_hostkey(ssh_session session)
 {
-    ssh_packet_remove_callbacks(session, &ssh_gss_dh_client_callback_hostkey);
+    ssh_packet_remove_callbacks(session, &ssh_gss_kex_client_callback_hostkey);
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply)
+SSH_PACKET_CALLBACK(ssh_packet_client_gss_kex_reply)
 {
     struct ssh_crypto_struct *crypto = session->next_crypto;
-    ssh_string pubkey_blob = NULL, mic = NULL, otoken = NULL;
+    ssh_string mic = NULL, otoken = NULL, server_pubkey = NULL;
     uint8_t b;
-    bignum server_pubkey;
     int rc;
     gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
@@ -193,12 +277,14 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply)
     (void)type;
     (void)user;
 
-    ssh_client_gss_dh_remove_callbacks(session);
+    ssh_client_gss_kex_remove_callbacks(session);
 
-    rc = ssh_buffer_unpack(packet, "BSbS", &server_pubkey, &mic, &b, &otoken);
-    if (rc == SSH_ERROR) {
+    rc = ssh_buffer_unpack(packet, "SSbS", &server_pubkey, &mic, &b, &otoken);
+    if (rc != SSH_OK) {
+        ssh_set_error(session, SSH_FATAL, "No public key in server reply");
         goto error;
     }
+
     SSH_STRING_FREE(session->gssapi_key_exchange_mic);
     session->gssapi_key_exchange_mic = mic;
     input_token.length = ssh_string_len(otoken);
@@ -211,23 +297,37 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply)
         goto error;
     }
     SSH_STRING_FREE(otoken);
-    rc = ssh_dh_keypair_set_keys(crypto->dh_ctx,
-                                 DH_SERVER_KEYPAIR,
-                                 NULL,
-                                 server_pubkey);
-    if (rc != SSH_OK) {
-        SSH_STRING_FREE(pubkey_blob);
-        bignum_safe_free(server_pubkey);
+
+    switch (crypto->kex_type) {
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
+        rc = dh_import_peer_key(session, server_pubkey);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Could not import server pubkey");
+            goto error;
+        }
+        rc = ssh_dh_compute_shared_secret(crypto->dh_ctx,
+                                          DH_CLIENT_KEYPAIR,
+                                          DH_SERVER_KEYPAIR,
+                                          &crypto->shared_secret);
+        ssh_dh_debug_crypto(crypto);
+        break;
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+        crypto->ecdh_server_pubkey = ssh_string_copy(server_pubkey);
+        rc = ecdh_build_k(session);
+        break;
+    case SSH_GSS_KEX_CURVE25519_SHA256:
+        memcpy(crypto->curve25519_server_pubkey,
+               ssh_string_data(server_pubkey),
+               CURVE25519_PUBKEY_SIZE);
+        rc = ssh_curve25519_build_k(session);
+        break;
+    default:
+        ssh_set_error(session, SSH_FATAL, "Unsupported GSSAPI KEX method");
         goto error;
     }
-
-    rc = ssh_dh_compute_shared_secret(session->next_crypto->dh_ctx,
-                                      DH_CLIENT_KEYPAIR,
-                                      DH_SERVER_KEYPAIR,
-                                      &session->next_crypto->shared_secret);
-    ssh_dh_debug_crypto(session->next_crypto);
-    if (rc == SSH_ERROR) {
-        ssh_set_error(session, SSH_FATAL, "Could not generate shared secret");
+    if (rc != SSH_OK) {
+        ssh_set_error(session, SSH_FATAL, "Could not derive shared secret");
         goto error;
     }
 
@@ -236,15 +336,18 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_reply)
     if (rc == SSH_ERROR) {
         goto error;
     }
+
+    ssh_string_free(server_pubkey);
     session->dh_handshake_state = DH_STATE_NEWKEYS_SENT;
     return SSH_PACKET_USED;
+
 error:
-    ssh_dh_cleanup(session->next_crypto);
+    ssh_string_free(server_pubkey);
     session->session_state = SSH_SESSION_STATE_ERROR;
     return SSH_PACKET_USED;
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey)
+SSH_PACKET_CALLBACK(ssh_packet_client_gss_kex_hostkey)
 {
     ssh_string pubkey_blob = NULL;
     int rc;
@@ -252,7 +355,7 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey)
     (void)type;
     (void)user;
 
-    ssh_client_gss_dh_remove_callback_hostkey(session);
+    ssh_client_gss_kex_remove_callback_hostkey(session);
 
     rc = ssh_buffer_unpack(packet, "S", &pubkey_blob);
     if (rc == SSH_ERROR) {
@@ -270,52 +373,45 @@ SSH_PACKET_CALLBACK(ssh_packet_client_gss_dh_hostkey)
 
     return SSH_PACKET_USED;
 error:
-    ssh_dh_cleanup(session->next_crypto);
     session->session_state = SSH_SESSION_STATE_ERROR;
     return SSH_PACKET_USED;
 }
 
 #ifdef WITH_SERVER
 
-static SSH_PACKET_CALLBACK(ssh_packet_server_gss_dh_init);
+static SSH_PACKET_CALLBACK(ssh_packet_server_gss_kex_init);
 
-static ssh_packet_callback gss_dh_server_callbacks[] = {
-    ssh_packet_server_gss_dh_init,
+static ssh_packet_callback gss_kex_server_callbacks[] = {
+    ssh_packet_server_gss_kex_init,
 };
 
-static struct ssh_packet_callbacks_struct ssh_gss_dh_server_callbacks = {
+static struct ssh_packet_callbacks_struct ssh_gss_kex_server_callbacks = {
     .start = SSH2_MSG_KEXGSS_INIT,
     .n_callbacks = 1,
-    .callbacks = gss_dh_server_callbacks,
+    .callbacks = gss_kex_server_callbacks,
     .user = NULL,
 };
 
 /** @internal
  * @brief sets up the gssapi kex callbacks
  */
-void ssh_server_gss_dh_init(ssh_session session)
+void ssh_server_gss_kex_init(ssh_session session)
 {
     /* register the packet callbacks */
-    ssh_packet_set_callbacks(session, &ssh_gss_dh_server_callbacks);
-
-    ssh_dh_init_common(session->next_crypto);
+    ssh_packet_set_callbacks(session, &ssh_gss_kex_server_callbacks);
 }
 
 /** @internal
  * @brief processes a SSH_MSG_KEXGSS_INIT and sends
  * the appropriate SSH_MSG_KEXGSS_COMPLETE
  */
-int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
+int ssh_server_gss_kex_process_init(ssh_session session, ssh_buffer packet)
 {
     struct ssh_crypto_struct *crypto = session->next_crypto;
     ssh_key privkey = NULL;
     enum ssh_digest_e digest = SSH_DIGEST_AUTO;
-    bignum client_pubkey;
-#if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
-    const_bignum server_pubkey;
-#else
-    bignum server_pubkey = NULL;
-#endif /* OPENSSL_VERSION_NUMBER */
+    ssh_string client_pubkey = NULL;
+    ssh_string server_pubkey = NULL;
     int rc;
     gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
@@ -336,33 +432,70 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
     input_token.length = ssh_string_len(otoken);
     input_token.value = ssh_string_data(otoken);
 
-    rc = ssh_buffer_unpack(packet, "B", &client_pubkey);
+    rc = ssh_buffer_unpack(packet, "S", &client_pubkey);
     if (rc == SSH_ERROR) {
-        ssh_set_error(session, SSH_FATAL, "No e number in client request");
+        ssh_set_error(session, SSH_FATAL, "No public key in client request");
         goto error;
     }
 
-    rc = ssh_dh_keypair_set_keys(crypto->dh_ctx,
-                                 DH_CLIENT_KEYPAIR,
-                                 NULL,
-                                 client_pubkey);
+    switch (crypto->kex_type) {
+    case SSH_GSS_KEX_DH_GROUP14_SHA256:
+    case SSH_GSS_KEX_DH_GROUP16_SHA512:
+        server_pubkey = dh_init(session);
+        if (server_pubkey == NULL) {
+            ssh_set_error(session, SSH_FATAL, "Could not generate a DH keypair");
+            goto error;
+        }
+        rc = dh_import_peer_key(session, client_pubkey);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Could not import client pubkey");
+            goto error;
+        }
+        rc = ssh_dh_compute_shared_secret(crypto->dh_ctx,
+                                          DH_SERVER_KEYPAIR,
+                                          DH_CLIENT_KEYPAIR,
+                                          &crypto->shared_secret);
+        ssh_dh_debug_crypto(crypto);
+        break;
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+        rc = ssh_ecdh_init(session);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Could not generate an ECDH keypair");
+            goto error;
+        }
+        crypto->ecdh_client_pubkey = ssh_string_copy(client_pubkey);
+        server_pubkey = ssh_string_copy(crypto->ecdh_server_pubkey);
+        rc = ecdh_build_k(session);
+        break;
+    case SSH_GSS_KEX_CURVE25519_SHA256:
+        rc = ssh_curve25519_init(session);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Could not generate a Curve25519 keypair");
+            goto error;
+        }
+        server_pubkey = ssh_string_new(CURVE25519_PUBKEY_SIZE);
+        if (server_pubkey == NULL) {
+            ssh_set_error_oom(session);
+            goto error;
+        }
+        rc = ssh_string_fill(server_pubkey,
+                             crypto->curve25519_server_pubkey,
+                             CURVE25519_PUBKEY_SIZE);
+        if (rc != SSH_OK) {
+            ssh_set_error(session, SSH_FATAL, "Failed to copy Curve25519 pubkey");
+            goto error;
+        }
+        memcpy(crypto->curve25519_client_pubkey,
+               ssh_string_data(client_pubkey),
+               CURVE25519_PUBKEY_SIZE);
+        rc = ssh_curve25519_build_k(session);
+        break;
+    default:
+        ssh_set_error(session, SSH_FATAL, "Unsupported GSSAPI KEX method");
+        goto error;
+    }
     if (rc != SSH_OK) {
-        bignum_safe_free(client_pubkey);
-        goto error;
-    }
-
-    rc = ssh_dh_keypair_gen_keys(crypto->dh_ctx, DH_SERVER_KEYPAIR);
-    if (rc == SSH_ERROR) {
-        goto error;
-    }
-
-    rc = ssh_dh_compute_shared_secret(crypto->dh_ctx,
-                                      DH_SERVER_KEYPAIR,
-                                      DH_CLIENT_KEYPAIR,
-                                      &crypto->shared_secret);
-    ssh_dh_debug_crypto(crypto);
-    if (rc == SSH_ERROR) {
-        ssh_set_error(session, SSH_FATAL, "Could not generate shared secret");
+        ssh_set_error(session, SSH_FATAL, "Could not derive shared secret");
         goto error;
     }
 
@@ -398,14 +531,6 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         }
         SSH_LOG(SSH_LOG_DEBUG, "Sent SSH2_MSG_KEXGSS_HOSTKEY");
         SSH_STRING_FREE(server_pubkey_blob);
-    }
-
-    rc = ssh_dh_keypair_get_keys(crypto->dh_ctx,
-                                 DH_SERVER_KEYPAIR,
-                                 NULL,
-                                 &server_pubkey);
-    if (rc != SSH_OK) {
-        goto error;
     }
 
     rc = ssh_gssapi_init(session);
@@ -485,7 +610,7 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
     }
 
     rc = ssh_buffer_pack(session->out_buffer,
-                         "bBdPbdP",
+                         "bSdPbdP",
                          SSH2_MSG_KEXGSS_COMPLETE,
                          server_pubkey,
                          mic.length,
@@ -495,9 +620,6 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
                          output_token.length,
                          (size_t)output_token.length,
                          output_token.value);
-#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    bignum_safe_free(server_pubkey);
-#endif
     if (rc != SSH_OK) {
         ssh_set_error_oom(session);
         ssh_buffer_reinit(session->out_buffer);
@@ -520,15 +642,14 @@ int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet)
         goto error;
     }
 
+    ssh_string_free(server_pubkey);
+    ssh_string_free(client_pubkey);
     return SSH_OK;
 error:
     SSH_STRING_FREE(server_pubkey_blob);
-#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    bignum_safe_free(server_pubkey);
-#endif
-
+    ssh_string_free(server_pubkey);
+    ssh_string_free(client_pubkey);
     session->session_state = SSH_SESSION_STATE_ERROR;
-    ssh_dh_cleanup(session->next_crypto);
     return SSH_ERROR;
 }
 
@@ -536,13 +657,13 @@ error:
  * @brief parse an incoming SSH_MSG_KEXGSS_INIT packet and complete
  *        Diffie-Hellman key exchange
  **/
-static SSH_PACKET_CALLBACK(ssh_packet_server_gss_dh_init)
+static SSH_PACKET_CALLBACK(ssh_packet_server_gss_kex_init)
 {
     (void)type;
     (void)user;
     SSH_LOG(SSH_LOG_DEBUG, "Received SSH_MSG_KEXGSS_INIT");
-    ssh_packet_remove_callbacks(session, &ssh_gss_dh_server_callbacks);
-    ssh_server_gss_dh_process_init(session, packet);
+    ssh_packet_remove_callbacks(session, &ssh_gss_kex_server_callbacks);
+    ssh_server_gss_kex_process_init(session, packet);
     return SSH_PACKET_USED;
 }
 

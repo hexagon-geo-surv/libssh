@@ -44,13 +44,13 @@
 #ifdef HAVE_MLKEM
 #include "libssh/hybrid_mlkem.h"
 #endif
+#include "libssh/kex-gss.h"
 #include "libssh/knownhosts.h"
 #include "libssh/misc.h"
 #include "libssh/pki.h"
 #include "libssh/bignum.h"
 #include "libssh/token.h"
 #include "libssh/gssapi.h"
-#include "libssh/dh-gss.h"
 
 #ifdef HAVE_BLOWFISH
 # define BLOWFISH ",blowfish-cbc"
@@ -958,6 +958,10 @@ kex_select_kex_type(const char *kex)
         return SSH_GSS_KEX_DH_GROUP14_SHA256;
     } else if (strncmp(kex, "gss-group16-sha512-", 19) == 0) {
         return SSH_GSS_KEX_DH_GROUP16_SHA512;
+    } else if (strncmp(kex, "gss-nistp256-sha256-", 20) == 0) {
+        return SSH_GSS_KEX_ECDH_NISTP256_SHA256;
+    } else if (strncmp(kex, "gss-curve25519-sha256-", 22) == 0) {
+        return SSH_GSS_KEX_CURVE25519_SHA256;
     } else if (strcmp(kex, "diffie-hellman-group14-sha1") == 0) {
         return SSH_KEX_DH_GROUP14_SHA1;
     } else if (strcmp(kex, "diffie-hellman-group14-sha256") == 0) {
@@ -1017,8 +1021,10 @@ static void revert_kex_callbacks(ssh_session session)
         break;
     case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_GSS_KEX_DH_GROUP16_SHA512:
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+    case SSH_GSS_KEX_CURVE25519_SHA256:
 #ifdef WITH_GSSAPI
-        ssh_client_gss_dh_remove_callbacks(session);
+        ssh_client_gss_kex_remove_callbacks(session);
 #endif /* WITH_GSSAPI */
         break;
 #ifdef WITH_GEX
@@ -1591,6 +1597,7 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_ECDH_SHA2_NISTP256:
     case SSH_KEX_ECDH_SHA2_NISTP384:
     case SSH_KEX_ECDH_SHA2_NISTP521:
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
         if (session->next_crypto->ecdh_client_pubkey == NULL ||
             session->next_crypto->ecdh_server_pubkey == NULL) {
             SSH_LOG(SSH_LOG_TRACE, "ECDH parameter missing");
@@ -1609,6 +1616,7 @@ int ssh_make_sessionid(ssh_session session)
 #ifdef HAVE_CURVE25519
     case SSH_KEX_CURVE25519_SHA256:
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
+    case SSH_GSS_KEX_CURVE25519_SHA256:
         rc = ssh_buffer_pack(buf,
                              "dPdP",
                              CURVE25519_PUBKEY_SIZE,
@@ -1727,6 +1735,8 @@ int ssh_make_sessionid(ssh_session session)
     case SSH_KEX_MLKEM768X25519_SHA256:
     case SSH_KEX_MLKEM768NISTP256_SHA256:
 #endif
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+    case SSH_GSS_KEX_CURVE25519_SHA256:
 #ifdef WITH_GEX
     case SSH_KEX_DH_GEX_SHA256:
 #endif /* WITH_GEX */
@@ -2043,6 +2053,8 @@ bool ssh_kex_is_gss(struct ssh_crypto_struct *crypto)
     switch (crypto->kex_type) {
     case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_GSS_KEX_DH_GROUP16_SHA512:
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+    case SSH_GSS_KEX_CURVE25519_SHA256:
         return true;
     default:
         return false;

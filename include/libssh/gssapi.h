@@ -29,7 +29,10 @@
 /* all OID begin with the tag identifier + length */
 #define SSH_OID_TAG 06
 
-#define GSSAPI_KEY_EXCHANGE_SUPPORTED "gss-group14-sha256-,gss-group16-sha512-,"
+#define GSSAPI_KEY_EXCHANGE_SUPPORTED "gss-group14-sha256-," \
+                                      "gss-group16-sha512-," \
+                                      "gss-nistp256-sha256-," \
+                                      "gss-curve25519-sha256-"
 
 typedef struct ssh_gssapi_struct *ssh_gssapi;
 

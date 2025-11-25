@@ -489,6 +489,8 @@ const char* ssh_get_kex_algo(ssh_session session) {
         return "diffie-hellman-group18-sha512";
     case SSH_KEX_ECDH_SHA2_NISTP256:
         return "ecdh-sha2-nistp256";
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+        return "gss-nistp256-sha256-";
     case SSH_KEX_ECDH_SHA2_NISTP384:
         return "ecdh-sha2-nistp384";
     case SSH_KEX_ECDH_SHA2_NISTP521:
@@ -497,6 +499,8 @@ const char* ssh_get_kex_algo(ssh_session session) {
         return "curve25519-sha256";
     case SSH_KEX_CURVE25519_SHA256_LIBSSH_ORG:
         return "curve25519-sha256@libssh.org";
+    case SSH_GSS_KEX_CURVE25519_SHA256:
+        return "gss-curve25519-sha256-";
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
         return "sntrup761x25519-sha512@openssh.com";
     case SSH_KEX_SNTRUP761X25519_SHA512:

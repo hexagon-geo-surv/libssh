@@ -1,5 +1,5 @@
 /*
- * dh-gss.h - diffie-hellman GSSAPI key exchange
+ * kex-gss.h - GSSAPI key exchange
  *
  * This file is part of the SSH Library
  *
@@ -20,17 +20,17 @@
  * the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
  * MA 02111-1307, USA.
  */
-#ifndef DH_GSS_H_
-#define DH_GSS_H_
+#ifndef KEX_GSS_H_
+#define KEX_GSS_H_
 
 #include "config.h"
 #ifdef WITH_GSSAPI
 
-int ssh_client_gss_dh_init(ssh_session session);
-void ssh_server_gss_dh_init(ssh_session session);
-int ssh_server_gss_dh_process_init(ssh_session session, ssh_buffer packet);
-void ssh_client_gss_dh_remove_callbacks(ssh_session session);
-void ssh_client_gss_dh_remove_callback_hostkey(ssh_session session);
+int ssh_client_gss_kex_init(ssh_session session);
+void ssh_server_gss_kex_init(ssh_session session);
+int ssh_server_gss_kex_process_init(ssh_session session, ssh_buffer packet);
+void ssh_client_gss_kex_remove_callbacks(ssh_session session);
+void ssh_client_gss_kex_remove_callback_hostkey(ssh_session session);
 
 #endif /* WITH_GSSAPI */
-#endif /* DH_GSS_H_ */
+#endif /* KEX_GSS_H_ */

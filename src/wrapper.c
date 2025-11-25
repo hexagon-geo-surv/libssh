@@ -49,12 +49,12 @@
 #include "libssh/dh-gex.h"
 #endif /* WITH_GEX */
 #include "libssh/curve25519.h"
+#include "libssh/kex-gss.h"
 #include "libssh/ecdh.h"
 #include "libssh/sntrup761.h"
 #ifdef HAVE_MLKEM
 #include "libssh/hybrid_mlkem.h"
 #endif
-#include "libssh/dh-gss.h"
 
 static struct ssh_hmac_struct ssh_hmac_tab[] = {
   { "hmac-sha1",                     SSH_HMAC_SHA1,          false },
@@ -591,7 +591,9 @@ int crypt_set_algorithms_server(ssh_session session){
 #ifdef WITH_GSSAPI
     case SSH_GSS_KEX_DH_GROUP14_SHA256:
     case SSH_GSS_KEX_DH_GROUP16_SHA512:
-        ssh_server_gss_dh_init(session);
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
+    case SSH_GSS_KEX_CURVE25519_SHA256:
+        ssh_server_gss_kex_init(session);
         break;
 #endif /* WITH_GSSAPI */
 #ifdef WITH_GEX

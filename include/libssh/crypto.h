@@ -99,6 +99,10 @@ enum ssh_key_exchange_e {
     SSH_GSS_KEX_DH_GROUP14_SHA256,
     /* gss-group16-sha512-* */
     SSH_GSS_KEX_DH_GROUP16_SHA512,
+    /* gss-nistp256-sha256-* */
+    SSH_GSS_KEX_ECDH_NISTP256_SHA256,
+    /* gss-curve25519-sha256-* */
+    SSH_GSS_KEX_CURVE25519_SHA256,
 };
 
 enum ssh_cipher_e {

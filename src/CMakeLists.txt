@@ -286,7 +286,7 @@ if (WITH_GSSAPI AND GSSAPI_FOUND)
   set(libssh_SRCS
     ${libssh_SRCS}
     gssapi.c
-    dh-gss.c
+    kex-gss.c
   )
 endif (WITH_GSSAPI AND GSSAPI_FOUND)
 

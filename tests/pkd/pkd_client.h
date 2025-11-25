@@ -24,10 +24,18 @@
   "-o PubkeyAcceptedKeyTypes="  \
   OPENSSH_KEYS
 
+#ifdef HAVE_SK_DUMMY
+#define SECURITY_KEY_PROVIDER \
+    "-oSecurityKeyProvider=\"" SK_DUMMY_LIBRARY_PATH "\" "
+#else
+#define SECURITY_KEY_PROVIDER ""
+#endif
+
 #define OPENSSH_CMD_START(hostkey_algos) \
     OPENSSH_BINARY " "                  \
     "-o UserKnownHostsFile=/dev/null "  \
     "-o StrictHostKeyChecking=no "      \
+    SECURITY_KEY_PROVIDER               \
     "-F /dev/null "                     \
     hostkey_algos " "                   \
     OPENSSH_PKACCEPTED_TYPES " "        \

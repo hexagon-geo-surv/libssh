@@ -30,6 +30,8 @@ void cleanup_ecdsa_keys(void);
 #define OPENSSH_ECDSA521_TESTKEY  "openssh_testkey.id_ecdsa521"
 #define OPENSSH_ED25519_TESTKEY   "openssh_testkey.id_ed25519"
 #define OPENSSH_CA_TESTKEY        "libssh_testkey.ca"
+#define OPENSSH_ECDSA_SK_TESTKEY  "openssh_testkey.id_ecdsa-sk"
+#define OPENSSH_ED25519_SK_TESTKEY "openssh_testkey.id_ed25519-sk"
 
 #define DROPBEAR_RSA_TESTKEY      "dropbear_testkey.id_rsa"
 #define DROPBEAR_ECDSA256_TESTKEY "dropbear_testkey.id_ecdsa256"

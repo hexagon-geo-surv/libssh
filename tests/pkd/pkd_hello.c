@@ -615,6 +615,28 @@ PKDTESTS_MAC(emit_keytest, openssh_ed, OPENSSH_MAC_CMD)
 PKDTESTS_MAC_OPENSSHONLY(emit_keytest, openssh_ed, OPENSSH_MAC_CMD)
 #undef CLIENT_ID_FILE
 
+#ifdef HAVE_SK_DUMMY
+#define CLIENT_ID_FILE OPENSSH_ECDSA_SK_TESTKEY
+PKDTESTS_DEFAULT(emit_keytest, openssh_ec_sk, OPENSSH_CMD)
+PKDTESTS_DEFAULT(emit_keytest, openssh_cert_ec_sk, OPENSSH_CERT_CMD)
+PKDTESTS_KEX(emit_keytest, openssh_ec_sk, OPENSSH_KEX_CMD)
+PKDTESTS_CIPHER(emit_keytest, openssh_ec_sk, OPENSSH_CIPHER_CMD)
+PKDTESTS_CIPHER_OPENSSHONLY(emit_keytest, openssh_ec_sk, OPENSSH_CIPHER_CMD)
+PKDTESTS_MAC(emit_keytest, openssh_ec_sk, OPENSSH_MAC_CMD)
+PKDTESTS_MAC_OPENSSHONLY(emit_keytest, openssh_ec_sk, OPENSSH_MAC_CMD)
+#undef CLIENT_ID_FILE
+
+#define CLIENT_ID_FILE OPENSSH_ED25519_SK_TESTKEY
+PKDTESTS_DEFAULT(emit_keytest, openssh_ed_sk, OPENSSH_CMD)
+PKDTESTS_DEFAULT(emit_keytest, openssh_cert_ed_sk, OPENSSH_CERT_CMD)
+PKDTESTS_KEX(emit_keytest, openssh_ed_sk, OPENSSH_KEX_CMD)
+PKDTESTS_CIPHER(emit_keytest, openssh_ed_sk, OPENSSH_CIPHER_CMD)
+PKDTESTS_CIPHER_OPENSSHONLY(emit_keytest, openssh_ed_sk, OPENSSH_CIPHER_CMD)
+PKDTESTS_MAC(emit_keytest, openssh_ed_sk, OPENSSH_MAC_CMD)
+PKDTESTS_MAC_OPENSSHONLY(emit_keytest, openssh_ed_sk, OPENSSH_MAC_CMD)
+#undef CLIENT_ID_FILE
+#endif /* HAVE_SK_DUMMY */
+
 #define CLIENT_ID_FILE DROPBEAR_RSA_TESTKEY
 PKDTESTS_DEFAULT(emit_keytest, dropbear_rsa, DROPBEAR_CMD)
 PKDTESTS_CIPHER(emit_keytest, dropbear_rsa, DROPBEAR_CIPHER_CMD)
@@ -738,6 +760,24 @@ static int pkd_run_tests(void) {
         PKDTESTS_CIPHER_OPENSSHONLY(emit_unit_test_comma, openssh_ed, OPENSSH_CIPHER_CMD)
         PKDTESTS_MAC(emit_unit_test_comma, openssh_ed, OPENSSH_MAC_CMD)
         PKDTESTS_MAC_OPENSSHONLY(emit_unit_test_comma, openssh_ed, OPENSSH_MAC_CMD)
+
+#ifdef HAVE_SK_DUMMY
+        PKDTESTS_DEFAULT(emit_unit_test_comma, openssh_ec_sk, OPENSSH_CMD)
+        PKDTESTS_DEFAULT(emit_unit_test_comma, openssh_cert_ec_sk, OPENSSH_CERT_CMD)
+        PKDTESTS_KEX(emit_unit_test_comma, openssh_ec_sk, OPENSSH_KEX_CMD)
+        PKDTESTS_CIPHER(emit_unit_test_comma, openssh_ec_sk, OPENSSH_CIPHER_CMD)
+        PKDTESTS_CIPHER_OPENSSHONLY(emit_unit_test_comma, openssh_ec_sk, OPENSSH_CIPHER_CMD)
+        PKDTESTS_MAC(emit_unit_test_comma, openssh_ec_sk, OPENSSH_MAC_CMD)
+        PKDTESTS_MAC_OPENSSHONLY(emit_unit_test_comma, openssh_ec_sk, OPENSSH_MAC_CMD)
+
+        PKDTESTS_DEFAULT(emit_unit_test_comma, openssh_ed_sk, OPENSSH_CMD)
+        PKDTESTS_DEFAULT(emit_unit_test_comma, openssh_cert_ed_sk, OPENSSH_CERT_CMD)
+        PKDTESTS_KEX(emit_unit_test_comma, openssh_ed_sk, OPENSSH_KEX_CMD)
+        PKDTESTS_CIPHER(emit_unit_test_comma, openssh_ed_sk, OPENSSH_CIPHER_CMD)
+        PKDTESTS_CIPHER_OPENSSHONLY(emit_unit_test_comma, openssh_ed_sk, OPENSSH_CIPHER_CMD)
+        PKDTESTS_MAC(emit_unit_test_comma, openssh_ed_sk, OPENSSH_MAC_CMD)
+        PKDTESTS_MAC_OPENSSHONLY(emit_unit_test_comma, openssh_ed_sk, OPENSSH_MAC_CMD)
+#endif /* HAVE_SK_DUMMY */
     };
 
     /* It is not possible to test hostkey and kex algorithms, because

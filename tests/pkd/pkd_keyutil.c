@@ -153,6 +153,21 @@ void setup_openssh_client_keys(void) {
         }
         assert_int_equal(rc, 0);
     }
+
+#ifdef HAVE_SK_DUMMY
+    setenv("SSH_SK_PROVIDER", SK_DUMMY_LIBRARY_PATH, 1);
+    if (access(OPENSSH_ECDSA_SK_TESTKEY, F_OK) != 0) {
+        rc = system_checked(OPENSSH_KEYGEN " -t ecdsa-sk -q -N \"\" -f "
+                            OPENSSH_ECDSA_SK_TESTKEY);
+    }
+    assert_int_equal(rc, 0);
+
+    if (access(OPENSSH_ED25519_SK_TESTKEY, F_OK) != 0) {
+        rc = system_checked(OPENSSH_KEYGEN " -t ed25519-sk -q -N \"\" -f "
+                            OPENSSH_ED25519_SK_TESTKEY);
+    }
+    assert_int_equal(rc, 0);
+#endif
 }
 
 void cleanup_openssh_client_keys(void) {
@@ -165,6 +180,10 @@ void cleanup_openssh_client_keys(void) {
     if (!ssh_fips_mode()) {
         cleanup_key(OPENSSH_ED25519_TESTKEY);
     }
+#ifdef HAVE_SK_DUMMY
+    cleanup_key(OPENSSH_ECDSA_SK_TESTKEY);
+    cleanup_key(OPENSSH_ED25519_SK_TESTKEY);
+#endif
 }
 
 void setup_dropbear_client_keys(void)

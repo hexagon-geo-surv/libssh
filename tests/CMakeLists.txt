@@ -58,8 +58,8 @@ if (SK_DUMMY_LIBRARY)
     add_library(sk-dummy SHARED IMPORTED)
     set_target_properties(sk-dummy PROPERTIES IMPORTED_LOCATION "${SK_DUMMY_LIBRARY}")
     target_link_libraries(${TORTURE_LIBRARY} PRIVATE sk-dummy)
-    target_compile_definitions(${TORTURE_LIBRARY} PUBLIC HAVE_SK_DUMMY)
-    target_compile_definitions(${TORTURE_LIBRARY} PUBLIC SK_DUMMY_LIBRARY_PATH="${SK_DUMMY_LIBRARY}")
+    set(HAVE_SK_DUMMY 1)
+    set(SK_DUMMY_LIBRARY_PATH ${SK_DUMMY_LIBRARY})
 endif()
 
 if (WITH_COVERAGE)
@@ -109,8 +109,6 @@ if (CLIENT_TESTING)
     # Link sk-dummy to torture_shared library if available
     if (SK_DUMMY_LIBRARY)
         target_link_libraries(${TORTURE_SHARED_LIBRARY} PRIVATE sk-dummy)
-        target_compile_definitions(${TORTURE_SHARED_LIBRARY} PUBLIC HAVE_SK_DUMMY)
-        target_compile_definitions(${TORTURE_SHARED_LIBRARY} PUBLIC SK_DUMMY_LIBRARY_PATH="${SK_DUMMY_LIBRARY}")
     endif (SK_DUMMY_LIBRARY)
 
     target_compile_options(${TORTURE_SHARED_LIBRARY} PRIVATE

@@ -101,7 +101,7 @@ void ssh_client_curve25519_remove_callbacks(ssh_session session)
     ssh_packet_remove_callbacks(session, &ssh_curve25519_client_callbacks);
 }
 
-static int ssh_curve25519_build_k(ssh_session session)
+int ssh_curve25519_build_k(ssh_session session)
 {
     ssh_curve25519_pubkey k;
     int rc;

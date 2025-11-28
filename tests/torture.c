@@ -415,6 +415,13 @@ ssh_bind torture_ssh_bind(const char *addr,
         goto out_free;
     }
 
+    rc = ssh_bind_options_set(sshbind,
+                              SSH_BIND_OPTIONS_LOG_VERBOSITY,
+                              &verbosity);
+    if (rc < 0) {
+        goto out_free;
+    }
+
     switch (key_type) {
     case SSH_KEYTYPE_RSA:
     case SSH_KEYTYPE_ECDSA_P256:

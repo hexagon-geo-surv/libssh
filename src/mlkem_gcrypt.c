@@ -175,6 +175,11 @@ int ssh_mlkem_decapsulate(const ssh_session session,
         return SSH_ERROR;
     }
 
+    if (crypto->mlkem_privkey == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Missing ML-KEM private key in session");
+        return SSH_ERROR;
+    }
+
     mlkem_info = kex_type_to_mlkem_info(crypto->kex_type);
     if (mlkem_info == NULL) {
         SSH_LOG(SSH_LOG_WARNING, "Unknown ML-KEM type");

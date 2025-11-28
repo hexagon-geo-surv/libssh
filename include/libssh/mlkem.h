@@ -36,7 +36,12 @@ extern "C" {
 struct mlkem_type_info {
     size_t pubkey_size;
     size_t ciphertext_size;
+#ifdef HAVE_LIBGCRYPT
+    size_t privkey_size;
+    enum gcry_kem_algos alg;
+#else
     const char *name;
+#endif
 };
 
 extern const struct mlkem_type_info MLKEM768_INFO;

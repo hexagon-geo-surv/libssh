@@ -160,7 +160,12 @@ struct ssh_crypto_struct {
     ssh_curve25519_pubkey curve25519_server_pubkey;
 #endif
 #ifdef HAVE_MLKEM
+#ifdef HAVE_LIBGCRYPT
+    unsigned char *mlkem_privkey;
+    size_t mlkem_privkey_len;
+#else
     EVP_PKEY *mlkem_privkey;
+#endif
     ssh_string mlkem_client_pubkey;
     ssh_string mlkem_ciphertext;
 #endif

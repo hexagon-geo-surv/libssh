@@ -231,7 +231,15 @@ void crypto_free(struct ssh_crypto_struct *crypto)
     }
 
 #ifdef HAVE_MLKEM
+#ifdef HAVE_LIBGCRYPT
+    if (crypto->mlkem_privkey != NULL) {
+        ssh_burn(crypto->mlkem_privkey, crypto->mlkem_privkey_len);
+        SAFE_FREE(crypto->mlkem_privkey);
+        crypto->mlkem_privkey_len = 0;
+    }
+#else
     EVP_PKEY_free(crypto->mlkem_privkey);
+#endif
     ssh_string_burn(crypto->hybrid_shared_secret);
     ssh_string_free(crypto->mlkem_client_pubkey);
     ssh_string_free(crypto->mlkem_ciphertext);

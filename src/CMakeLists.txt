@@ -195,6 +195,13 @@ if (WITH_GCRYPT)
             curve25519_gcrypt.c
         )
     endif(HAVE_GCRYPT_CURVE25519)
+
+    if (HAVE_MLKEM)
+        set(libssh_SRCS
+            ${libssh_SRCS}
+            mlkem_gcrypt.c
+        )
+    endif (HAVE_MLKEM)
 elseif (WITH_MBEDTLS)
     set(libssh_SRCS
         ${libssh_SRCS}
@@ -248,6 +255,12 @@ else (WITH_GCRYPT)
             chachapoly.c
         )
     endif (NOT HAVE_OPENSSL_EVP_CHACHA20)
+    if (HAVE_MLKEM)
+        set(libssh_SRCS
+            ${libssh_SRCS}
+            mlkem_crypto.c
+        )
+    endif (HAVE_MLKEM)
 endif (WITH_GCRYPT)
 
 if (WITH_SFTP)
@@ -304,7 +317,6 @@ if (HAVE_MLKEM)
   set(libssh_SRCS
     ${libssh_SRCS}
     hybrid_mlkem.c
-    mlkem_crypto.c
     mlkem.c
   )
 endif (HAVE_MLKEM)

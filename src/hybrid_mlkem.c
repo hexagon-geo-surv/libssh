@@ -24,11 +24,13 @@
 
 #include "config.h"
 
-#include "libssh/bignum.h"
 #include "libssh/buffer.h"
 #include "libssh/hybrid_mlkem.h"
 #include "libssh/pki.h"
 #include "libssh/ssh2.h"
+
+/* sorry, this needs to come last to avoid header dependency issues */
+#include "libssh/bignum.h"
 
 static SSH_PACKET_CALLBACK(ssh_packet_client_hybrid_mlkem_reply);
 

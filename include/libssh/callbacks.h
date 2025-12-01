@@ -279,7 +279,6 @@ typedef int (*ssh_auth_pubkey_callback) (ssh_session session, const char *user, 
  * @returns 0 if the request is to be allowed
  * @returns -1 if the request should not be allowed
  */
-
 typedef int (*ssh_service_request_callback) (ssh_session session, const char *service, void *userdata);
 
 /**
@@ -292,7 +291,7 @@ typedef int (*ssh_service_request_callback) (ssh_session session, const char *se
  */
 typedef ssh_channel (*ssh_channel_open_request_session_callback) (ssh_session session, void *userdata);
 
-/*
+/** 
  * @brief handle the beginning of a GSSAPI authentication, server side.
  *        Callback should select the oid and also acquire the server credential.
  * @param session current session handler
@@ -307,7 +306,7 @@ typedef ssh_channel (*ssh_channel_open_request_session_callback) (ssh_session se
 typedef ssh_string (*ssh_gssapi_select_oid_callback) (ssh_session session, const char *user,
 		int n_oid, ssh_string *oids, void *userdata);
 
-/*
+/**
  * @brief handle the negotiation of a security context, server side.
  * @param session current session handler
  * @param[in] input_token input token provided by client
@@ -322,7 +321,7 @@ typedef ssh_string (*ssh_gssapi_select_oid_callback) (ssh_session session, const
 typedef int (*ssh_gssapi_accept_sec_ctx_callback) (ssh_session session,
 		ssh_string input_token, ssh_string *output_token, void *userdata);
 
-/*
+/** 
  * @brief Verify and authenticates a MIC, server side.
  * @param session current session handler
  * @param[in] mic input mic to be verified provided by client

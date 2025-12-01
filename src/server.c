@@ -80,7 +80,6 @@
  * The selection of algorithms and keys used are determined by the
  * options that are currently set in the given ssh_session structure.
  */
-
 int server_set_kex(ssh_session session)
 {
     struct ssh_kex_struct *server = &session->next_crypto->server_kex;

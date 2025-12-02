@@ -18,23 +18,21 @@ static int sshd_setup(void **state)
     s = *state;
     s->disable_hostkeys = true;
 
-    if (!ssh_fips_mode()) {
-        /* Temporary kerberos server */
-        torture_setup_kdc_server(
-            state,
-            "kadmin.local addprinc -randkey host/server.libssh.site \n"
-            "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
-            "kadmin.local addprinc -pw bar alice \n"
-            "kadmin.local list_principals",
+    torture_setup_kdc_server(
+        state,
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local list_principals",
 
-            "echo bar | kinit alice");
+        "echo bar | kinit alice");
 
-        torture_update_sshd_config(state,
-                                   "GSSAPIAuthentication yes\n"
-                                   "GSSAPIKeyExchange yes\n");
+    torture_update_sshd_config(state,
+                               "GSSAPIAuthentication yes\n"
+                               "GSSAPIKeyExchange yes\n");
 
-        torture_teardown_kdc_server(state);
-    }
+    torture_teardown_kdc_server(state);
+
     return 0;
 }
 
@@ -94,11 +92,6 @@ static void torture_gssapi_key_exchange_null(void **state)
     ssh_session session = s->ssh.session;
     int rc;
     bool t = true;
-
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
 
     /* Valid */
     torture_setup_kdc_server(

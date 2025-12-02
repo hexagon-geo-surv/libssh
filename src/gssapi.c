@@ -672,7 +672,6 @@ fail:
  */
 char *ssh_gssapi_oid_hash(ssh_string oid)
 {
-    MD5CTX ctx = NULL;
     unsigned char *h = NULL;
     int rc;
     char *base64 = NULL;
@@ -682,19 +681,7 @@ char *ssh_gssapi_oid_hash(ssh_string oid)
         return NULL;
     }
 
-    ctx = md5_init();
-    if (ctx == NULL) {
-        SAFE_FREE(h);
-        return NULL;
-    }
-
-    rc = md5_update(ctx, ssh_string_data(oid), ssh_string_len(oid));
-    if (rc != SSH_OK) {
-        SAFE_FREE(h);
-        md5_ctx_free(ctx);
-        return NULL;
-    }
-    rc = md5_final(h, ctx);
+    rc = md5(ssh_string_data(oid), ssh_string_len(oid), h);
     if (rc != SSH_OK) {
         SAFE_FREE(h);
         return NULL;

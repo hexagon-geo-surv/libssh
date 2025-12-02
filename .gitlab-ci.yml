@@ -201,9 +201,11 @@ centos9s/openssl_3.5.x/x86_64/fips:
   variables:
     OPENSSL_ENABLE_SHA1_SIGNATURES: 1
   script:
+    # torture_gssapi_key_exchange_* tests are excluded because gssapi-keyex is disabled
+    # by OpenSSH in FIPS mode in RHEL 9
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
-      OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure
+      OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure -E "^torture_gssapi_key_exchange.*"
 
 centos8s/openssl_1.1.1/x86_64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS8_BUILD
@@ -219,9 +221,11 @@ centos8s/openssl_1.1.1/x86_64/fips:
   extends: .fips
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS8_BUILD
   script:
+    # torture_gssapi_key_exchange_* and torture_gssapi_server_key_exchange_* tests are excluded
+    # because gssapi-keyex is not allowed in FIPS mode in RHEL 8
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
-      OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure
+      OPENSSL_FORCE_FIPS_MODE=1 ctest --output-on-failure -E "^torture_gssapi.*key_exchange.*"
 
 ###############################################################################
 #                               Fedora builds                                 #

@@ -172,7 +172,7 @@ int server_set_kex(ssh_session session)
         }
     }
 #ifdef WITH_GSSAPI
-    if (session->opts.gssapi_key_exchange && !ssh_fips_mode()) {
+    if (session->opts.gssapi_key_exchange) {
         ok = ssh_gssapi_init(session);
         if (ok != SSH_OK) {
             ssh_set_error_oom(session);

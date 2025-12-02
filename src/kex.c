@@ -811,7 +811,7 @@ int ssh_set_client_kex(ssh_session session)
         return SSH_ERROR;
     }
 #ifdef WITH_GSSAPI
-    if (session->opts.gssapi_key_exchange && !ssh_fips_mode()) {
+    if (session->opts.gssapi_key_exchange) {
         char *gssapi_algs = NULL;
 
         ok = ssh_gssapi_init(session);
@@ -831,9 +831,15 @@ int ssh_set_client_kex(ssh_session session)
         }
 
         /* Prefix the default algorithms with gsskex algs */
-        session->opts.wanted_methods[SSH_KEX] =
-            ssh_prefix_without_duplicates(default_methods[SSH_KEX],
-                                          gssapi_algs);
+        if (ssh_fips_mode()) {
+            session->opts.wanted_methods[SSH_KEX] =
+                ssh_prefix_without_duplicates(fips_methods[SSH_KEX],
+                                              gssapi_algs);
+        } else {
+            session->opts.wanted_methods[SSH_KEX] =
+                ssh_prefix_without_duplicates(default_methods[SSH_KEX],
+                                              gssapi_algs);
+        }
 
         gssapi_null_alg = true;
 

@@ -571,7 +571,7 @@ int ssh_options_set_algo(ssh_session session,
  *              - SSH_OPTIONS_GSSAPI_KEY_EXCHANGE_ALGS
  *                Set the GSSAPI key exchange method to be used (const char *,
  *                comma-separated list). ex:
- *                "gss-group14-sha256-,gss-group16-sha512-"
+ *                "gss-curve25519-sha256-,gss-nistp256-sha256-"
  *                These will prefix the default algorithms if
  *                SSH_OPTIONS_GSSAPI_KEY_EXCHANGE is true.
  *

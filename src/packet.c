@@ -749,15 +749,16 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
         rc = SSH_PACKET_ALLOWED;
         break;
     case SSH2_MSG_USERAUTH_GSSAPI_EXCHANGE_COMPLETE:  // 63
-        /* Server only. Ignored */
+        /* Server only */
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATING
-         * - session->gssapi->state == SSH_GSSAPI_STATE_RCV_MIC (TODO)
+         * - session->gssapi->state == SSH_GSSAPI_STATE_RCV_MIC
          *
          * Transitions:
          * - None
          */
+#ifdef WITH_GSSAPI
         if (session->client) {
             rc = SSH_PACKET_DENIED;
             break;
@@ -766,10 +767,22 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
             rc = SSH_PACKET_DENIED;
             break;
         }
+        if (session->gssapi == NULL) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
+        if (session->gssapi->state != SSH_GSSAPI_STATE_RCV_MIC) {
+            rc = SSH_PACKET_DENIED;
+            break;
+        }
         rc = SSH_PACKET_ALLOWED;
         break;
+#else
+        rc = SSH_PACKET_DENIED;
+        break;
+#endif  /* WITH_GSSAPI */
     case SSH2_MSG_USERAUTH_GSSAPI_ERROR:              // 64
-        /* Client only. Ignored */
+        /* Client only */
         /*
          * States required:
          * - session_state == SSH_SESSION_STATE_AUTHENTICATING
@@ -777,6 +790,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * Transitions:
          * - None
          */
+#ifdef WITH_GSSAPI
         if (session->server) {
             rc = SSH_PACKET_DENIED;
             break;
@@ -788,6 +802,10 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
 
         rc = SSH_PACKET_ALLOWED;
         break;
+#else
+        rc = SSH_PACKET_DENIED;
+        break;
+#endif  /* WITH_GSSAPI */
     case SSH2_MSG_USERAUTH_GSSAPI_ERRTOK:             // 65
         /*
          * States required:
@@ -796,6 +814,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * Transitions:
          * - None
          */
+#ifdef WITH_GSSAPI
         if (session->session_state != SSH_SESSION_STATE_AUTHENTICATING) {
             rc = SSH_PACKET_DENIED;
             break;
@@ -803,6 +822,10 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
 
         rc = SSH_PACKET_ALLOWED;
         break;
+#else
+        rc = SSH_PACKET_DENIED;
+        break;
+#endif  /* WITH_GSSAPI */
     case SSH2_MSG_USERAUTH_GSSAPI_MIC:                // 66
         /* Server only */
 
@@ -822,7 +845,7 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
          * - any other case:
          *   - None
          * */
-
+#ifdef WITH_GSSAPI
         /* If this is a client, reject the message */
         if (session->client) {
             rc = SSH_PACKET_DENIED;
@@ -841,6 +864,10 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
 
         rc = SSH_PACKET_ALLOWED;
         break;
+#else
+        rc = SSH_PACKET_DENIED;
+        break;
+#endif  /* WITH_GSSAPI */
     case SSH2_MSG_GLOBAL_REQUEST:                     // 80
         /*
          * States required:

@@ -848,7 +848,7 @@ chacha20_poly1305_set_key(struct ssh_cipher_struct *cipher,
         return SSH_ERROR;
     }
 #else
-    mac = EVP_MAC_fetch(NULL, "poly1305", NULL);
+    mac = EVP_MAC_fetch(NULL, SN_poly1305, NULL);
     if (mac == NULL) {
         SSH_LOG(SSH_LOG_TRACE, "EVP_MAC_fetch failed");
         goto out;
@@ -1581,7 +1581,7 @@ evp_dup_pkey(const char *name, const ssh_key key, int demote, ssh_key new_key)
 
 int evp_dup_rsa_pkey(const ssh_key key, ssh_key new_key, int demote)
 {
-    return evp_dup_pkey("RSA", key, demote, new_key);
+    return evp_dup_pkey(SN_rsa, key, demote, new_key);
 }
 
 int evp_dup_ecdsa_pkey(const ssh_key key, ssh_key new_key, int demote)
@@ -1591,7 +1591,7 @@ int evp_dup_ecdsa_pkey(const ssh_key key, ssh_key new_key, int demote)
 
 int evp_dup_ed25519_pkey(const ssh_key key, ssh_key new_key, int demote)
 {
-    return evp_dup_pkey("ED25519", key, demote, new_key);
+    return evp_dup_pkey(SN_ED25519, key, demote, new_key);
 }
 
 #endif /* OPENSSL_VERSION_NUMBER */
@@ -1633,15 +1633,14 @@ pki_key_make_ecpoint_string(const EC_GROUP *g, const EC_POINT *p)
 
 int pki_key_ecgroup_name_to_nid(const char *group)
 {
-    if (strcmp(group, NISTP256) == 0 ||
-        strcmp(group, "secp256r1") == 0 ||
-        strcmp(group, "prime256v1") == 0) {
+    if (strcmp(group, NISTP256) == 0 || strcmp(group, "secp256r1") == 0 ||
+        strcmp(group, SN_X9_62_prime256v1) == 0) {
         return NID_X9_62_prime256v1;
     } else if (strcmp(group, NISTP384) == 0 ||
-               strcmp(group, "secp384r1") == 0) {
+               strcmp(group, SN_secp384r1) == 0) {
         return NID_secp384r1;
     } else if (strcmp(group, NISTP521) == 0 ||
-               strcmp(group, "secp521r1") == 0) {
+               strcmp(group, SN_secp521r1) == 0) {
         return NID_secp521r1;
     }
     return -1;

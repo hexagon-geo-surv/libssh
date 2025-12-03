@@ -113,7 +113,7 @@ static int setup_default_server(void **state)
     struct test_server_st *tss = NULL;
     char pid_str[1024] = {0};
     pid_t pid;
-    /*int rc;*/
+    int rc;
 
     setup_config(state);
 
@@ -135,9 +135,20 @@ static int setup_default_server(void **state)
     setenv("SOCKET_WRAPPER_DEFAULT_IFACE", "21", 1);
     unsetenv("PAM_WRAPPER");
 
+    torture_setup_kdc_server(
+        (void **)&s,
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local list_principals",
+
+        "echo bar | kinit alice");
+
     /* Wait until the sshd is ready to accept connections */
-    /*rc = torture_wait_for_daemon(5);*/
-    /*assert_int_equal(rc, 0);*/
+    rc = torture_wait_for_daemon(5);
+    assert_int_equal(rc, 0);
+
+    torture_teardown_kdc_server((void **)&s);
 
     *state = tss;
 

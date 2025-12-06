@@ -118,7 +118,7 @@ LIBSSH_API int ssh_bind_listen(ssh_bind ssh_bind_o);
  *
  * @param[in] userdata  A pointer to private data to pass to the callbacks.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  *
  * @code
  *     struct ssh_callbacks_struct cb = {
@@ -172,7 +172,7 @@ LIBSSH_API void ssh_bind_fd_toaccept(ssh_bind ssh_bind_o);
  * @param  ssh_bind_o     The ssh server bind to accept a connection.
  * @param  session			A preallocated ssh session
  * @see ssh_new
- * @return SSH_OK when a connection is established
+ * @return `SSH_OK` when a connection is established
  */
 LIBSSH_API int ssh_bind_accept(ssh_bind ssh_bind_o, ssh_session session);
 
@@ -186,7 +186,7 @@ LIBSSH_API int ssh_bind_accept(ssh_bind ssh_bind_o, ssh_session session);
  *                          inbound connection
  * @see ssh_new
  * @see ssh_bind_accept
- * @return SSH_OK when a connection is established
+ * @return `SSH_OK` when a connection is established
  */
 LIBSSH_API int ssh_bind_accept_fd(ssh_bind ssh_bind_o, ssh_session session,
         socket_t fd);
@@ -198,7 +198,7 @@ LIBSSH_API ssh_gssapi_creds ssh_gssapi_get_creds(ssh_session session);
  *
  * @param  session			A connected ssh session
  * @see ssh_bind_accept
- * @return SSH_OK if the key exchange was successful
+ * @return `SSH_OK` if the key exchange was successful
  */
 LIBSSH_API int ssh_handle_key_exchange(ssh_session session);
 
@@ -215,9 +215,8 @@ LIBSSH_API int ssh_handle_key_exchange(ssh_session session);
  * @see ssh_handle_key_exchange
  * @see ssh_options_set
  *
- * @return SSH_OK if initialization succeeds.
+ * @return `SSH_OK` if initialization succeeds.
  */
-
 LIBSSH_API int ssh_server_init_kex(ssh_session session);
 
 /**
@@ -257,7 +256,7 @@ LIBSSH_API void ssh_set_auth_methods(ssh_session session, int auth_methods);
  *
  * @param[in]  banner       The server's banner.
  *
- * @return                  SSH_OK on success, SSH_ERROR on error.
+ * @return                  `SSH_OK` on success, `SSH_ERROR` on error.
  */
 LIBSSH_API int ssh_send_issue_banner(ssh_session session, const ssh_string banner);
 

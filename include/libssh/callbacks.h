@@ -220,36 +220,41 @@ typedef struct ssh_callbacks_struct *ssh_callbacks;
  * @param user User that wants to authenticate
  * @param password Password used for authentication
  * @param userdata Userdata to be passed to the callback function.
- * @returns SSH_AUTH_SUCCESS Authentication is accepted.
- * @returns SSH_AUTH_PARTIAL Partial authentication, more authentication means are needed.
- * @returns SSH_AUTH_DENIED Authentication failed.
+ * @returns `SSH_AUTH_SUCCESS` Authentication is accepted.
+ * @returns `SSH_AUTH_PARTIAL` Partial authentication, more authentication means
+ * are needed.
+ * @returns `SSH_AUTH_DENIED` Authentication failed.
  */
 typedef int (*ssh_auth_password_callback) (ssh_session session, const char *user, const char *password,
 		void *userdata);
 
 /**
- * @brief SSH authentication callback. Tries to authenticates user with the "none" method
- * which is anonymous or passwordless.
+ * @brief SSH authentication callback. Tries to authenticates user with the
+ * "none" method which is anonymous or passwordless.
  * @param session Current session handler
  * @param user User that wants to authenticate
  * @param userdata Userdata to be passed to the callback function.
- * @returns SSH_AUTH_SUCCESS Authentication is accepted.
- * @returns SSH_AUTH_PARTIAL Partial authentication, more authentication means are needed.
- * @returns SSH_AUTH_DENIED Authentication failed.
+ * @returns `SSH_AUTH_SUCCESS` Authentication is accepted.
+ * @returns `SSH_AUTH_PARTIAL` Partial authentication, more authentication means
+ * are needed.
+ * @returns `SSH_AUTH_DENIED` Authentication failed.
  */
 typedef int (*ssh_auth_none_callback) (ssh_session session, const char *user, void *userdata);
 
 /**
- * @brief SSH authentication callback. Tries to authenticates user with the "gssapi-with-mic" method
+ * @brief SSH authentication callback. Tries to authenticates user with the
+ * "gssapi-with-mic" method
  * @param session Current session handler
  * @param user Username of the user (can be spoofed)
  * @param principal Authenticated principal of the user, including realm.
  * @param userdata Userdata to be passed to the callback function.
- * @returns SSH_AUTH_SUCCESS Authentication is accepted.
- * @returns SSH_AUTH_PARTIAL Partial authentication, more authentication means are needed.
- * @returns SSH_AUTH_DENIED Authentication failed.
- * @warning Implementations should verify that parameter user matches in some way the principal.
- * user and principal can be different. Only the latter is guaranteed to be safe.
+ * @returns `SSH_AUTH_SUCCESS` Authentication is accepted.
+ * @returns `SSH_AUTH_PARTIAL` Partial authentication, more authentication means
+ * are needed.
+ * @returns `SSH_AUTH_DENIED` Authentication failed.
+ * @warning Implementations should verify that parameter user matches in some
+ * way the principal. user and principal can be different. Only the latter is
+ * guaranteed to be safe.
  */
 typedef int (*ssh_auth_gssapi_mic_callback) (ssh_session session, const char *user, const char *principal,
 		void *userdata);
@@ -259,17 +264,17 @@ typedef int (*ssh_auth_gssapi_mic_callback) (ssh_session session, const char *us
  * @param session Current session handler
  * @param user User that wants to authenticate
  * @param pubkey public key used for authentication
- * @param signature_state SSH_PUBLICKEY_STATE_NONE if the key is not signed (simple public key probe),
- *							SSH_PUBLICKEY_STATE_VALID if the signature is valid. Others values should be
- *							replied with a SSH_AUTH_DENIED.
+ * @param signature_state `SSH_PUBLICKEY_STATE_NONE` if the key is not signed
+ * (simple public key probe), `SSH_PUBLICKEY_STATE_VALID` if the signature is
+ * valid. Others values should be replied with a `SSH_AUTH_DENIED`.
  * @param userdata Userdata to be passed to the callback function.
- * @returns SSH_AUTH_SUCCESS Authentication is accepted.
- * @returns SSH_AUTH_PARTIAL Partial authentication, more authentication means are needed.
- * @returns SSH_AUTH_DENIED Authentication failed.
+ * @returns `SSH_AUTH_SUCCESS` Authentication is accepted.
+ * @returns `SSH_AUTH_PARTIAL` Partial authentication, more authentication means
+ * are needed.
+ * @returns `SSH_AUTH_DENIED` Authentication failed.
  */
 typedef int (*ssh_auth_pubkey_callback) (ssh_session session, const char *user, struct ssh_key_struct *pubkey,
 		char signature_state, void *userdata);
-
 
 /**
  * @brief Handles an SSH service request
@@ -291,7 +296,7 @@ typedef int (*ssh_service_request_callback) (ssh_session session, const char *se
  */
 typedef ssh_channel (*ssh_channel_open_request_session_callback) (ssh_session session, void *userdata);
 
-/** 
+/**
  * @brief handle the beginning of a GSSAPI authentication, server side.
  *        Callback should select the oid and also acquire the server credential.
  * @param session current session handler
@@ -312,23 +317,23 @@ typedef ssh_string (*ssh_gssapi_select_oid_callback) (ssh_session session, const
  * @param[in] input_token input token provided by client
  * @param[out] output_token output of the gssapi accept_sec_context method,
  *				NULL after completion.
- * @returns SSH_OK if the token was generated correctly or accept_sec_context
+ * @returns `SSH_OK` if the token was generated correctly or accept_sec_context
  * returned GSS_S_COMPLETE
- * @returns SSH_ERROR in case of error
+ * @returns `SSH_ERROR` in case of error
  * @warning It is not necessary to fill this callback in if libssh is linked
  * with libgssapi.
  */
 typedef int (*ssh_gssapi_accept_sec_ctx_callback) (ssh_session session,
 		ssh_string input_token, ssh_string *output_token, void *userdata);
 
-/** 
+/**
  * @brief Verify and authenticates a MIC, server side.
  * @param session current session handler
  * @param[in] mic input mic to be verified provided by client
  * @param[in] mic_buffer buffer of data to be signed.
  * @param[in] mic_buffer_size size of mic_buffer
- * @returns SSH_OK if the MIC was authenticated correctly
- * @returns SSH_ERROR in case of error
+ * @returns `SSH_OK` if the MIC was authenticated correctly
+ * @returns `SSH_ERROR` in case of error
  * @warning It is not necessary to fill this callback in if libssh is linked
  * with libgssapi.
  */
@@ -404,7 +409,7 @@ struct ssh_server_callbacks_struct {
   /** This function will be called when a gssapi token comes in.
    */
   ssh_gssapi_accept_sec_ctx_callback gssapi_accept_sec_ctx_function;
-  /* This function will be called when a MIC needs to be verified.
+  /** This function will be called when a MIC needs to be verified.
    */
   ssh_gssapi_verify_mic_callback gssapi_verify_mic_function;
   /**
@@ -438,7 +443,7 @@ typedef struct ssh_server_callbacks_struct *ssh_server_callbacks;
  *
  * @param  cb           The callback structure itself.
  *
- * @return SSH_OK on success, SSH_ERROR on error.
+ * @return `SSH_OK` on success, `SSH_ERROR` on error.
  */
 LIBSSH_API int ssh_set_server_callbacks(ssh_session session, ssh_server_callbacks cb);
 
@@ -569,14 +574,17 @@ typedef struct ssh_socket_callbacks_struct *ssh_socket_callbacks;
         }                           \
     } while(0)
 
-/** @brief Prototype for a packet callback, to be called when a new packet arrives
+/** @brief Prototype for a packet callback, to be called when a new packet
+ * arrives
  * @param session The current session of the packet
  * @param type packet type (see ssh2.h)
- * @param packet buffer containing the packet, excluding size, type and padding fields
+ * @param packet buffer containing the packet, excluding size, type and padding
+ * fields
  * @param user user argument to the callback
  * and are called each time a packet shows up
- * @returns SSH_PACKET_USED Packet was parsed and used
- * @returns SSH_PACKET_NOT_USED Packet was not used or understood, processing must continue
+ * @returns `SSH_PACKET_USED` Packet was parsed and used
+ * @returns `SSH_PACKET_NOT_USED` Packet was not used or understood, processing
+ * must continue
  */
 typedef int (*ssh_packet_callback) (ssh_session session, uint8_t type, ssh_buffer packet, void *user);
 
@@ -635,7 +643,7 @@ typedef struct ssh_packet_callbacks_struct *ssh_packet_callbacks;
  *
  * @param  cb           The callback structure itself.
  *
- * @return SSH_OK on success, SSH_ERROR on error.
+ * @return `SSH_OK` on success, `SSH_ERROR` on error.
  */
 LIBSSH_API int ssh_set_callbacks(ssh_session session, ssh_callbacks cb);
 
@@ -987,7 +995,7 @@ typedef struct ssh_channel_callbacks_struct *ssh_channel_callbacks;
  *
  * @param  cb           The callback structure itself.
  *
- * @return SSH_OK on success, SSH_ERROR on error.
+ * @return `SSH_OK` on success, `SSH_ERROR` on error.
  * @warning this function will not replace existing callbacks but set the
  *          new one atop of them.
  */
@@ -1006,7 +1014,7 @@ LIBSSH_API int ssh_set_channel_callbacks(ssh_channel channel,
  *
  * @param  cb           The callback structure itself.
  *
- * @return SSH_OK on success, SSH_ERROR on error.
+ * @return `SSH_OK` on success, `SSH_ERROR` on error.
  *
  * @see ssh_set_channel_callbacks
  */
@@ -1023,7 +1031,7 @@ LIBSSH_API int ssh_add_channel_callbacks(ssh_channel channel,
  *
  * @param cb       The callback structure to remove
  *
- * @returns SSH_OK on success, SSH_ERROR on error.
+ * @returns `SSH_OK` on success, `SSH_ERROR` on error.
  */
 LIBSSH_API int ssh_remove_channel_callbacks(ssh_channel channel,
                                             ssh_channel_callbacks cb);
@@ -1056,7 +1064,7 @@ struct ssh_threads_callbacks_struct {
  * @param[in] cb   A pointer to a ssh_threads_callbacks_struct structure, which
  *                 contains the different callbacks to be set.
  *
- * @returns        Always returns SSH_OK.
+ * @returns        Always returns `SSH_OK`.
  *
  * @see ssh_threads_callbacks_struct
  * @see SSH_THREADS_PTHREAD

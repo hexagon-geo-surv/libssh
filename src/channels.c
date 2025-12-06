@@ -321,7 +321,7 @@ static int ssh_channel_open_termination(void *c)
  *
  * @param[in]  payload   The buffer containing additional payload for the query.
  *
- * @return             SSH_OK if successful; SSH_ERROR otherwise.
+ * @return             `SSH_OK` if successful; `SSH_ERROR` otherwise.
  */
 static int
 channel_open(ssh_channel channel,
@@ -433,7 +433,7 @@ ssh_channel ssh_channel_from_local(ssh_session session, uint32_t id)
  * @brief grows the local window and sends a packet to the other party
  * @param session SSH session
  * @param channel SSH channel
- * @return            SSH_OK if successful; SSH_ERROR otherwise.
+ * @return            `SSH_OK` if successful; `SSH_ERROR` otherwise.
  */
 static int grow_window(ssh_session session,
                        ssh_channel channel)
@@ -1059,9 +1059,9 @@ int channel_default_bufferize(ssh_channel channel,
  *
  * @param[in]  channel  An allocated channel.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @see ssh_channel_open_forward()
@@ -1084,15 +1084,15 @@ int ssh_channel_open_session(ssh_channel channel)
 
 /**
  * @brief Open an agent authentication forwarding channel. This type of channel
- * can be opened by a server towards a client in order to provide SSH-Agent services
- * to the server-side process. This channel can only be opened if the client
- * claimed support by sending a channel request beforehand.
+ * can be opened by a server towards a client in order to provide SSH-Agent
+ * services to the server-side process. This channel can only be opened if the
+ * client claimed support by sending a channel request beforehand.
  *
  * @param[in]  channel  An allocated channel.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @see ssh_channel_open_forward()
@@ -1110,7 +1110,6 @@ int ssh_channel_open_auth_agent(ssh_channel channel)
                       NULL);
 }
 
-
 /**
  * @brief Open a TCP/IP forwarding channel.
  *
@@ -1127,14 +1126,14 @@ int ssh_channel_open_auth_agent(ssh_channel channel)
  * @param[in]  localport  The port on the host from where the connection
  *                        originated. This is mostly for logging purposes.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
- * @warning This function does not bind the local port and does not automatically
- *          forward the content of a socket to the channel. You still have to
- *          use ssh_channel_read and ssh_channel_write for this.
+ * @warning This function does not bind the local port and does not
+ * automatically forward the content of a socket to the channel. You still have
+ * to use ssh_channel_read and ssh_channel_write for this.
  */
 int ssh_channel_open_forward(ssh_channel channel, const char *remotehost,
     int remoteport, const char *sourcehost, int localport)
@@ -1199,16 +1198,16 @@ error:
  * @param[in]  localport    The port on the host from where the connection
  *                          originated. This is mostly for logging purposes.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK on` success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @warning This function does not bind the local port and does not
- *          automatically forward the content of a socket to the channel.
- *          You still have to use ssh_channel_read and ssh_channel_write for this.
+ * automatically forward the content of a socket to the channel.
+ * You still have to use ssh_channel_read and ssh_channel_write for this.
  * @warning Requires support of OpenSSH for UNIX domain socket forwarding.
-  */
+ */
 int ssh_channel_open_forward_unix(ssh_channel channel,
                                   const char *remotepath,
                                   const char *sourcehost,
@@ -1359,7 +1358,7 @@ void ssh_channel_do_free(ssh_channel channel)
  *
  * @param[in]  channel  The channel to send the eof to.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  *
  * Example:
 @code
@@ -1436,7 +1435,7 @@ error:
  *
  * @param[in]  channel  The channel to close.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  *
  * @see ssh_channel_free()
  * @see ssh_channel_is_eof()
@@ -1524,11 +1523,11 @@ static int ssh_waitsession_unblocked(void *s)
 /**
  * @internal
  * @brief Flushes a channel (and its session) until the output buffer
- *        is empty, or timeout elapsed.
+ * is empty, or timeout elapsed.
  * @param channel SSH channel
- * @return  SSH_OK On success,
- *          SSH_ERROR On error.
- *          SSH_AGAIN Timeout elapsed (or in nonblocking mode).
+ * @return  `SSH_OK` On success,
+ *          `SSH_ERROR` On error.
+ *          `SSH_AGAIN` Timeout elapsed (or in nonblocking mode).
  */
 int ssh_channel_flush(ssh_channel channel)
 {
@@ -1719,7 +1718,7 @@ uint32_t ssh_channel_window_size(ssh_channel channel)
  *
  * @param[in]  len      The length of the buffer to write to.
  *
- * @return              The number of bytes written, SSH_ERROR on error.
+ * @return              The number of bytes written, `SSH_ERROR` on error.
  *
  * @see ssh_channel_read()
  */
@@ -1997,9 +1996,9 @@ error:
  *
  * @param[in]  modes_len Number of bytes in 'modes'
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  */
 int ssh_channel_request_pty_size_modes(ssh_channel channel, const char *terminal,
@@ -2055,6 +2054,19 @@ error:
     return rc;
 }
 
+/**
+ * @brief Request a PTY with a specific size using current TTY modes.
+ *
+ * Encodes @p terminal modes from the current TTY and sends a PTY request
+ * for the given channel, terminal type, and size in columns/rows.
+ *
+ * @param[in] channel  The channel to send the request on.
+ * @param[in] terminal The terminal type (e.g. "xterm").
+ * @param[in] col      Number of columns.
+ * @param[in] row      Number of rows.
+ *
+ * @return `SSH_OK` on success; `SSH_ERROR` on failure.
+ */
 int ssh_channel_request_pty_size(ssh_channel channel, const char *terminal,
     int col, int row)
 {
@@ -2077,9 +2089,9 @@ int ssh_channel_request_pty_size(ssh_channel channel, const char *terminal,
  *
  * @param[in]  channel  The channel to send the request.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @see ssh_channel_request_pty_size()
@@ -2098,7 +2110,7 @@ int ssh_channel_request_pty(ssh_channel channel)
  *
  * @param[in]  rows     The new number of rows.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  *
  * @warning Do not call it from a signal handler if you are not sure any other
  *          libssh function using the same channel/session is running at the
@@ -2139,9 +2151,9 @@ error:
  *
  * @param[in]  channel  The channel to send the request.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  */
 int ssh_channel_request_shell(ssh_channel channel)
@@ -2160,9 +2172,9 @@ int ssh_channel_request_shell(ssh_channel channel)
  *
  * @param[in]  subsys   The subsystem to request (for example "sftp").
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @warning You normally don't have to call it for sftp, see sftp_new().
@@ -2210,9 +2222,9 @@ error:
  *
  * @param[in]  channel The channel to request the sftp subsystem.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * @note You should use sftp_new() which does this for you.
@@ -2266,9 +2278,9 @@ static char *generate_cookie(void)
  *
  * @param[in] screen_number The screen number.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  */
 int ssh_channel_request_x11(ssh_channel channel, int single_connection, const char *protocol,
@@ -2401,15 +2413,16 @@ ssh_channel ssh_channel_accept_x11(ssh_channel channel, int timeout_ms)
 }
 
 /**
- * @brief Send an "auth-agent-req" channel request over an existing session channel.
+ * @brief Send an "auth-agent-req" channel request over an existing session
+ * channel.
  *
- * This client-side request will enable forwarding the agent over an secure tunnel.
- * When the server is ready to open one authentication agent channel, an
+ * This client-side request will enable forwarding the agent over an secure
+ * tunnel. When the server is ready to open one authentication agent channel, an
  * ssh_channel_open_request_auth_agent_callback event will be generated.
  *
  * @param[in]  channel  The channel to send signal.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred
  */
 int ssh_channel_request_auth_agent(ssh_channel channel) {
   if (channel == NULL) {
@@ -2490,9 +2503,9 @@ static int ssh_global_request_termination(void *s)
  *
  * @param[in]  reply    Set if you expect a reply from server.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  */
 int ssh_global_request(ssh_session session,
@@ -2584,7 +2597,7 @@ error:
 
 /**
  * @brief Sends the "tcpip-forward" global request to ask the server to begin
- *        listening for inbound connections.
+ * listening for inbound connections.
  *
  * @param[in]  session  The ssh session to send the request.
  *
@@ -2599,9 +2612,9 @@ error:
  * @param[in]  bound_port The pointer to get actual bound port. Pass NULL to
  *                        ignore.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  **/
 int ssh_channel_listen_forward(ssh_session session,
@@ -2708,9 +2721,9 @@ ssh_channel ssh_channel_open_forward_port(ssh_session session, int timeout_ms, i
  *
  * @param[in]  port     The bound port on the server.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  */
 int ssh_channel_cancel_forward(ssh_session session,
@@ -2759,9 +2772,9 @@ int ssh_forward_cancel(ssh_session session, const char *address, int port)
  *
  * @param[in]  value    The value to set.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  * @warning Some environment variables may be refused by security reasons.
  */
@@ -2815,9 +2828,9 @@ error:
  * @param[in]  cmd      The command to execute
  *                      (e.g. "ls ~/ -al | grep -i reports").
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
  * Example:
@@ -2880,9 +2893,9 @@ error:
   return rc;
 }
 
-
 /**
- * @brief Send a signal to remote process (as described in RFC 4254, section 6.9).
+ * @brief Send a signal to remote process (as described in RFC 4254,
+ * section 6.9).
  *
  * Sends a signal 'sig' to the remote process.
  * Note, that remote system may not support signals concept.
@@ -2906,7 +2919,7 @@ error:
  *                      SIGUSR1  -> USR1 \n
  *                      SIGUSR2  -> USR2 \n
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  */
 int ssh_channel_request_send_signal(ssh_channel channel, const char *sig)
 {
@@ -2939,7 +2952,6 @@ error:
   return rc;
 }
 
-
 /**
  * @brief Send a break signal to the server (as described in RFC 4335).
  *
@@ -2951,7 +2963,7 @@ error:
  *
  * @param[in]  length   The break-length in milliseconds to send.
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred
  */
 int ssh_channel_request_send_break(ssh_channel channel, uint32_t length)
 {
@@ -2989,13 +3001,14 @@ error:
  * @param[out]  buffer   The buffer which will get the data.
  *
  * @param[in]  count    The count of bytes to be read. If it is bigger than 0,
- *                      the exact size will be read, else (bytes=0) it will
- *                      return once anything is available.
+ * the exact size will be read, else (bytes=0) it will return once anything is
+ * available.
  *
  * @param is_stderr     A boolean value to mark reading from the stderr stream.
  *
- * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
- *                      timeout and SSH_ERROR on error.
+ * @return              The number of bytes read, 0 on end of file, `SSH_AGAIN`
+ * on timeout and `SSH_ERROR` on error.
+ *
  * @deprecated          Please use ssh_channel_read instead
  * @warning             This function doesn't work in nonblocking/timeout mode
  * @see ssh_channel_read
@@ -3098,11 +3111,11 @@ static int ssh_channel_read_termination(void *s)
  *
  * @param[in]  is_stderr A boolean value to mark reading from the stderr flow.
  *
- * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
- *                      timeout and SSH_ERROR on error.
+ * @return              The number of bytes read, 0 on end of file, `SSH_AGAIN`
+ * on timeout and `SSH_ERROR` on error.
  *
  * @warning This function may return less than count bytes of data, and won't
- *          block until count bytes have been read.
+ * block until count bytes have been read.
  */
 int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_stderr)
 {
@@ -3127,8 +3140,8 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count, int is_std
  * @param[in]  timeout_ms  A timeout in milliseconds. A value of -1 means
  *                         infinite timeout.
  *
- * @return              The number of bytes read, 0 on end of file, SSH_AGAIN on
- *                      timeout, SSH_ERROR on error.
+ * @return              The number of bytes read, 0 on end of file, `SSH_AGAIN`
+ * on timeout, `SSH_ERROR` on error.
  *
  * @warning This function may return less than count bytes of data, and won't
  *          block until count bytes have been read.
@@ -3238,8 +3251,8 @@ int ssh_channel_read_timeout(ssh_channel channel,
  *
  * @param[in]  is_stderr A boolean to select the stderr stream.
  *
- * @return              The number of bytes read, SSH_AGAIN if nothing is
- * available, SSH_ERROR on error, and SSH_EOF if the channel is EOF.
+ * @return              The number of bytes read, `SSH_AGAIN` if nothing is
+ * available, `SSH_ERROR` on error, and `SSH_EOF` if the channel is EOF.
  *
  * @see ssh_channel_is_eof()
  */
@@ -3296,11 +3309,11 @@ int ssh_channel_read_nonblocking(ssh_channel channel,
  * @param[in]  is_stderr A boolean to select the stderr stream.
  *
  * @return              The number of bytes available for reading, 0 if nothing
- *                      is available or SSH_ERROR on error.
+ *                      is available or `SSH_ERROR` on error.
  *                      When a channel is freed the function returns
- *                      SSH_ERROR immediately.
+ *                      `SSH_ERROR` immediately.
  *
- * @warning When the channel is in EOF state, the function returns SSH_EOF.
+ * @warning When the channel is in EOF state, the function returns `SSH_EOF`.
  *
  * @see ssh_channel_is_eof()
  */
@@ -3343,18 +3356,19 @@ int ssh_channel_poll(ssh_channel channel, int is_stderr)
  *
  * @param[in]  channel   The channel to poll.
  * @param[in]  timeout   Set an upper limit on the time for which this function
- *                       will block, in milliseconds. Specifying a negative value
- *                       means an infinite timeout. This parameter is passed to
- *                       the poll() function.
+ *                       will block, in milliseconds. Specifying a negative
+ *                       value means an infinite timeout. This parameter is
+ *                       passed to the poll() function.
  * @param[in]  is_stderr A boolean to select the stderr stream.
  *
  * @return              The number of bytes available for reading,
  *                      0 if nothing is available (timeout elapsed),
- *                      SSH_EOF on end of file,
- *                      SSH_ERROR on error.
+ *                      `SSH_EOF` on end of file,
+ *                      `SSH_ERROR` on error.
  *
- * @warning When the channel is in EOF state, the function returns SSH_EOF.
- *          When a channel is freed the function returns SSH_ERROR immediately.
+ * @warning When the channel is in EOF state, the function returns `SSH_EOF`.
+ *          When a channel is freed the function returns `SSH_ERROR`
+ *          immediately.
  *
  * @see ssh_channel_is_eof()
  */
@@ -3455,12 +3469,12 @@ static int ssh_channel_exit_status_termination(void *c)
  * @param[out] pcore_dumped A pointer to store a boolean value if it dumped a
  *                          core.
  *
- * @return              SSH_OK on success, SSH_AGAIN if we don't have a status
- *                      or an SSH error.
+ * @return              `SSH_OK` on success, `SSH_AGAIN` if we don't have a
+ *                      status or an SSH error.
  * @warning             This function may block until a timeout (or never)
  *                      if the other side is not willing to close the channel.
  *                      When a channel is freed the function returns
- *                      SSH_ERROR immediately.
+ *                      `SSH_ERROR` immediately.
  *
  * If you're looking for an async handling of this register a callback for the
  * exit status!
@@ -3524,11 +3538,11 @@ int ssh_channel_get_exit_state(ssh_channel channel,
  * @param[in]  channel  The channel to get the status from.
  *
  * @return              The exit status, -1 if no exit status has been returned
- *                      (yet), or SSH_ERROR on error.
+ *                      (yet), or `SSH_ERROR` on error.
  * @warning             This function may block until a timeout (or never)
  *                      if the other side is not willing to close the channel.
  *                      When a channel is freed the function returns
- *                      SSH_ERROR immediately.
+ *                      `SSH_ERROR` immediately.
  *
  * If you're looking for an async handling of this register a callback for the
  * exit status.
@@ -3641,9 +3655,9 @@ static size_t count_ptrs(ssh_channel *ptrs)
  *
  * @param[in]  timeout  Timeout as defined by select(2).
  *
- * @return             SSH_OK on a successful operation, SSH_EINTR if the
+ * @return             `SSH_OK` on a successful operation, `SSH_EINTR` if the
  *                     select(2) syscall was interrupted, then relaunch the
- *                     function, or SSH_ERROR on error.
+ *                     function, or `SSH_ERROR` on error.
  */
 int ssh_channel_select(ssh_channel *readchans, ssh_channel *writechans,
                        ssh_channel *exceptchans, struct timeval * timeout)
@@ -3840,14 +3854,14 @@ int ssh_channel_write_stderr(ssh_channel channel, const void *data, uint32_t len
  * @param[in]  localport  The source port (your local computer). It's optional
  *                        and for logging purpose.
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
  *
- * @warning This function does not bind the local port and does not automatically
- *          forward the content of a socket to the channel. You still have to
- *          use ssh_channel_read and ssh_channel_write for this.
+ * @warning This function does not bind the local port and does not
+ *          automatically forward the content of a socket to the channel. You
+ *          still have to use ssh_channel_read and ssh_channel_write for this.
  */
 int ssh_channel_open_reverse_forward(ssh_channel channel, const char *remotehost,
                                      int remoteport, const char *sourcehost, int localport)
@@ -3905,13 +3919,13 @@ error:
  *
  * @param[in]  orig_port    The source port (the local server).
  *
- * @return              SSH_OK on success,
- *                      SSH_ERROR if an error occurred,
- *                      SSH_AGAIN if in nonblocking mode and call has
+ * @return              `SSH_OK` on success,
+ *                      `SSH_ERROR` if an error occurred,
+ *                      `SSH_AGAIN` if in nonblocking mode and call has
  *                      to be done again.
- * @warning This function does not bind the local port and does not automatically
- *          forward the content of a socket to the channel. You still have to
- *          use shh_channel_read and ssh_channel_write for this.
+ * @warning This function does not bind the local port and does not
+ *          automatically forward the content of a socket to the channel. You
+ *          still have to use shh_channel_read and ssh_channel_write for this.
  */
 int ssh_channel_open_x11(ssh_channel channel,
                          const char *orig_addr, int orig_port)
@@ -3966,7 +3980,7 @@ error:
  *
  * @param[in]  exit_status  The exit status to send
  *
- * @return     SSH_OK on success, SSH_ERROR if an error occurred.
+ * @return     `SSH_OK` on success, `SSH_ERROR` if an error occurred.
  */
 int ssh_channel_request_send_exit_status(ssh_channel channel, int exit_status)
 {
@@ -4010,7 +4024,7 @@ error:
  * @param[in]  errmsg   A CRLF explanation text about the error condition
  * @param[in]  lang     The language used in the message (format: RFC 3066)
  *
- * @return              SSH_OK on success, SSH_ERROR if an error occurred
+ * @return              `SSH_OK` on success, `SSH_ERROR` if an error occurred
  */
 int ssh_channel_request_send_exit_signal(ssh_channel channel, const char *sig,
                                          int core, const char *errmsg, const char *lang)

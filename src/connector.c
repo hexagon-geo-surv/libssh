@@ -83,6 +83,20 @@ static ssize_t ssh_connector_fd_write(ssh_connector connector,
                                       uint32_t len);
 static bool ssh_connector_fd_is_socket(socket_t socket);
 
+/**
+ * @brief Create a new SSH connector.
+ *
+ * Allocates and initializes a new connector object for moving data between
+ * an SSH session and file descriptors. The connector is created with invalid
+ * file descriptors and callback structures initialized, but not yet attached
+ * to any channels or sockets.
+ *
+ * @param[in]  session   The SSH session to associate with the connector.
+ *
+ * @return               A newly allocated connector on success, or NULL if an
+ *                       error occurred. On error, an out-of-memory error is
+ *                       set on the session.
+ */
 ssh_connector ssh_connector_new(ssh_session session)
 {
     ssh_connector connector;
@@ -112,6 +126,15 @@ ssh_connector ssh_connector_new(ssh_session session)
     return connector;
 }
 
+/**
+ * @brief Free an SSH connector.
+ *
+ * Cleans up and deallocates a connector created by ssh_connector_new().
+ * Any channel callbacks and poll objects associated with the @p connector
+ * are removed and freed before the connector structure itself is released.
+ *
+ * @param[in] connector  The connector to free. Must not be NULL.
+ */
 void ssh_connector_free (ssh_connector connector)
 {
     if (connector->in_channel != NULL) {
@@ -140,6 +163,24 @@ void ssh_connector_free (ssh_connector connector)
     free(connector);
 }
 
+/**
+ * @brief Set the input channel for a connector.
+ *
+ * Associates an SSH channel with the @p connector as its input source and
+ * installs the internal channel callbacks used for reading data. Any
+ * configured input file descriptor is disabled and the connector will
+ * receive data from the given channel only.
+ *
+ * If neither `SSH_CONNECTOR_STDOUT` nor `SSH_CONNECTOR_STDERR` is specified
+ * in @p flags, `SSH_CONNECTOR_STDOUT` is used as the default.
+ *
+ * @param[in] connector  The connector to configure.
+ * @param[in] channel    The SSH channel to use as input.
+ * @param[in] flags      A combination of ssh_connector_flags_e values
+ *                       selecting which channel streams to read from.
+ *
+ * @return               `SSH_OK` on success, `SSH_ERROR` on failure.
+ */
 int ssh_connector_set_in_channel(ssh_connector connector,
                                   ssh_channel channel,
                                   enum ssh_connector_flags_e flags)
@@ -156,6 +197,24 @@ int ssh_connector_set_in_channel(ssh_connector connector,
     return ssh_add_channel_callbacks(channel, &connector->in_channel_cb);
 }
 
+/**
+ * @brief Set the output channel for a connector.
+ *
+ * Associates an SSH channel with the @p connector as its output target and
+ * installs the internal channel callbacks used for writing data. Any
+ * configured output file descriptor is disabled and the connector will
+ * send data to the given channel only.
+ *
+ * If neither `SSH_CONNECTOR_STDOUT` nor `SSH_CONNECTOR_STDERR` is specified
+ * in @p flags, `SSH_CONNECTOR_STDOUT` is used as the default.
+ *
+ * @param[in] connector  The connector to configure.
+ * @param[in] channel    The SSH channel to use as output.
+ * @param[in] flags      A combination of ssh_connector_flags_e values
+ *                       selecting which channel streams to write to.
+ *
+ * @return               `SSH_OK` on success, `SSH_ERROR` on failure.
+ */
 int ssh_connector_set_out_channel(ssh_connector connector,
                                   ssh_channel channel,
                                   enum ssh_connector_flags_e flags)
@@ -172,6 +231,15 @@ int ssh_connector_set_out_channel(ssh_connector connector,
     return ssh_add_channel_callbacks(channel, &connector->out_channel_cb);
 }
 
+/**
+ * @brief Set the connector's input file descriptor.
+ *
+ * Sets the @p fd (file descriptor) to be used as the input source for the
+ * @p connector , replacing any previously configured input channel.
+ *
+ * @param[in] connector  The connector to configure.
+ * @param[in] fd         The file descriptor (socket or regular).
+ */
 void ssh_connector_set_in_fd(ssh_connector connector, socket_t fd)
 {
     connector->in_fd = fd;
@@ -179,6 +247,15 @@ void ssh_connector_set_in_fd(ssh_connector connector, socket_t fd)
     connector->in_channel = NULL;
 }
 
+/**
+ * @brief Set the connector's output file descriptor.
+ *
+ * Sets the @p fd (file descriptor) to be used as the output target for the
+ * @p connector , replacing any previously configured output channel.
+ *
+ * @param[in] connector  The connector to configure.
+ * @param[in] fd         The file descriptor (socket or regular).
+ */
 void ssh_connector_set_out_fd(ssh_connector connector, socket_t fd)
 {
     connector->out_fd = fd;
@@ -372,7 +449,7 @@ ssh_connector_fd_out_cb(ssh_connector connector)
  *
  * @brief Callback called when a poll event is received on a file descriptor.
  *
- * This is for (input or output.
+ * This is for input or output.
  *
  * @param[in] fd file descriptor receiving the event
  *

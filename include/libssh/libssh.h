@@ -455,44 +455,9 @@ enum ssh_connector_flags_e {
     SSH_CONNECTOR_BOTH = 3
 };
 
-/**
- * @brief Flushes the output buffer of the session, blocking until the buffer is empty or the timeout is reached
- *
- * @param[in] session  The ssh session.
- * @param[in] timeout  Timeout (milliseconds)
- *
- * @return             SSH_OK on success (0), SSH_ERROR on error (-1).
- */
 LIBSSH_API int ssh_blocking_flush(ssh_session session, int timeout);
-
-/**
- * @brief Accept an X11 connection from the server.
- *
- * @param[in] channel    The channel .
- * @param[in] timeout_ms Timeout (milliseconds).
- *
- * @return               A new X11 channel, or NULL on error.
- */
 LIBSSH_API ssh_channel ssh_channel_accept_x11(ssh_channel channel, int timeout_ms);
-
-/**
- * @brief Change the size of the terminal .
- *
- * @param[in] channel  The channel .
- * @param[in] cols     Number of columns.
- * @param[in] rows     Number of rows.
- *
- * @return             SSH_OK on success (0), SSH_ERROR on error(-1).
- */
 LIBSSH_API int ssh_channel_change_pty_size(ssh_channel channel,int cols,int rows);
-
-/**
- * @brief Closes a channel.
- *
- * @param[in] channel  The channel.
- *
- * @return             SSH_OK on success(0), SSH_ERROR on error(-1).
- */
 LIBSSH_API int ssh_channel_close(ssh_channel channel);
 #define SSH_CHANNEL_FREE(x)      \
     do {                         \
@@ -501,129 +466,23 @@ LIBSSH_API int ssh_channel_close(ssh_channel channel);
             (x) = NULL;          \
         }                        \
     } while (0)
-
-/**
- * @brief Frees a channel.
- *
- * @param[in] channel  The channel.
- */
 LIBSSH_API void ssh_channel_free(ssh_channel channel);
-
-/**
- * @brief Get the exit status of a channel .
- *
- * @param[in]  channel       The channel .
- * @param[out] pexit_code    the exit code (can be NULL).
- * @param[out] pexit_signal  the exit signal string (can be NULL).
- * @param[out] pcore_dumped  the core dump flag (can be NULL).
- *
- * @return                   SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_get_exit_state(ssh_channel channel,
                                           uint32_t *pexit_code,
                                           char **pexit_signal,
                                           int *pcore_dumped);
 SSH_DEPRECATED LIBSSH_API int ssh_channel_get_exit_status(ssh_channel channel);
-
-/**
- * @brief Used to get the session .
- *
- * @param[in]  channel  The channel .
- *
- * @return              The ssh session.
- */
 LIBSSH_API ssh_session ssh_channel_get_session(ssh_channel channel);
-
-/**
- * @brief Check if the channel is closed.
- *
- * @param[in]  channel  The channel .
- *
- * @return              1 if the channel is closed, 0 otherwise.
- */
 LIBSSH_API int ssh_channel_is_closed(ssh_channel channel);
-
-/**
- * @brief Check if the remote host has sent an EOF (End Of File).
- *
- * @param[in]  channel  The channel .
- *
- * @return              1 if EOF has been received, 0 otherwise.
- */
 LIBSSH_API int ssh_channel_is_eof(ssh_channel channel);
-
-/**
- * @brief Check if the channel is open.
- *
- * @param[in]  channel  The channel .
- *
- * @return              1 if the channel is open, 0 otherwise.
- */
 LIBSSH_API int ssh_channel_is_open(ssh_channel channel);
-
-/**
- * @brief Create a new channel.
- *
- * @param[in]  session  The ssh session to use.
- *
- * @return              a new channel, or NULL on error.
- */
 LIBSSH_API ssh_channel ssh_channel_new(ssh_session session);
-
-/**
- * @brief Open an authentication agent forwarding channel.
- *
- * @param[in]  channel  The channel .
- *
- * @return              SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_open_auth_agent(ssh_channel channel);
-
-/**
- * @brief Open a TCP/IP forwarding channel.
- *
- * @param[in] channel      The channel .
- * @param[in] remotehost   The remote host that connect to.
- * @param[in] remoteport   The remote port that connect to.
- * @param[in] sourcehost   The source host from which to connect.
- * @param[in] localport    The source port from which to connect.
- *
- * @return                 SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_open_forward(ssh_channel channel, const char *remotehost,
     int remoteport, const char *sourcehost, int localport);
-
-/**
- * @brief Open a Unix domain socket forwarding channel.
- *
- * @param[in] channel      The channel .
- * @param[in] remotepath   The remote path of the socket.
- * @param[in] sourcehost   The source host from which to connect.
- * @param[in] localport    The source port from which to connect.
- *
- * @return                 SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_open_forward_unix(ssh_channel channel, const char *remotepath,
     const char *sourcehost, int localport);
-
-/**
- * @brief Open a session channel .
- *
- * @param[in] channel      The channel .
- *
- * @return                 SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_open_session(ssh_channel channel);
-
-/**
- * @brief Open an X11 channel.
- *
- * @param[in] channel      The channel .
- * @param[in] orig_addr    The source address .
- * @param[in] orig_port    The source port.
- *
- * @return                 SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_open_x11(ssh_channel channel, const char *orig_addr, int orig_port);
 LIBSSH_API int ssh_channel_poll(ssh_channel channel, int is_stderr);
 LIBSSH_API int ssh_channel_poll_timeout(ssh_channel channel, int timeout, int is_stderr);
@@ -631,287 +490,48 @@ LIBSSH_API int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count,
 LIBSSH_API int ssh_channel_read_timeout(ssh_channel channel, void *dest, uint32_t count, int is_stderr, int timeout_ms);
 LIBSSH_API int ssh_channel_read_nonblocking(ssh_channel channel, void *dest, uint32_t count,
     int is_stderr);
-
-/**
- * @brief Set an environment variable on the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] name       The name of the variable.
- * @param[in] value      The value to set.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_env(ssh_channel channel, const char *name, const char *value);
-
-/**
- * @brief Run a command on the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] cmd        The command to run.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_exec(ssh_channel channel, const char *cmd);
-
-/**
- * @brief Request a PTY (pseudo-terminal) on the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_pty(ssh_channel channel);
-
-/**
- * @brief Request a PTY (pseudo-terminal) size on the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] term       The terminal type .
- * @param[in] cols       The number of columns.
- * @param[in] rows       The number of rows.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_pty_size(ssh_channel channel, const char *term,
     int cols, int rows);
-
-/**
- * @brief Request a PTY (pseudo-terminal) size and modes on the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] term       The terminal type.
- * @param[in] cols       The number of columns.
- * @param[in] rows       The number of rows.
- * @param[in] modes      The encoded terminal modes.
- * @param[in] modes_len  The length of the modes data.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_pty_size_modes(ssh_channel channel, const char *term,
     int cols, int rows, const unsigned char* modes, size_t modes_len);
-
-/**
- * @brief Request a shell on the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_shell(ssh_channel channel);
-
-/**
- * @brief Send a signal to the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] signum     The signal name .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_send_signal(ssh_channel channel, const char *signum);
-
-/**
- * @brief Send a break signal to the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] length     The length of the break in ms.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_send_break(ssh_channel channel, uint32_t length);
-
-/**
- * @brief Request the SFTP subsystem on the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_sftp(ssh_channel channel);
-
-/**
- * @brief Request a subsystem on the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] subsystem  The subsystem name.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_subsystem(ssh_channel channel, const char *subsystem);
 LIBSSH_API int ssh_channel_request_x11(ssh_channel channel, int single_connection, const char *protocol,
     const char *cookie, int screen_number);
-
-/**
- * @brief Request agent forwarding on the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_request_auth_agent(ssh_channel channel);
-
-/**
- * @brief Send EOF (End Of File) to the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_send_eof(ssh_channel channel);
-
-/**
- * @brief Set the channel to blocking or non-blocking mode.
- *
- * @param[in] channel    The channel .
- * @param[in] blocking   Set to 1 for blocking, 0 for non-blocking.
- */
 LIBSSH_API void ssh_channel_set_blocking(ssh_channel channel, int blocking);
-
-/**
- * @brief Set the counter structure for the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] counter    The counter to update.
- */
 LIBSSH_API void ssh_channel_set_counter(ssh_channel channel,
                                         ssh_counter counter);
-
-/**
- * @brief Write data to the channel.
- *
- * @param[in] channel    The channel .
- * @param[in] data       The data to be written.
- * @param[in] len        The length of the data.
- *
- * @return               The number of bytes written, or SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len);
-
-/**
- * @brief Write data to the channel's standard error.
- *
- * @param[in] channel    The channel .
- * @param[in] data       The data to be written.
- * @param[in] len        The length of the data.
- *
- * @return               The number of bytes written, or SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_write_stderr(ssh_channel channel,
                                         const void *data,
                                         uint32_t len);
-
-/**
- * @brief Get the current window size of the channel.
- *
- * @param[in] channel    The channel .
- *
- * @return               The window size.
- */
 LIBSSH_API uint32_t ssh_channel_window_size(ssh_channel channel);
 
-/**
- * @brief Get the file name from a path.
- *
- * @param[in] path       The path.
- *
- * @return               The base name, or NULL on error.
- */
 LIBSSH_API char *ssh_basename (const char *path);
-
-/**
- * @brief Clean up and free a public key hash.
- *
- * @param[in,out] hash   The hash to free.
- */
 LIBSSH_API void ssh_clean_pubkey_hash(unsigned char **hash);
-
-/**
- * @brief Connects to the ssh server.
- *
- * @param[in] session  The ssh session.
- *
- * @return SSH_OK on success (0), SSH_ERROR on error (-1).
- */
 LIBSSH_API int ssh_connect(ssh_session session);
 
-/**
- * @brief Create a new connector.
- *
- * @param[in] session    The session .
- *
- * @return               A new connector, or NULL on error.
- */
 LIBSSH_API ssh_connector ssh_connector_new(ssh_session session);
-
-/**
- * @brief Free a connector.
- *
- * @param[in] connector  The connector to free.
- */
 LIBSSH_API void ssh_connector_free(ssh_connector connector);
-
-/**
- * @brief Set the input channel for the connector.
- *
- * @param[in] connector  The connector .
- * @param[in] channel    The channel .
- * @param[in] flags      Flags for the connector.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_connector_set_in_channel(ssh_connector connector,
                                             ssh_channel channel,
                                             enum ssh_connector_flags_e flags);
-
-/**
- * @brief Set the output channel for the connector.
- *
- * @param[in] connector  The connector .
- * @param[in] channel    The channel .
- * @param[in] flags      Flags for the connector.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_connector_set_out_channel(ssh_connector connector,
                                              ssh_channel channel,
                                              enum ssh_connector_flags_e flags);
-
-/**
- * @brief Set the input file descriptor for the connector.
- *
- * @param[in] connector  The connector .
- * @param[in] fd         The file descriptor.
- */                                             
 LIBSSH_API void ssh_connector_set_in_fd(ssh_connector connector, socket_t fd);
-
-/**
- * @brief Set the output file descriptor for the connector.
- *
- * @param[in] connector  The connector .
- * @param[in] fd         The file descriptor.
- */
 LIBSSH_API void ssh_connector_set_out_fd(ssh_connector connector, socket_t fd);
 
-/**
- * @brief Get the copyright information.
- *
- * @return               The copyright string.
- */
 LIBSSH_API const char *ssh_copyright(void);
-
-/**
- * @brief Disconnects from the ssh server.
- *
- * @param[in] session    The ssh session to be disconnected.
- */
 LIBSSH_API void ssh_disconnect(ssh_session session);
-
-/**
- * @brief Get the directory name from a path.
- *
- * @param[in] path       The path.
- *
- * @return               The directory name, or NULL on error.
- */
 LIBSSH_API char *ssh_dirname (const char *path);
 LIBSSH_API int ssh_finalize(void);
 
@@ -924,16 +544,6 @@ LIBSSH_API ssh_channel ssh_channel_open_forward_port(ssh_session session,
 SSH_DEPRECATED LIBSSH_API ssh_channel ssh_channel_accept_forward(ssh_session session,
                                                   int timeout_ms,
                                                   int *destination_port);
-
-/**
- * @brief Cancel a reverse port forwarding.
- *
- * @param[in] session    The ssh session.
- * @param[in] address    The address bound.
- * @param[in] port       The port bound.
- *
- * @return               SSH_OK on success, SSH_ERROR on error.
- */
 LIBSSH_API int ssh_channel_cancel_forward(ssh_session session,
                                           const char *address,
                                           int port);
@@ -942,20 +552,7 @@ LIBSSH_API int ssh_channel_listen_forward(ssh_session session,
                                           int port,
                                           int *bound_port);
 
-/**
- * @brief Free an ssh session.
- *
- * @param[in] session    The session to free.
- */
 LIBSSH_API void ssh_free(ssh_session session);
-
-/**
- * @brief Get the disconnect message from the server.
- *
- * @param[in] session    The ssh session.
- *
- * @return               The disconnect message, or NULL if none.
- */
 LIBSSH_API const char *ssh_get_disconnect_message(ssh_session session);
 LIBSSH_API const char *ssh_get_error(void *error);
 LIBSSH_API int ssh_get_error_code(void *error);

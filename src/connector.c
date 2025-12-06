@@ -133,10 +133,13 @@ ssh_connector ssh_connector_new(ssh_session session)
  * Any channel callbacks and poll objects associated with the @p connector
  * are removed and freed before the connector structure itself is released.
  *
- * @param[in] connector  The connector to free. Must not be NULL.
+ * @param[in] connector  The connector to free.
  */
 void ssh_connector_free (ssh_connector connector)
 {
+    if (connector == NULL) {
+        return;
+    }
     if (connector->in_channel != NULL) {
         ssh_remove_channel_callbacks(connector->in_channel,
                                      &connector->in_channel_cb);

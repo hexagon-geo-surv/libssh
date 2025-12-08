@@ -247,11 +247,11 @@ int ssh_bind_listen(ssh_bind sshbind)
         rc = ssh_bind_import_keys(sshbind);
         if (rc == SSH_ERROR) {
             if (!sshbind->gssapi_key_exchange) {
-                ssh_set_error(sshbind, SSH_FATAL, "No hostkeys found");
+                ssh_set_error(sshbind, SSH_FATAL, "No usable hostkeys found");
                 return SSH_ERROR;
             }
             SSH_LOG(SSH_LOG_DEBUG,
-                    "No hostkeys found: Using \"null\" hostkey algorithm");
+                    "No usable hostkeys found: Using \"null\" hostkey algorithm");
         }
     }
 
@@ -528,11 +528,11 @@ int ssh_bind_accept_fd(ssh_bind sshbind, ssh_session session, socket_t fd)
         rc = ssh_bind_import_keys(sshbind);
         if (rc == SSH_ERROR) {
             if (!sshbind->gssapi_key_exchange) {
-                ssh_set_error(sshbind, SSH_FATAL, "No hostkeys found");
+                ssh_set_error(sshbind, SSH_FATAL, "No usable hostkeys found");
                 return SSH_ERROR;
             }
             SSH_LOG(SSH_LOG_DEBUG,
-                    "No hostkeys found: Using \"null\" hostkey algorithm");
+                    "No usable hostkeys found: Using \"null\" hostkey algorithm");
         }
     }
 

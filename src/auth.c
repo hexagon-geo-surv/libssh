@@ -548,7 +548,8 @@ static int build_pubkey_auth_request(ssh_session session,
     int rc;
     const char *auth_method = "publickey";
 
-    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND) {
+    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND &&
+        session->current_crypto->server_pubkey != NULL) {
         auth_method = "publickey-hostbound-v00@openssh.com";
     }
 
@@ -567,7 +568,8 @@ static int build_pubkey_auth_request(ssh_session session,
         return SSH_ERROR;
     }
 
-    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND) {
+    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND &&
+        session->current_crypto->server_pubkey != NULL) {
         rc = add_hostbound_pubkey(session);
         if (rc < 0) {
             return SSH_ERROR;

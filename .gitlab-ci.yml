@@ -85,6 +85,7 @@ workflow:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
   script:
     # torture_gssapi_key_exchange_null is excluded because of a bug
+    # https://bugzilla.opensuse.org/show_bug.cgi?id=1254680
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"
@@ -515,6 +516,7 @@ ubuntu/openssl_3.0.x/x86_64:
   extends: .tests
   script:
     # torture_gssapi_key_exchange_null is excluded because of a bug
+    # https://bugs.launchpad.net/ubuntu/+source/openssh/+bug/2134527
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"

@@ -3517,7 +3517,7 @@ int ssh_channel_get_exit_state(ssh_channel channel,
         *pexit_signal = NULL;
         if (channel->exit.signal != NULL) {
             *pexit_signal = strdup(channel->exit.signal);
-            if (pexit_signal == NULL) {
+            if (*pexit_signal == NULL) {
                 ssh_set_error_oom(session);
                 return SSH_ERROR;
             }

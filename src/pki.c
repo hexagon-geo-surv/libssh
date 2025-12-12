@@ -701,8 +701,8 @@ int ssh_key_cmp(const ssh_key k1,
                       ssh_buffer_get_len(k1->cert));
     }
 
-    if (k1->type == SSH_KEYTYPE_ED25519 ||
-        k1->type == SSH_KEYTYPE_SK_ED25519) {
+    if (ssh_key_type_plain(k1->type) == SSH_KEYTYPE_ED25519 ||
+        ssh_key_type_plain(k1->type) == SSH_KEYTYPE_SK_ED25519) {
         return pki_ed25519_key_cmp(k1, k2, what);
     }
 

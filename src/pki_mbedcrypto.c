@@ -782,7 +782,7 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
         case SSH_KEYTYPE_ED25519:
         case SSH_KEYTYPE_SK_ED25519:
             /* ed25519 keys handled globally */
-            rc = 0;
+            rc = 1;
             break;
         default:
             rc = 1;

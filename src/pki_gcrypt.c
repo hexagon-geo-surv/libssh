@@ -1409,7 +1409,7 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
     case SSH_KEYTYPE_SK_ED25519:
     case SSH_KEYTYPE_SK_ED25519_CERT01:
         /* ed25519 keys handled globally */
-        return 0;
+        return 1;
     case SSH_KEYTYPE_ECDSA_P256:
     case SSH_KEYTYPE_ECDSA_P256_CERT01:
     case SSH_KEYTYPE_ECDSA_P384:

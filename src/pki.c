@@ -903,9 +903,9 @@ int ssh_key_cmp(const ssh_key k1,
     }
 
 #ifndef HAVE_LIBCRYPTO
-    if (k1->type == SSH_KEYTYPE_ED25519) {
+    if (ssh_key_type_plain(k1->type) == SSH_KEYTYPE_ED25519) {
         return pki_ed25519_key_cmp(k1, k2, what);
-    } else if (k1->type == SSH_KEYTYPE_SK_ED25519) {
+    } else if (ssh_key_type_plain(k1->type) == SSH_KEYTYPE_SK_ED25519) {
         return pki_ed25519_key_cmp(k1, k2, SSH_KEY_CMP_PUBLIC);
     }
 #endif

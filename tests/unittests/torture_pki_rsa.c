@@ -373,6 +373,7 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
     ssh_key pubkey = NULL;
     ssh_key privkey = NULL;
     ssh_key cert = NULL;
+    enum ssh_keytypes_e type;
 
     (void)state; /* unused */
 
@@ -389,6 +390,13 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
     assert_return_code(rc, errno);
     assert_non_null(pubkey);
 
+    type = ssh_key_type(cert);
+    assert_true(type == SSH_KEYTYPE_RSA_CERT01);
+
+    rc = ssh_key_is_public(cert);
+    assert_int_equal(rc, 1);
+
+    /* Import matching private key file and verify the pubkey matches */
     rc = ssh_pki_import_privkey_base64(torture_get_testkey(SSH_KEYTYPE_RSA, 0),
                                        passphrase,
                                        NULL,
@@ -396,6 +404,9 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
                                        &privkey);
     assert_return_code(rc, errno);
     assert_non_null(privkey);
+
+    type = ssh_key_type(privkey);
+    assert_true(type == SSH_KEYTYPE_RSA);
 
     /* Basic sanity. */
     rc = ssh_pki_copy_cert_to_privkey(NULL, privkey);
@@ -416,6 +427,10 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
     rc = ssh_pki_copy_cert_to_privkey(cert, privkey);
     assert_return_code(rc, errno);
     assert_non_null(privkey->cert);
+    assert_true(privkey->cert_type == SSH_KEYTYPE_RSA_CERT01);
+
+    assert_int_equal(ssh_key_cmp(privkey, cert, SSH_KEY_CMP_PUBLIC), 0);
+    assert_int_equal(ssh_key_cmp(cert, privkey, SSH_KEY_CMP_PUBLIC), 0);
 
     /* The private key's cert is already set, another copy should fail. */
     rc = ssh_pki_copy_cert_to_privkey(cert, privkey);
@@ -436,6 +451,9 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
     assert_int_equal(rc, SSH_ERROR);
     rc = ssh_pki_copy_cert_to_privkey(cert, pubkey);
     assert_int_equal(rc, SSH_ERROR);
+
+    assert_int_equal(ssh_key_cmp(privkey, cert, SSH_KEY_CMP_PUBLIC), 1);
+    assert_int_equal(ssh_key_cmp(cert, privkey, SSH_KEY_CMP_PUBLIC), 1);
 
     SSH_KEY_FREE(cert);
     SSH_KEY_FREE(privkey);

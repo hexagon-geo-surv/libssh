@@ -806,28 +806,26 @@ ssh_config_get_auth_option(enum ssh_config_opcode_e opcode)
     return -1;
 }
 
-#define CHECK_COND_OR_FAIL(cond, error_message)                    \
-    do {                                                           \
-        if ((cond)) {                                              \
-            SSH_LOG(SSH_LOG_DEBUG,                                 \
-                    "line %d: %s: %s",                             \
-                    count,                                         \
-                    error_message,                                 \
-                    keyword);                                      \
-            if (fail_on_unknown) {                                 \
-                ssh_set_error(session,                             \
-                              SSH_FATAL,                           \
-                              is_cli ? "%s '%s' value on CLI"      \
-                                     : "%s '%s' value at line %d", \
-                              error_message,                       \
-                              keyword,                             \
-                              is_cli ? 0 : count);                 \
-                SAFE_FREE(x);                                      \
-                return SSH_ERROR;                                  \
-            }                                                      \
-            break;                                                 \
-        }                                                          \
-    } while (0)
+#define CHECK_COND_OR_FAIL(cond, error_message)                \
+    if ((cond)) {                                              \
+        SSH_LOG(SSH_LOG_DEBUG,                                 \
+                "line %d: %s: %s",                             \
+                count,                                         \
+                error_message,                                 \
+                keyword);                                      \
+        if (fail_on_unknown) {                                 \
+            ssh_set_error(session,                             \
+                          SSH_FATAL,                           \
+                          is_cli ? "%s '%s' value on CLI"      \
+                                 : "%s '%s' value at line %d", \
+                          error_message,                       \
+                          keyword,                             \
+                          is_cli ? 0 : count);                 \
+            SAFE_FREE(x);                                      \
+            return SSH_ERROR;                                  \
+        }                                                      \
+        break;                                                 \
+    }
 
 static int ssh_config_parse_line_internal(ssh_session session,
                                           const char *line,
@@ -1578,7 +1576,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
   return 0;
 }
 
-#undef SSH_PARSE_OR_FAIL
+#undef CHECK_COND_OR_FAIL
 
 int ssh_config_parse_line(ssh_session session,
                           const char *line,

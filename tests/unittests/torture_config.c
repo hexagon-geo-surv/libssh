@@ -53,6 +53,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TEST_NONEWLINEONELINE "libssh_test_NoNewLineOneline.tmp"
 #define LIBSSH_TEST_RECURSIVE_INCLUDE "libssh_test_recursive_include.tmp"
 #define LIBSSH_TESTCONFIG_MATCH_COMPLEX "libssh_test_match_complex.tmp"
+#define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING "libssh_test_loglevel_missing.tmp"
 
 #define LIBSSH_TESTCONFIG_STRING1 \
     "User "USERNAME"\nInclude "LIBSSH_TESTCONFIG2"\n\n"
@@ -244,6 +245,8 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tForwardAgent yes\n" \
     "\tHostName complex-match\n"
 
+#define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING_STRING "LogLevel\n"
+
 /**
  * @brief helper function loading configuration from either file or string
  */
@@ -294,6 +297,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TEST_NONEWLINEEND);
     unlink(LIBSSH_TEST_NONEWLINEONELINE);
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
+    unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
 
     torture_write_file(LIBSSH_TESTCONFIG1,
                        LIBSSH_TESTCONFIG_STRING1);
@@ -362,6 +366,8 @@ static int setup_config_files(void **state)
     /* Match complex combinations */
     torture_write_file(LIBSSH_TESTCONFIG_MATCH_COMPLEX,
                        LIBSSH_TESTCONFIG_MATCH_COMPLEX_STRING);
+    torture_write_file(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING,
+                       LIBSSH_TESTCONFIG_LOGLEVEL_MISSING_STRING);
 
     return 0;
 }
@@ -391,6 +397,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TEST_NONEWLINEEND);
     unlink(LIBSSH_TEST_NONEWLINEONELINE);
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
+    unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
 
     return 0;
 }
@@ -2619,6 +2626,17 @@ static void torture_config_match_complex(void **state)
     ssh_string_free_char(v);
 }
 
+/* Missing value to LogLevel configuration option
+ */
+static void torture_config_loglevel_missing_value(void **state)
+{
+    ssh_session session = *state;
+
+    ssh_options_set(session, SSH_OPTIONS_HOST, "Bar");
+
+    _parse_config(session, LIBSSH_TESTCONFIG_LOGLEVEL_MISSING, NULL, SSH_OK);
+}
+
 int torture_run_tests(void)
 {
     int rc;
@@ -2759,6 +2777,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_match_complex,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_loglevel_missing_value,
                                         setup,
                                         teardown),
     };

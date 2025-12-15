@@ -1352,6 +1352,7 @@ static void torture_options_copy(void **state)
           "GSSAPIDelegateCredentials yes\n"
           "PubkeyAuthentication yes\n" /* sets flags */
           "GSSAPIAuthentication no\n" /* sets flags */
+          "AddressFamily inet6\n"
           "",
           config);
     fclose(config);
@@ -1428,6 +1429,7 @@ static void torture_options_copy(void **state)
     assert_true(session->opts.config_processed == new->opts.config_processed);
     assert_memory_equal(session->opts.options_seen, new->opts.options_seen,
                         sizeof(session->opts.options_seen));
+    assert_int_equal(session->opts.address_family, new->opts.address_family);
 
     ssh_free(new);
 

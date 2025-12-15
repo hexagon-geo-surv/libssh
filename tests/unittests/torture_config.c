@@ -46,6 +46,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG15 "libssh_testconfig15.tmp"
 #define LIBSSH_TESTCONFIG16 "libssh_testconfig16.tmp"
 #define LIBSSH_TESTCONFIG17 "libssh_testconfig17.tmp"
+#define LIBSSH_TESTCONFIG18 "libssh_testconfig18.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -222,6 +223,15 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tControlMaster yes\n" \
     "\tControlPath none\n"
 
+#define LIBSSH_TESTCONFIG_STRING18 \
+    "Host simple\n"                \
+    "Host af\n"                    \
+    "\tAddressFamily any\n"        \
+    "Host af4\n"                   \
+    "\tAddressFamily inet\n"       \
+    "Host af6\n"                   \
+    "\tAddressFamily inet6\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -292,6 +302,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG15);
     unlink(LIBSSH_TESTCONFIG16);
     unlink(LIBSSH_TESTCONFIG17);
+    unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -350,6 +361,8 @@ static int setup_config_files(void **state)
                        LIBSSH_TESTCONFIG_STRING16);
     torture_write_file(LIBSSH_TESTCONFIG17,
                        LIBSSH_TESTCONFIG_STRING17);
+    torture_write_file(LIBSSH_TESTCONFIG18,
+                       LIBSSH_TESTCONFIG_STRING18);
 
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
@@ -392,6 +405,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG15);
     unlink(LIBSSH_TESTCONFIG16);
     unlink(LIBSSH_TESTCONFIG17);
+    unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -1518,6 +1532,79 @@ static void torture_config_control_master_string(void **state)
 static void torture_config_control_master_file(void **state)
 {
     torture_config_control_master(state, LIBSSH_TESTCONFIG17, NULL);
+}
+
+/**
+ * @brief Verify we can parse AdressFamily configuration option
+ */
+static void torture_config_address_family(void **state,
+                                          const char *file,
+                                          const char *string)
+{
+    ssh_session session = *state;
+
+    const char *config;
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "simple");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.address_family, SSH_ADDRESS_FAMILY_ANY);
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "af");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.address_family, SSH_ADDRESS_FAMILY_ANY);
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "af4");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.address_family, SSH_ADDRESS_FAMILY_INET);
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "af6");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.address_family, SSH_ADDRESS_FAMILY_INET6);
+
+    /* test for parsing failures */
+    config = "Host afmissing\n"
+             "\tAddressFamily\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "afmissing");
+    _parse_config(session, file, string, SSH_ERROR);
+
+    config = "Host afinvalid\n"
+             "\tAddressFamily wurstkäse\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "afinvalid");
+    _parse_config(session, file, string, SSH_ERROR);
+}
+
+/**
+ * @brief Verify we can parse AdressFamily configuration option from string
+ */
+static void torture_config_address_family_string(void **state)
+{
+    torture_config_address_family(state, NULL, LIBSSH_TESTCONFIG_STRING18);
+}
+
+/**
+ * @brief Verify we can parse AdressFamily configuration option from file
+ */
+static void torture_config_address_family_file(void **state)
+{
+    torture_config_address_family(state, LIBSSH_TESTCONFIG18, NULL);
 }
 
 /**
@@ -2705,6 +2792,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_control_master_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_address_family_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_address_family_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_rekey_file,

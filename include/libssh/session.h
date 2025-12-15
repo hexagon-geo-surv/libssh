@@ -277,6 +277,7 @@ struct ssh_session_struct {
         bool identities_only;
         int control_master;
         char *control_path;
+        int address_family;
     } opts;
 
     /* server options */

@@ -68,6 +68,7 @@ enum ssh_config_opcode_e {
     SOC_CONTROLPATH,
     SOC_CERTIFICATE,
     SOC_REQUIRED_RSA_SIZE,
+    SOC_ADDRESSFAMILY,
 
     SOC_MAX /* Keep this one last in the list */
 };

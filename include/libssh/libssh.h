@@ -371,6 +371,12 @@ enum ssh_control_master_options_e {
   SSH_CONTROL_MASTER_AUTOASK
 };
 
+enum ssh_address_family_options_e {
+    SSH_ADDRESS_FAMILY_ANY,
+    SSH_ADDRESS_FAMILY_INET,
+    SSH_ADDRESS_FAMILY_INET6
+};
+
 enum ssh_options_e {
     SSH_OPTIONS_HOST,
     SSH_OPTIONS_PORT,
@@ -422,6 +428,7 @@ enum ssh_options_e {
     SSH_OPTIONS_PROXYJUMP,
     SSH_OPTIONS_PROXYJUMP_CB_LIST_APPEND,
     SSH_OPTIONS_PKI_CONTEXT,
+    SSH_OPTIONS_ADDRESS_FAMILY,
 };
 
 enum {

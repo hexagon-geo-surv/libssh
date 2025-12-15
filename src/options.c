@@ -256,6 +256,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     new->opts.nodelay               = src->opts.nodelay;
     new->opts.config_processed      = src->opts.config_processed;
     new->opts.control_master        = src->opts.control_master;
+    new->opts.address_family        = src->opts.address_family;
     new->common.log_verbosity       = src->common.log_verbosity;
     new->common.callbacks           = src->common.callbacks;
 
@@ -650,6 +651,13 @@ int ssh_options_set_algo(ssh_session session,
  *                context and can free it after this call.
  *                (ssh_pki_ctx)
  *
+ *              - SSH_OPTIONS_ADDRESS_FAMILY
+ *                Specify which address family to use when connecting.
+ *
+ *                Possible options:
+ *                 - SSH_ADDRESS_FAMILY_ANY: use any address family
+ *                 - SSH_ADDRESS_FAMILY_INET: IPv4 only
+ *                 - SSH_ADDRESS_FAMILY_INET6: IPv6 only
  *
  * @param  value The value to set. This is a generic pointer and the
  *               datatype which is used should be set according to the
@@ -1391,6 +1399,20 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
             if (session->pki_context == NULL) {
                 ssh_set_error_oom(session);
                 return -1;
+            }
+            break;
+        case SSH_OPTIONS_ADDRESS_FAMILY:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                int *x = (int *)value;
+                if (*x < SSH_ADDRESS_FAMILY_ANY ||
+                    *x > SSH_ADDRESS_FAMILY_INET6) {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                session->opts.address_family = *x;
             }
             break;
         default:

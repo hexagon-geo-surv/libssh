@@ -91,7 +91,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"passwordauthentication", SOC_PASSWORDAUTHENTICATION, true},
     {"pubkeyauthentication", SOC_PUBKEYAUTHENTICATION, true},
     {"addkeystoagent", SOC_UNSUPPORTED, true},
-    {"addressfamily", SOC_UNSUPPORTED, true},
+    {"addressfamily", SOC_ADDRESSFAMILY, true},
     {"batchmode", SOC_UNSUPPORTED, true},
     {"canonicaldomains", SOC_UNSUPPORTED, true},
     {"canonicalizefallbacklocal", SOC_UNSUPPORTED, true},
@@ -1562,6 +1562,35 @@ static int ssh_config_parse_line_internal(ssh_session session,
         CHECK_COND_OR_FAIL(l < 0, "Invalid argument");
         if (*parsing) {
             ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, &l);
+        }
+        break;
+    case SOC_ADDRESSFAMILY:
+        p = ssh_config_get_str_tok(&s, NULL);
+        if (p == NULL) {
+            SSH_LOG(SSH_LOG_WARNING,
+                    "line %d: no argument after keyword \"addressfamily\"",
+                    count);
+            SAFE_FREE(x);
+            return SSH_ERROR;
+        }
+        if (*parsing) {
+            int value = -1;
+
+            if (strcasecmp(p, "any") == 0) {
+                value = SSH_ADDRESS_FAMILY_ANY;
+            } else if (strcasecmp(p, "inet") == 0) {
+                value = SSH_ADDRESS_FAMILY_INET;
+            } else if (strcasecmp(p, "inet6") == 0) {
+                value = SSH_ADDRESS_FAMILY_INET6;
+            } else {
+                SSH_LOG(SSH_LOG_WARNING,
+                        "line %d: invalid argument \"%s\"",
+                        count,
+                        p);
+                SAFE_FREE(x);
+                return SSH_ERROR;
+            }
+            ssh_options_set(session, SSH_OPTIONS_ADDRESS_FAMILY, &value);
         }
         break;
     default:

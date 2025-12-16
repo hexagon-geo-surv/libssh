@@ -335,6 +335,9 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
      * connection, otherwise return the first address without error or error */
     if (s == -1) {
         s = first;
+    } else if (s != first) {
+        /* Clean up the saved socket */
+        ssh_connect_socket_close(first);
     }
 
     return s;

@@ -167,7 +167,9 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
     int rc;
     struct addrinfo *ai = NULL;
     struct addrinfo *itr = NULL;
+    char addrname[NI_MAXHOST], portname[NI_MAXSERV];
 
+    SSH_LOG(SSH_LOG_PACKET, "Resolve target hostname %s port %d", host, port);
     rc = getai(host, port, &ai);
     if (rc != 0) {
         ssh_set_error(session, SSH_FATAL,
@@ -192,7 +194,7 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
             struct addrinfo *bind_ai = NULL;
             struct addrinfo *bind_itr = NULL;
 
-            SSH_LOG(SSH_LOG_PACKET, "Resolving %s", bind_addr);
+            SSH_LOG(SSH_LOG_PACKET, "Resolving bind address %s", bind_addr);
 
             rc = getai(bind_addr, 0, &bind_ai);
             if (rc != 0) {
@@ -252,7 +254,28 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
             }
         }
 
+        rc = getnameinfo(itr->ai_addr,
+                         itr->ai_addrlen,
+                         addrname,
+                         sizeof(addrname),
+                         portname,
+                         sizeof(portname),
+                         NI_NUMERICHOST | NI_NUMERICSERV);
+        if (rc != 0) {
+            ssh_set_error(session, SSH_FATAL,
+                          "getnameinfo failed: %s",
+                          ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            ssh_connect_socket_close(s);
+            s = -1;
+            continue;
+        }
+
         errno = 0;
+        SSH_LOG(SSH_LOG_PACKET,
+                "Connecting to host %s [%s] port %s",
+                host,
+                addrname,
+                portname);
         rc = connect(s, itr->ai_addr, itr->ai_addrlen);
         if (rc == -1) {
             if ((errno != 0) && (errno != EINPROGRESS)) {
@@ -263,6 +286,7 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
                 s = -1;
             } else {
                 if (first == -1) {
+                    SSH_LOG(SSH_LOG_PACKET, "EINPROGRESS => Store for later.");
                     first = s;
                 } else { /* errno == EINPROGRESS */
                     /* save only the first "working" socket */

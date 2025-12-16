@@ -34,6 +34,9 @@
 extern "C" {
 #endif
 
+#define NISTP256_SHARED_SECRET_SIZE 32
+#define NISTP384_SHARED_SECRET_SIZE 48
+
 int ssh_client_hybrid_mlkem_init(ssh_session session);
 void ssh_client_hybrid_mlkem_remove_callbacks(ssh_session session);
 

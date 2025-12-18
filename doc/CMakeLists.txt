@@ -49,8 +49,13 @@ if (DOXYGEN_FOUND)
     set(DOXYGEN_WARN_IF_UNDOCUMENTED YES)
     # Do not extract private class members
     set(DOXYGEN_EXTRACT_PRIVATE NO)
-    # Do not include internal documentation
-    set(DOXYGEN_INTERNAL_DOCS NO)
+    if (WITH_INTERNAL_DOC)
+        # Include internal documentation
+        set(DOXYGEN_INTERNAL_DOCS YES)
+    else ()
+        # Do not include internal documentation
+        set(DOXYGEN_INTERNAL_DOCS NO)
+    endif( WITH_INTERNAL_DOC)
     # Disable built-in clipboard (using doxygen-awesome extension instead)
     set(DOXYGEN_HTML_COPY_CLIPBOARD NO)
     # Disable page outline panel (using interactive TOC extension instead)

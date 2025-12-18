@@ -75,6 +75,7 @@ MD5CTX md5_init(void);
 void md5_ctx_free(MD5CTX);
 int md5_update(MD5CTX c, const void *data, size_t len);
 int md5_final(unsigned char *md, MD5CTX c);
+int md5(const unsigned char *digest, size_t len, unsigned char *hash);
 
 SHACTX sha1_init(void);
 void sha1_ctx_free(SHACTX);

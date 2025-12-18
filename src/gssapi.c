@@ -1205,6 +1205,11 @@ int ssh_gssapi_auth_keyex_mic(ssh_session session,
     gss_buffer_desc mic_buf = GSS_C_EMPTY_BUFFER;
     OM_uint32 maj_stat, min_stat;
 
+    if (session->gssapi == NULL || session->gssapi->ctx == NULL) {
+        ssh_set_error(session, SSH_FATAL, "GSSAPI context not initialized");
+        return SSH_ERROR;
+    }
+
     buf = ssh_gssapi_build_mic(session, "gssapi-keyex");
     if (buf == NULL) {
         ssh_set_error_oom(session);

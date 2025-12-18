@@ -1163,6 +1163,12 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request)
             goto error;
         }
 
+        if (session->gssapi == NULL || session->gssapi->ctx == NULL) {
+            ssh_set_error(session, SSH_FATAL, "GSSAPI context not initialized");
+            ssh_auth_reply_default(session, 0);
+            goto error;
+        }
+
         rc = ssh_buffer_unpack(packet, "S", &mic_token_string);
         if (rc != SSH_OK) {
             ssh_auth_reply_default(session, 0);

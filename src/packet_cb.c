@@ -182,6 +182,11 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
             OM_uint32 maj_stat, min_stat;
             gss_buffer_desc mic = GSS_C_EMPTY_BUFFER, msg = GSS_C_EMPTY_BUFFER;
 
+            if (session->gssapi == NULL || session->gssapi->ctx == NULL) {
+                ssh_set_error(session, SSH_FATAL, "GSSAPI context not initialized");
+                goto error;
+            }
+
             mic.length = ssh_string_len(session->gssapi_key_exchange_mic);
             mic.value = ssh_string_data(session->gssapi_key_exchange_mic);
 

@@ -2501,6 +2501,11 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
         return SSH_ERROR;
     }
 
+    if (session->gssapi == NULL) {
+        ssh_set_error(session, SSH_FATAL, "GSSAPI context not initialized");
+        return SSH_ERROR;
+    }
+
     rc = ssh_userauth_request_service(session);
     if (rc == SSH_AGAIN) {
         return SSH_AUTH_AGAIN;

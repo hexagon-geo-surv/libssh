@@ -1300,7 +1300,7 @@ int ssh_get_publickey(ssh_session session, ssh_key *key)
  *
  * @param[in]  hlen     The length of the hash.
  *
- * @return 0 on success, -1 if an error occurred.
+ * @return SSH_OK on success, SSH_ERROR if an error occurred.
  *
  * @warning It is very important that you verify at some moment that the hash
  *          matches a known server. If you don't do it, cryptography won't help
@@ -1319,126 +1319,57 @@ int ssh_get_publickey_hash(const ssh_key key,
 {
     ssh_string blob = NULL;
     unsigned char *h = NULL;
-    int rc;
+    int (*digest)(const unsigned char *, size_t, unsigned char *) = NULL;
+    int rc, ret = SSH_ERROR;
 
     rc = ssh_pki_export_pubkey_blob(key, &blob);
     if (rc < 0) {
-        return rc;
+        goto out;
     }
 
     switch (type) {
-    case SSH_PUBLICKEY_HASH_SHA1: {
-        SHACTX ctx = NULL;
-
-        h = calloc(1, SHA_DIGEST_LEN);
-        if (h == NULL) {
-            rc = -1;
-            goto out;
-        }
-
-        ctx = sha1_init();
-        if (ctx == NULL) {
-            free(h);
-            rc = -1;
-            goto out;
-        }
-
-        rc = sha1_update(ctx, ssh_string_data(blob), ssh_string_len(blob));
-        if (rc != SSH_OK) {
-            free(h);
-            sha1_ctx_free(ctx);
-            goto out;
-        }
-        rc = sha1_final(h, ctx);
-        if (rc != SSH_OK) {
-            free(h);
-            goto out;
-        }
-
+    case SSH_PUBLICKEY_HASH_SHA1:
+        digest = sha1;
         *hlen = SHA_DIGEST_LEN;
         break;
-    }
-    case SSH_PUBLICKEY_HASH_SHA256: {
-        SHA256CTX ctx = NULL;
-
-        h = calloc(1, SHA256_DIGEST_LEN);
-        if (h == NULL) {
-            rc = -1;
-            goto out;
-        }
-
-        ctx = sha256_init();
-        if (ctx == NULL) {
-            free(h);
-            rc = -1;
-            goto out;
-        }
-
-        rc = sha256_update(ctx, ssh_string_data(blob), ssh_string_len(blob));
-        if (rc != SSH_OK) {
-            free(h);
-            sha256_ctx_free(ctx);
-            goto out;
-        }
-        rc = sha256_final(h, ctx);
-        if (rc != SSH_OK) {
-            free(h);
-            goto out;
-        }
-
+    case SSH_PUBLICKEY_HASH_SHA256:
+        digest = sha256;
         *hlen = SHA256_DIGEST_LEN;
         break;
-    }
-    case SSH_PUBLICKEY_HASH_MD5: {
-        MD5CTX ctx = NULL;
-
-        /* In FIPS mode, we cannot use MD5 */
+    case SSH_PUBLICKEY_HASH_MD5:
+#if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER < 0x30000000L
+        /* In FIPS mode without OpenSSL providers, we cannot use MD5 */
         if (ssh_fips_mode()) {
             SSH_LOG(SSH_LOG_TRACE,
                     "In FIPS mode MD5 is not allowed."
                     "Try using SSH_PUBLICKEY_HASH_SHA256");
-            rc = SSH_ERROR;
             goto out;
         }
-
-        h = calloc(1, MD5_DIGEST_LEN);
-        if (h == NULL) {
-            rc = -1;
-            goto out;
-        }
-
-        ctx = md5_init();
-        if (ctx == NULL) {
-            free(h);
-            rc = -1;
-            goto out;
-        }
-
-        rc = md5_update(ctx, ssh_string_data(blob), ssh_string_len(blob));
-        if (rc != SSH_OK) {
-            free(h);
-            md5_ctx_free(ctx);
-            goto out;
-        }
-        rc = md5_final(h, ctx);
-        if (rc != SSH_OK) {
-            free(h);
-            goto out;
-        }
-
+#endif
+        digest = md5;
         *hlen = MD5_DIGEST_LEN;
         break;
-    }
     default:
-        rc = -1;
+        goto out;
+    }
+
+    h = calloc(1, *hlen);
+    if (h == NULL) {
+        goto out;
+    }
+
+    rc = digest(ssh_string_data(blob), ssh_string_len(blob), h);
+    if (rc != SSH_OK) {
+        free(h);
         goto out;
     }
 
     *hash = h;
-    rc = 0;
+    ret = SSH_OK;
+
 out:
     SSH_STRING_FREE(blob);
-    return rc;
+    return ret;
 }
 
 /** @} */

@@ -178,12 +178,19 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
         session->dh_handshake_state=DH_STATE_FINISHED;
     } else {
 #ifdef WITH_GSSAPI
-        if (session->opts.gssapi_key_exchange) {
+        if (ssh_kex_is_gss(session->next_crypto)) {
             OM_uint32 maj_stat, min_stat;
             gss_buffer_desc mic = GSS_C_EMPTY_BUFFER, msg = GSS_C_EMPTY_BUFFER;
 
             if (session->gssapi == NULL || session->gssapi->ctx == NULL) {
                 ssh_set_error(session, SSH_FATAL, "GSSAPI context not initialized");
+                goto error;
+            }
+
+            if (session->gssapi_key_exchange_mic == NULL) {
+                ssh_set_error(session,
+                              SSH_FATAL,
+                              "GSSAPI mic not set");
                 goto error;
             }
 
@@ -271,6 +278,9 @@ SSH_PACKET_CALLBACK(ssh_packet_newkeys)
     return SSH_PACKET_USED;
 
 error:
+#ifdef WITH_GSSAPI
+    SSH_STRING_FREE(session->gssapi_key_exchange_mic);
+#endif
     SSH_SIGNATURE_FREE(sig);
     ssh_string_burn(sig_blob);
     SSH_STRING_FREE(sig_blob);

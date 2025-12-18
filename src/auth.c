@@ -2520,6 +2520,7 @@ int ssh_userauth_gssapi_keyex(ssh_session session)
     session->auth.state = SSH_AUTH_STATE_NONE;
     session->pending_call_state = SSH_PENDING_CALL_AUTH_GSSAPI_KEYEX;
 
+    SAFE_FREE(session->gssapi->user);
     session->gssapi->user = strdup(session->opts.username);
     if (session->gssapi->user == NULL) {
         ssh_set_error_oom(session);

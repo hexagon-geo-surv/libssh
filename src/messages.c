@@ -1177,6 +1177,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_request)
         received_mic.length = ssh_string_len(mic_token_string);
         received_mic.value = ssh_string_data(mic_token_string);
 
+        SAFE_FREE(session->gssapi->user);
         session->gssapi->user = strdup(msg->auth_request.username);
         buf = ssh_gssapi_build_mic(session, "gssapi-keyex");
         if (buf == NULL) {

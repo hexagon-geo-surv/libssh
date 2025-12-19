@@ -105,6 +105,7 @@ set(libssh_SRCS
   error.c
   getpass.c
   gzip.c
+  hybrid_mlkem.c
   init.c
   kdf.c
   kex.c
@@ -115,6 +116,7 @@ set(libssh_SRCS
   match.c
   messages.c
   misc.c
+  mlkem.c
   options.c
   packet.c
   packet_cb.c
@@ -196,12 +198,12 @@ if (WITH_GCRYPT)
         )
     endif(HAVE_GCRYPT_CURVE25519)
 
-    if (HAVE_MLKEM)
+    if (HAVE_GCRYPT_MLKEM)
         set(libssh_SRCS
             ${libssh_SRCS}
             mlkem_gcrypt.c
         )
-    endif (HAVE_MLKEM)
+    endif (HAVE_GCRYPT_MLKEM)
 elseif (WITH_MBEDTLS)
     set(libssh_SRCS
         ${libssh_SRCS}
@@ -255,12 +257,12 @@ else (WITH_GCRYPT)
             chachapoly.c
         )
     endif (NOT HAVE_OPENSSL_EVP_CHACHA20)
-    if (HAVE_MLKEM)
+    if (HAVE_OPENSSL_MLKEM)
         set(libssh_SRCS
             ${libssh_SRCS}
             mlkem_crypto.c
         )
-    endif (HAVE_MLKEM)
+    endif (HAVE_OPENSSL_MLKEM)
 endif (WITH_GCRYPT)
 
 if (WITH_SFTP)
@@ -313,13 +315,18 @@ if (NOT WITH_NACL)
     endif()
 endif (NOT WITH_NACL)
 
-if (HAVE_MLKEM)
-  set(libssh_SRCS
-    ${libssh_SRCS}
-    hybrid_mlkem.c
-    mlkem.c
-  )
-endif (HAVE_MLKEM)
+if (NOT HAVE_MLKEM1024)
+    set(libssh_SRCS
+        ${libssh_SRCS}
+        mlkem_native.c
+        external/libcrux_mlkem768_sha3.c
+    )
+    if (WITH_WERROR_DECLARATION_AFTER_STATEMENT_FLAG)
+        set_source_files_properties(external/libcrux_mlkem768_sha3.c
+                                    PROPERTIES
+                                        COMPILE_FLAGS -Wno-error=declaration-after-statement)
+    endif()
+endif()
 
 if (WITH_FIDO2)
     set(libssh_SRCS

@@ -306,7 +306,7 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_SNTRUP761(f, client, kexcmd)
 #endif
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+#if defined(OPENSSH_MLKEM768X25519_SHA256)
 #define PKDTESTS_KEX_MLKEM768X25519(f, client, kexcmd) \
     f(client, rsa_mlkem768x25519_sha256,       kexcmd("mlkem768x25519-sha256"), setup_rsa,       teardown, LIBSSH_RSA_TESTKEY) \
     f(client, ecdsa_256_mlkem768x25519_sha256, kexcmd("mlkem768x25519-sha256"), setup_ecdsa_256, teardown, LIBSSH_ECDSA_256_TESTKEY) \
@@ -317,7 +317,7 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_MLKEM768X25519(f, client, kexcmd)
 #endif
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768NISTP256_SHA256)
+#if defined(OPENSSH_MLKEM768NISTP256_SHA256)
 #define PKDTESTS_KEX_MLKEM768NISTP256(f, client, kexcmd) \
     f(client, rsa_mlkem768nistp256_sha256,       kexcmd("mlkem768nistp256-sha256"), setup_rsa,       teardown, LIBSSH_RSA_TESTKEY) \
     f(client, ecdsa_256_mlkem768nistp256_sha256, kexcmd("mlkem768nistp256-sha256"), setup_ecdsa_256, teardown, LIBSSH_ECDSA_256_TESTKEY) \
@@ -328,7 +328,7 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
 #define PKDTESTS_KEX_MLKEM768NISTP256(f, client, kexcmd)
 #endif
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
+#if defined(HAVE_MLKEM1024) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
 #define PKDTESTS_KEX_MLKEM1024NISTP384(f, client, kexcmd) \
     f(client, rsa_mlkem1024nistp384_sha384,       kexcmd("mlkem1024nistp384-sha384"), setup_rsa,       teardown, LIBSSH_RSA_TESTKEY) \
     f(client, ecdsa_256_mlkem1024nistp384_sha384, kexcmd("mlkem1024nistp384-sha384"), setup_ecdsa_256, teardown, LIBSSH_ECDSA_256_TESTKEY) \

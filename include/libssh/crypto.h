@@ -87,14 +87,14 @@ enum ssh_key_exchange_e {
     SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM,
     /* sntrup761x25519-sha512 */
     SSH_KEX_SNTRUP761X25519_SHA512,
-#ifdef HAVE_MLKEM
     /* mlkem768x25519-sha256 */
     SSH_KEX_MLKEM768X25519_SHA256,
     /* mlkem768nistp256-sha256 */
     SSH_KEX_MLKEM768NISTP256_SHA256,
+#ifdef HAVE_MLKEM1024
     /* mlkem1024nistp384-sha384 */
     SSH_KEX_MLKEM1024NISTP384_SHA384,
-#endif /* HAVE_MLKEM */
+#endif /* HAVE_MLKEM1024 */
     /* gss-group14-sha256-* */
     SSH_GSS_KEX_DH_GROUP14_SHA256,
     /* gss-group16-sha512-* */
@@ -159,16 +159,14 @@ struct ssh_crypto_struct {
     ssh_curve25519_pubkey curve25519_client_pubkey;
     ssh_curve25519_pubkey curve25519_server_pubkey;
 #endif
-#ifdef HAVE_MLKEM
-#ifdef HAVE_LIBGCRYPT
+#ifdef HAVE_OPENSSL_MLKEM
+    EVP_PKEY *mlkem_privkey;
+#else
     unsigned char *mlkem_privkey;
     size_t mlkem_privkey_len;
-#else
-    EVP_PKEY *mlkem_privkey;
 #endif
     ssh_string mlkem_client_pubkey;
     ssh_string mlkem_ciphertext;
-#endif
 #ifdef HAVE_SNTRUP761
     ssh_sntrup761_privkey sntrup761_privkey;
     ssh_sntrup761_pubkey sntrup761_client_pubkey;

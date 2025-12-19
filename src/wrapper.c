@@ -51,10 +51,8 @@
 #include "libssh/curve25519.h"
 #include "libssh/kex-gss.h"
 #include "libssh/ecdh.h"
-#include "libssh/sntrup761.h"
-#ifdef HAVE_MLKEM
 #include "libssh/hybrid_mlkem.h"
-#endif
+#include "libssh/sntrup761.h"
 
 static struct ssh_hmac_struct ssh_hmac_tab[] = {
   { "hmac-sha1",                     SSH_HMAC_SHA1,          false },
@@ -230,15 +228,14 @@ void crypto_free(struct ssh_crypto_struct *crypto)
         SAFE_FREE(crypto->kex_methods[i]);
     }
 
-#ifdef HAVE_MLKEM
-#ifdef HAVE_LIBGCRYPT
+#ifdef HAVE_OPENSSL_MLKEM
+    EVP_PKEY_free(crypto->mlkem_privkey);
+#else
     if (crypto->mlkem_privkey != NULL) {
         ssh_burn(crypto->mlkem_privkey, crypto->mlkem_privkey_len);
         SAFE_FREE(crypto->mlkem_privkey);
         crypto->mlkem_privkey_len = 0;
     }
-#else
-    EVP_PKEY_free(crypto->mlkem_privkey);
 #endif
     ssh_string_burn(crypto->hybrid_shared_secret);
     ssh_string_free(crypto->mlkem_client_pubkey);
@@ -246,7 +243,6 @@ void crypto_free(struct ssh_crypto_struct *crypto)
     ssh_string_free(crypto->hybrid_client_init);
     ssh_string_free(crypto->hybrid_server_reply);
     ssh_string_free(crypto->hybrid_shared_secret);
-#endif
 
     ssh_burn(crypto, sizeof(struct ssh_crypto_struct));
 
@@ -629,13 +625,13 @@ int crypt_set_algorithms_server(ssh_session session){
         ssh_server_sntrup761x25519_init(session);
         break;
 #endif
-#ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768X25519_SHA256:
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         ssh_server_hybrid_mlkem_init(session);
         break;
-#endif
     default:
         ssh_set_error(session,
                       SSH_FATAL,

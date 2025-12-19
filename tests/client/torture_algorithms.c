@@ -752,7 +752,7 @@ torture_algorithms_ecdh_sntrup761x25519_sha512(void **state)
 }
 #endif /* OPENSSH_SNTRUP761X25519_SHA512 */
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+#if defined(OPENSSH_MLKEM768X25519_SHA256)
 static void torture_algorithms_ecdh_mlkem768x25519_sha256(void **state)
 {
     struct torture_state *s = *state;
@@ -766,9 +766,9 @@ static void torture_algorithms_ecdh_mlkem768x25519_sha256(void **state)
                    NULL /*cipher*/,
                    NULL /*hmac*/);
 }
-#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM768X25519_SHA256) */
+#endif /* defined(OPENSSH_MLKEM768X25519_SHA256) */
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768NISTP256_SHA256)
+#if defined(OPENSSH_MLKEM768NISTP256_SHA256)
 static void torture_algorithms_ecdh_mlkem768nistp256_sha256(void **state)
 {
     struct torture_state *s = *state;
@@ -782,9 +782,9 @@ static void torture_algorithms_ecdh_mlkem768nistp256_sha256(void **state)
                    NULL /*cipher*/,
                    NULL /*hmac*/);
 }
-#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM768NISTP256_SHA256) */
+#endif /* defined(OPENSSH_MLKEM768NISTP256_SHA256) */
 
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
+#if defined(HAVE_MLKEM1024) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
 static void torture_algorithms_ecdh_mlkem1024nistp384_sha384(void **state)
 {
     struct torture_state *s = *state;
@@ -798,7 +798,7 @@ static void torture_algorithms_ecdh_mlkem1024nistp384_sha384(void **state)
                    NULL /*cipher*/,
                    NULL /*hmac*/);
 }
-#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM1024NISTP384_SHA384) */
+#endif /* HAVE_MLKEM1024 && defined(OPENSSH_MLKEM1024NISTP384_SHA384) */
 
 static void torture_algorithms_dh_group1(void **state) {
     struct torture_state *s = *state;
@@ -1077,21 +1077,21 @@ int torture_run_tests(void) {
                                         session_setup,
                                         session_teardown),
 #endif /* OPENSSH_SNTRUP761X25519_SHA512 */
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768X25519_SHA256)
+#if defined(OPENSSH_MLKEM768X25519_SHA256)
         cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_mlkem768x25519_sha256,
                                         session_setup,
                                         session_teardown),
-#endif /* HAVE_MLKEM && defined(OPENSSH_MLKEM768X25519_SHA256) */
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768NISTP256_SHA256)
+#endif /* defined(OPENSSH_MLKEM768X25519_SHA256) */
+#if defined(OPENSSH_MLKEM768NISTP256_SHA256)
         cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_mlkem768nistp256_sha256,
                                         session_setup,
                                         session_teardown),
-#endif /* defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM768NISTP256_SHA256) */
-#if defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
+#endif /* defined(OPENSSH_MLKEM768NISTP256_SHA256) */
+#if defined(HAVE_MLKEM1024) && defined(OPENSSH_MLKEM1024NISTP384_SHA384)
         cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_mlkem1024nistp384_sha384,
                                         session_setup,
                                         session_teardown),
-#endif /* defined(HAVE_MLKEM) && defined(OPENSSH_MLKEM1024NISTP384_SHA384) */
+#endif /* defined(HAVE_MLKEM1024) && defined(OPENSSH_MLKEM1024NISTP384_SHA384) */
 #if defined(HAVE_ECC)
         cmocka_unit_test_setup_teardown(torture_algorithms_ecdh_sha2_nistp256,
                                         session_setup,

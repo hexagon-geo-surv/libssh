@@ -30,8 +30,10 @@ const struct mlkem_type_info *kex_type_to_mlkem_info(enum ssh_key_exchange_e kex
     case SSH_KEX_MLKEM768X25519_SHA256:
     case SSH_KEX_MLKEM768NISTP256_SHA256:
         return &MLKEM768_INFO;
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
         return &MLKEM1024_INFO;
+#endif
     default:
         return NULL;
     }

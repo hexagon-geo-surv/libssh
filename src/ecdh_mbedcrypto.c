@@ -38,16 +38,21 @@
 
 #ifdef HAVE_ECDH
 
-static mbedtls_ecp_group_id ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type) {
-    if (kex_type == SSH_KEX_ECDH_SHA2_NISTP256 ||
-        kex_type == SSH_GSS_KEX_ECDH_NISTP256_SHA256) {
+static mbedtls_ecp_group_id
+ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type)
+{
+    switch (kex_type) {
+    case SSH_KEX_ECDH_SHA2_NISTP256:
+    case SSH_KEX_MLKEM768NISTP256_SHA256:
+    case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
         return MBEDTLS_ECP_DP_SECP256R1;
-    } else if (kex_type == SSH_KEX_ECDH_SHA2_NISTP384) {
+    case SSH_KEX_ECDH_SHA2_NISTP384:
         return MBEDTLS_ECP_DP_SECP384R1;
-    } else if (kex_type == SSH_KEX_ECDH_SHA2_NISTP521) {
+    case SSH_KEX_ECDH_SHA2_NISTP521:
         return MBEDTLS_ECP_DP_SECP521R1;
+    default:
+        return MBEDTLS_ECP_DP_NONE;
     }
-
     return MBEDTLS_ECP_DP_NONE;
 }
 

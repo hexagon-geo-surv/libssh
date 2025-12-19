@@ -41,12 +41,10 @@ static const char *ecdh_kex_type_to_curve(enum ssh_key_exchange_e kex_type)
     switch (kex_type) {
     case SSH_KEX_ECDH_SHA2_NISTP256:
     case SSH_GSS_KEX_ECDH_NISTP256_SHA256:
-#ifdef HAVE_MLKEM
     case SSH_KEX_MLKEM768NISTP256_SHA256:
-#endif
         return "NIST P-256";
     case SSH_KEX_ECDH_SHA2_NISTP384:
-#ifdef HAVE_MLKEM
+#if HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
 #endif
         return "NIST P-384";

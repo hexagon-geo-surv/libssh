@@ -102,9 +102,11 @@ static ssh_string derive_ecdh_secret(ssh_session session)
     case SSH_KEX_MLKEM768NISTP256_SHA256:
         secret = derive_nist_curve_secret(session, NISTP256_SHARED_SECRET_SIZE);
         break;
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
         secret = derive_nist_curve_secret(session, NISTP384_SHARED_SECRET_SIZE);
         break;
+#endif
     default:
         ssh_set_error(session, SSH_FATAL, "Unsupported KEX type");
         return NULL;
@@ -129,10 +131,12 @@ static int derive_hybrid_secret(ssh_session session,
         digest = sha256;
         digest_len = SHA256_DIGEST_LEN;
         break;
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
         digest = sha384;
         digest_len = SHA384_DIGEST_LEN;
         break;
+#endif
     default:
         ssh_set_error(session, SSH_FATAL, "Unsupported KEX type");
         goto cleanup;
@@ -244,7 +248,9 @@ int ssh_client_hybrid_mlkem_init(ssh_session session)
                              crypto->curve25519_client_pubkey);
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         rc = ssh_ecdh_init(session);
         if (rc != SSH_OK) {
             ssh_set_error(session,
@@ -435,7 +441,9 @@ static SSH_PACKET_CALLBACK(ssh_packet_client_hybrid_mlkem_reply)
 #endif
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         ecdh_server_pubkey_size = ssh_buffer_get_len(server_reply_buffer);
         ssh_string_free(crypto->ecdh_server_pubkey);
         crypto->ecdh_server_pubkey = ssh_string_new(ecdh_server_pubkey_size);
@@ -585,7 +593,9 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_hybrid_mlkem_init)
 #endif
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         rc = ssh_ecdh_init(session);
         if (rc != SSH_OK) {
             ssh_set_error(session,
@@ -682,7 +692,9 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_hybrid_mlkem_init)
 #endif
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         ecdh_client_pubkey_size = ssh_buffer_get_len(client_init_buffer);
         ssh_string_free(crypto->ecdh_client_pubkey);
         crypto->ecdh_client_pubkey = ssh_string_new(ecdh_client_pubkey_size);
@@ -760,7 +772,9 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_hybrid_mlkem_init)
                              crypto->curve25519_server_pubkey);
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:
+#ifdef HAVE_MLKEM1024
     case SSH_KEX_MLKEM1024NISTP384_SHA384:
+#endif
         rc = ssh_buffer_pack(server_reply_buffer,
                              "PP",
                              ssh_string_len(crypto->mlkem_ciphertext),

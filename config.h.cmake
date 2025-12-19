@@ -194,8 +194,14 @@
 /* Define to 1 if we have support for blowfish */
 #cmakedefine HAVE_BLOWFISH 1
 
-/* Define to 1 if we have support for ML-KEM */
-#cmakedefine HAVE_MLKEM 1
+/* Define to 1 if we have support for ML-KEM in libgcrypt */
+#cmakedefine HAVE_GCRYPT_MLKEM 1
+
+/* Define to 1 if we have support for ML-KEM in OpenSSL */
+#cmakedefine HAVE_OPENSSL_MLKEM 1
+
+/* Define to 1 if we have support for ML-KEM1024 in either backend */
+#cmakedefine HAVE_MLKEM1024 1
 
 /*************************** LIBRARIES ***************************/
 

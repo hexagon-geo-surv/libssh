@@ -36,16 +36,20 @@ extern "C" {
 struct mlkem_type_info {
     size_t pubkey_size;
     size_t ciphertext_size;
-#ifdef HAVE_LIBGCRYPT
+#ifdef HAVE_GCRYPT_MLKEM
     size_t privkey_size;
     enum gcry_kem_algos alg;
-#else
+#elif defined(HAVE_OPENSSL_MLKEM)
     const char *name;
+#else
+    size_t privkey_size;
 #endif
 };
 
 extern const struct mlkem_type_info MLKEM768_INFO;
+#ifdef HAVE_MLKEM1024
 extern const struct mlkem_type_info MLKEM1024_INFO;
+#endif
 
 #define MLKEM_SHARED_SECRET_SIZE 32
 

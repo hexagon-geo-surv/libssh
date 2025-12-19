@@ -346,7 +346,6 @@ static void torture_algorithm_aes128gcm_with_no_hmac_overlap(void **state)
     test_algorithm_no_hmac_overlap(state, "aes128-gcm@openssh.com");
 }
 
-#ifdef HAVE_MLKEM
 /*
  * Check the self-compatibility of a given key exchange method.
  */
@@ -418,6 +417,7 @@ static void torture_algorithm_mlkem768nistp256_self_compat(void **state)
     test_kex_self_compat(state, "mlkem768nistp256-sha256");
 }
 
+#ifdef HAVE_MLKEM1024
 static void torture_algorithm_mlkem1024nistp384_self_compat(void **state)
 {
     if (ssh_fips_mode()) {
@@ -425,7 +425,7 @@ static void torture_algorithm_mlkem1024nistp384_self_compat(void **state)
     }
     test_kex_self_compat(state, "mlkem1024nistp384-sha384");
 }
-#endif /* HAVE_MLKEM */
+#endif /* HAVE_MLKEM1024 */
 
 int torture_run_tests(void)
 {
@@ -437,14 +437,14 @@ int torture_run_tests(void)
                                         setup_temp_dir, teardown_temp_dir),
         cmocka_unit_test_setup_teardown(torture_algorithm_aes128gcm_with_no_hmac_overlap,
                                         setup_temp_dir, teardown_temp_dir),
-#ifdef HAVE_MLKEM
         cmocka_unit_test_setup_teardown(torture_algorithm_mlkem768x25119_self_compat,
                                         setup_temp_dir, teardown_temp_dir),
         cmocka_unit_test_setup_teardown(torture_algorithm_mlkem768nistp256_self_compat,
                                         setup_temp_dir, teardown_temp_dir),
+#ifdef HAVE_MLKEM1024
         cmocka_unit_test_setup_teardown(torture_algorithm_mlkem1024nistp384_self_compat,
                                         setup_temp_dir, teardown_temp_dir),
-#endif /* HAVE_MLKEM */
+#endif /* HAVE_MLKEM1024 */
     };
 
     ssh_init();

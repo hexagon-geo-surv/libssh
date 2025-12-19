@@ -90,6 +90,11 @@ if (CLIENT_TESTING)
          "-Wl,--wrap=sntrup761_keypair"
          "-Wl,--wrap=sntrup761_enc"
          "-Wl,--wrap=sntrup761_dec")
+    list(APPEND WRAP_SYMBOLS
+         "-Wl,--wrap=libcrux_ml_kem_mlkem768_portable_generate_key_pair"
+         "-Wl,--wrap=libcrux_ml_kem_mlkem768_portable_validate_public_key"
+         "-Wl,--wrap=libcrux_ml_kem_mlkem768_portable_encapsulate"
+         "-Wl,--wrap=libcrux_ml_kem_mlkem768_portable_decapsulate")
 
     add_library(${TORTURE_SHARED_LIBRARY}
                 SHARED

@@ -282,7 +282,7 @@ static void torture_options_get_key_exchange(void **state)
                             "diffie-hellman-group16-sha512,"
                             "diffie-hellman-group18-sha512");
     } else {
-#ifdef HAVE_MLKEM
+#ifdef HAVE_MLKEM1024
         assert_string_equal(value,
                             "mlkem768x25519-sha256,"
                             "mlkem768nistp256-sha256,"
@@ -296,6 +296,8 @@ static void torture_options_get_key_exchange(void **state)
                             "diffie-hellman-group14-sha256");
 #else
         assert_string_equal(value,
+                            "mlkem768x25519-sha256,"
+                            "mlkem768nistp256-sha256,"
                             "sntrup761x25519-sha512,"
                             "sntrup761x25519-sha512@openssh.com,"
                             "curve25519-sha256,curve25519-sha256@libssh.org,"

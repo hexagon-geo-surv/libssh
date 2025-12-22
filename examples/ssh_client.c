@@ -355,10 +355,8 @@ static int client(ssh_session session)
     }
     /* Parse configuration file if specified: The command-line options will
      * overwrite items loaded from configuration file */
-    if (config_file != NULL) {
-        ssh_options_parse_config(session, config_file);
-    } else {
-        ssh_options_parse_config(session, NULL);
+    if (ssh_options_parse_config(session, config_file) < 0) {
+        return -1;
     }
 
     if (ssh_connect(session)) {

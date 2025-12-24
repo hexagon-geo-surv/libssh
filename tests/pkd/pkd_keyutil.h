@@ -37,11 +37,21 @@ void cleanup_ecdsa_keys(void);
 #define DROPBEAR_ECDSA256_TESTKEY "dropbear_testkey.id_ecdsa256"
 #define DROPBEAR_ED25519_TESTKEY  "dropbear_testkey.id_ed25519"
 
+#define PUTTY_RSA_TESTKEY          "putty_testkey.id_rsa"
+#define PUTTY_RSA_PPK_TESTKEY      "putty_testkey.id_rsa.ppk"
+#define PUTTY_ECDSA256_TESTKEY     "putty_testkey.id_ecdsa256"
+#define PUTTY_ECDSA256_PPK_TESTKEY "putty_testkey.id_ecdsa256.ppk"
+#define PUTTY_ED25519_TESTKEY      "putty_testkey.id_ed25519"
+#define PUTTY_ED25519_PPK_TESTKEY  "putty_testkey.id_ed25519.ppk"
+
 void setup_openssh_client_keys(void);
 void cleanup_openssh_client_keys(void);
 
 void setup_dropbear_client_keys(void);
 void cleanup_dropbear_client_keys(void);
+
+void setup_putty_client_keys(void);
+void cleanup_putty_client_keys(void);
 
 #define cleanup_file(name) do {\
     if (access((name), F_OK) != -1) {\

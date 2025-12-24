@@ -214,3 +214,56 @@ void cleanup_dropbear_client_keys(void)
     cleanup_key(DROPBEAR_ECDSA256_TESTKEY);
     cleanup_key(DROPBEAR_ED25519_TESTKEY);
 }
+
+void setup_putty_client_keys(void)
+{
+    int rc = 0;
+
+    /* RSA Keys */
+    if (access(PUTTY_RSA_TESTKEY, F_OK) != 0 ||
+        access(PUTTY_RSA_PPK_TESTKEY, F_OK) != 0) {
+        rc = system_checked(OPENSSH_KEYGEN " -t rsa -q -N \"\" -f "
+                            PUTTY_RSA_TESTKEY);
+        assert_int_equal(rc, 0);
+
+        rc = system_checked(PUTTY_KEYGEN " " PUTTY_RSA_TESTKEY
+                            " -O private -o " PUTTY_RSA_PPK_TESTKEY);
+        assert_int_equal(rc, 0);
+    }
+
+    /* ECDSA 256 Keys */
+    if (access(PUTTY_ECDSA256_TESTKEY, F_OK) != 0 ||
+        access(PUTTY_ECDSA256_PPK_TESTKEY, F_OK) != 0) {
+        rc = system_checked(OPENSSH_KEYGEN " -t ecdsa -b 256 -q -N \"\" -f "
+                            PUTTY_ECDSA256_TESTKEY);
+        assert_int_equal(rc, 0);
+
+        rc = system_checked(PUTTY_KEYGEN " " PUTTY_ECDSA256_TESTKEY
+                            " -O private -o " PUTTY_ECDSA256_PPK_TESTKEY);
+        assert_int_equal(rc, 0);
+    }
+
+    /* ED25519 Keys */
+    if (access(PUTTY_ED25519_TESTKEY, F_OK) != 0 ||
+        access(PUTTY_ED25519_PPK_TESTKEY, F_OK) != 0) {
+        rc = system_checked(OPENSSH_KEYGEN " -t ed25519 -q -N \"\" -f "
+                            PUTTY_ED25519_TESTKEY);
+        assert_int_equal(rc, 0);
+
+        rc = system_checked(PUTTY_KEYGEN " " PUTTY_ED25519_TESTKEY
+                            " -O private -o " PUTTY_ED25519_PPK_TESTKEY);
+        assert_int_equal(rc, 0);
+    }
+}
+
+void cleanup_putty_client_keys(void)
+{
+    cleanup_key(PUTTY_RSA_TESTKEY);
+    cleanup_file(PUTTY_RSA_PPK_TESTKEY);
+
+    cleanup_key(PUTTY_ECDSA256_TESTKEY);
+    cleanup_file(PUTTY_ECDSA256_PPK_TESTKEY);
+    
+    cleanup_key(PUTTY_ED25519_TESTKEY);
+    cleanup_file(PUTTY_ED25519_PPK_TESTKEY);
+}

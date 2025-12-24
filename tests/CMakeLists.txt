@@ -229,6 +229,31 @@ else()
     set(DROPBEAR_EXECUTABLE "/bin/false")
 endif()
 
+find_program(PUTTY_EXECUTABLE 
+             NAMES 
+                plink 
+                plink.exe 
+                putty   # Fallback for systems where plink isn't separate
+             DOC "Path to PuTTY plink executable for automated tests")
+
+if (PUTTY_EXECUTABLE)
+    message(STATUS "Found PuTTY client: ${PUTTY_EXECUTABLE}")
+else()
+    set(PUTTY_EXECUTABLE "/bin/putty-not-found")
+endif()
+
+find_program(PUTTYGEN_EXECUTABLE 
+             NAMES 
+                puttygen 
+                puttygen.exe 
+             DOC "Path to PuTTYgen executable for key conversion")
+
+if (PUTTYGEN_EXECUTABLE)
+    message(STATUS "Found PuTTY keygen: ${PUTTYGEN_EXECUTABLE}")
+else()
+    set(PUTTYGEN_EXECUTABLE "/bin/puttygen-not-found")
+endif()
+
 find_program(SSHD_EXECUTABLE
              NAME
                 sshd

@@ -801,3 +801,40 @@ macos-m1:
     when: on_failure
     paths:
       - obj/
+
+###############################################################################
+#                               ClusterFuzzLite                               #
+###############################################################################
+clusterfuzzlite:
+  image:
+    name: gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1
+    entrypoint: [""]
+  services:
+    - name: docker:dind
+  stage: analysis
+  variables:
+    CFL_PLATFORM: gitlab
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_IN_DOCKER: "true"
+    CIFUZZ_OUTPUT_DIR: /out/artifacts
+  parallel:
+    matrix:
+      - SANITIZER: [address, undefined]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      variables:
+        MODE: "code-change"
+  before_script:
+    - mkdir -p $CI_PROJECT_DIR/artifacts
+    - mkdir -p $CI_PROJECT_DIR/build-out
+  script:
+    - wget -qO .clusterfuzzlite/project.yaml https://raw.githubusercontent.com/google/oss-fuzz/master/projects/libssh/project.yaml
+    - python3 "/opt/oss-fuzz/infra/cifuzz/cifuzz_combined_entrypoint.py"
+    - export TARGET_ID=$(docker ps -q -f "label=com.gitlab.gitlab-runner.job.id=$CI_JOB_ID")
+    - if [ -n "$TARGET_ID" ]; then docker cp $TARGET_ID:/out/artifacts/. $CI_PROJECT_DIR/artifacts/; fi
+  artifacts:
+    when: always
+    paths:
+      - artifacts/
+  tags:
+    - saas-linux-small-amd64

@@ -811,7 +811,7 @@ static void torture_config_match(void **state,
 {
     ssh_session session = *state;
     char *localuser = NULL;
-    const char *config;
+    const char *config = NULL;
     char config_string[1024];
 
     /* Without any settings we should get all-matched.com hostname */
@@ -1098,7 +1098,7 @@ static void torture_config_proxyjump(void **state,
 {
     ssh_session session = *state;
 
-    const char *config;
+    const char *config = NULL;
 
 
     /* Tests for libssh based proxyjump */
@@ -1543,7 +1543,7 @@ static void torture_config_address_family(void **state,
 {
     ssh_session session = *state;
 
-    const char *config;
+    const char *config = NULL;
 
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "simple");

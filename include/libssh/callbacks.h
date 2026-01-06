@@ -277,6 +277,18 @@ typedef int (*ssh_auth_pubkey_callback) (ssh_session session, const char *user, 
 		char signature_state, void *userdata);
 
 /**
+ * @brief SSH authentication callback. Tries to authenticates user with the "keyboard-interactive" method
+ * @param message Current message
+ * @param session Current session handler
+ * @param userdata Userdata to be passed to the callback function.
+ * @returns SSH_AUTH_SUCCESS Authentication is accepted.
+ * @returns SSH_AUTH_INFO More info required for authentication.
+ * @returns SSH_AUTH_PARTIAL Partial authentication, more authentication means are needed.
+ * @returns SSH_AUTH_DENIED Authentication failed.
+*/
+typedef int (*ssh_auth_kbdint_callback) (ssh_message message, ssh_session session, void *userdata);
+
+/**
  * @brief Handles an SSH service request
  * @param session current session handler
  * @param service name of the service (e.g. "ssh-userauth") requested
@@ -418,6 +430,12 @@ struct ssh_server_callbacks_struct {
    */
   ssh_channel_open_request_direct_tcpip_callback
       channel_open_request_direct_tcpip_function;
+
+  /** This function gets called when a client tries to authenticate through
+   * keyboard interactive method.
+  */
+  ssh_auth_kbdint_callback auth_kbdint_function;
+
 };
 typedef struct ssh_server_callbacks_struct *ssh_server_callbacks;
 

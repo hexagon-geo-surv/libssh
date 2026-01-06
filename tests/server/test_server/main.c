@@ -276,6 +276,7 @@ static int init_server_state(struct server_state_st *state,
     } else {
         state->auth_methods = SSH_AUTH_METHOD_PASSWORD |
                               SSH_AUTH_METHOD_PUBLICKEY |
+                              SSH_AUTH_METHOD_INTERACTIVE |
                               SSH_AUTH_METHOD_GSSAPI_MIC;
     }
 

@@ -409,6 +409,7 @@ static int ssh_retrieve_dhgroup_file(FILE *moduli,
     size_t line = 0;
     size_t best_nlines = 0;
 
+    *best_size = 0;
     for(;;) {
         line++;
         firstbyte = getc(moduli);

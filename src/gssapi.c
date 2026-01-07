@@ -1405,10 +1405,10 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_gssapi_token_client)
     input_token.value = ssh_string_data(token);
     maj_stat =
         ssh_gssapi_init_ctx(session->gssapi, &input_token, &output_token, NULL);
+    SSH_STRING_FREE(token);
     if (GSS_ERROR(maj_stat)) {
         goto error;
     }
-    SSH_STRING_FREE(token);
 
     if (output_token.length != 0) {
         hexa = ssh_get_hexa(output_token.value, output_token.length);

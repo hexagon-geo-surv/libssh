@@ -616,12 +616,14 @@ ssh_gssapi_creds ssh_gssapi_get_creds(ssh_session session)
  */
 void ssh_gssapi_set_creds(ssh_session session, const ssh_gssapi_creds creds)
 {
+    int rc;
+
     if (session == NULL) {
         return;
     }
     if (session->gssapi == NULL) {
-        ssh_gssapi_init(session);
-        if (session->gssapi == NULL) {
+        rc = ssh_gssapi_init(session);
+        if (rc == SSH_ERROR) {
             return;
         }
     }

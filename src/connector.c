@@ -330,7 +330,9 @@ static void ssh_connector_fd_in_cb(ssh_connector connector)
         }
 
         r = ssh_connector_fd_read(connector, buffer, toread);
-        if (r < 0) {
+        /* Sanity: Make sure we do not get too large return value to make static
+         * analysis tools happy */
+        if (r < 0 || r > (ssize_t)toread) {
             ssh_connector_except(connector, connector->in_fd);
             return;
         }
@@ -375,7 +377,9 @@ static void ssh_connector_fd_in_cb(ssh_connector connector)
                     w = ssh_connector_fd_write(connector,
                                                buffer + total,
                                                (uint32_t)(r - total));
-                    if (w < 0) {
+                    /* Sanity: Make sure we do not get too large return value
+                     * to make static analysis tools happy */
+                    if (w < 0 || w > (r - total)) {
                         ssh_connector_except(connector, connector->out_fd);
                         return;
                     }

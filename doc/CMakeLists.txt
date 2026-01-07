@@ -1,34 +1,47 @@
 #
 # Build the documentation
 #
-# To build the documentation with a local doxygen-awesome-css tarball:
+# To build the documentation with a local doxygen-awesome-css directory:
 #
-# cmake -S . -B obj \
-# -DDOXYGEN_AWESOME_CSS_TARBALL=/path/to/doxygen-awesome-css.tar.gz cmake
-# --build obj --target docs
+#   cmake -S . -B obj \
+#         -DDOXYGEN_AWESOME_CSS_DIR=/path/to/doxygen-awesome-css
+#   cmake --build obj --target docs
 #
 # The tarball can be downloaded from:
-# https://github.com/jothepro/doxygen-awesome-css/archive/refs/tags/v2.4.1.tar.gz
+#   https://github.com/jothepro/doxygen-awesome-css/archive/refs/tags/v2.4.1.tar.gz
 #
 find_package(Doxygen)
 
 if (DOXYGEN_FOUND)
-    # Allow specifying a local tarball for doxygen-awesome-css (useful for
+    set(DOXYGEN_AWESOME_CSS_PROJECT
+        "https://github.com/jothepro/doxygen-awesome-css")
+    set(DOXYGEN_AWESOME_CSS_VERSION "2.4.1")
+    set(DOXYGEN_AWESOME_CSS_URL
+        "${DOXYGEN_AWESOME_CSS_PROJECT}/archive/refs/tags/v${DOXYGEN_AWESOME_CSS_VERSION}.tar.gz"
+    )
+
+    # Allow specifying a local doxygen-awesome-css directory (useful for
     # packaging)
-    if (NOT DEFINED DOXYGEN_AWESOME_CSS_TARBALL)
-        set(DOXYGEN_AWESOME_CSS_TARBALL
-            "https://github.com/jothepro/doxygen-awesome-css/archive/refs/tags/v2.4.1.tar.gz"
+    if (NOT DEFINED DOXYGEN_AWESOME_CSS_DIR)
+        # Custom target to download doxygen-awesome-css at build time
+        add_custom_target(
+            doxygen-awesome-css
+            COMMAND
+                ${CMAKE_COMMAND} -DURL=${DOXYGEN_AWESOME_CSS_URL}
+                -DDEST_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -DVERSION=${DOXYGEN_AWESOME_CSS_VERSION} -P
+                ${CMAKE_CURRENT_SOURCE_DIR}/fetch_doxygen_awesome.cmake
+            COMMENT "Fetching doxygen-awesome-css theme")
+
+        set(AWESOME_CSS_DIR
+            "${CMAKE_CURRENT_BINARY_DIR}/doxygen-awesome-css-${DOXYGEN_AWESOME_CSS_VERSION}"
         )
+    else ()
+        message(
+            STATUS
+                "Using doxygen-awesome-css from ${DOXYGEN_AWESOME_CSS_DIR}")
+        set(AWESOME_CSS_DIR "${DOXYGEN_AWESOME_CSS_DIR}")
     endif ()
-
-    include(FetchContent)
-    FetchContent_Declare(
-        doxygen-awesome-css URL ${DOXYGEN_AWESOME_CSS_TARBALL}
-                                DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-    FetchContent_MakeAvailable(doxygen-awesome-css)
-
-    # Get the path to doxygen-awesome.css
-    FetchContent_GetProperties(doxygen-awesome-css SOURCE_DIR AWESOME_CSS_DIR)
 
     # Project title shown in documentation
     set(DOXYGEN_PROJECT_NAME ${PROJECT_NAME})
@@ -223,6 +236,11 @@ if (DOXYGEN_FOUND)
 
     doxygen_add_docs(docs ${CMAKE_SOURCE_DIR}/include/libssh
                      ${CMAKE_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+
+    # Make docs depend on doxygen-awesome-css download (if not using local dir)
+    if (TARGET doxygen-awesome-css)
+        add_dependencies(docs doxygen-awesome-css)
+    endif ()
 
     add_custom_target(
         docs_coverage COMMAND ${CMAKE_SOURCE_DIR}/doc/doc_coverage.sh

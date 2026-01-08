@@ -37,13 +37,6 @@
 #include "libssh/session.h"
 #include "libssh/ssh2.h"
 
-void crypto_hash_sha512(unsigned char *out,
-                        const unsigned char *in,
-                        unsigned long long inlen)
-{
-    sha512(in, inlen, out);
-}
-
 #ifndef HAVE_LIBGCRYPT
 static void crypto_random(void *ctx, size_t length, uint8_t *dst)
 {

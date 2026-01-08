@@ -35,10 +35,6 @@ extern "C" {
 #define HAVE_SNTRUP761 1
 #endif
 
-extern void crypto_hash_sha512(unsigned char *out,
-                               const unsigned char *in,
-                               unsigned long long inlen);
-
 /*
  * Derived from public domain source, written by (in alphabetical order):
  * - Daniel J. Bernstein

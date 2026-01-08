@@ -205,6 +205,7 @@ static void torture_auth_agent_forwarding(void **state)
 
         if (nbytes > 0) {
             buffer[nbytes] = 0;
+            ssh_log_hexdump("Read bytes:", (unsigned char *)buffer, nbytes);
 
             /* Process the command output to check for three key conditions:
              * 1. If SSH_AUTH_SOCK is properly set (meaning agent forwarding

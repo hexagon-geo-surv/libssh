@@ -190,11 +190,6 @@ static void torture_pki_ed25519_import_pubkey_uri(void **state)
     int rc;
     struct pki_st *test_state = *state;
 
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
-
     rc = ssh_pki_import_pubkey_file(test_state->pub_uri, &pubkey);
 
     assert_return_code(rc, errno);
@@ -211,11 +206,6 @@ static void torture_pki_ed25519_import_privkey_uri(void **state)
     int rc;
     ssh_key privkey = NULL;
     struct pki_st *test_state = *state;
-
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
 
     rc = ssh_pki_import_privkey_file(test_state->priv_uri,
                                      NULL,
@@ -238,11 +228,6 @@ static void torture_pki_sign_verify_uri(void **state)
     ssh_signature sign = NULL;
     ssh_session session = ssh_new();
     struct pki_st *test_state = *state;
-
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
 
     rc = ssh_pki_import_privkey_file(test_state->priv_uri,
                                      NULL,
@@ -276,11 +261,6 @@ static void torture_pki_ed25519_publickey_from_privatekey_uri(void **state)
     ssh_key pubkey = NULL;
     struct pki_st *test_state = *state;
 
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
-
     rc = ssh_pki_import_privkey_file(test_state->priv_uri,
                                      NULL,
                                      NULL,
@@ -307,11 +287,6 @@ static void torture_pki_ed25519_uri_invalid_configurations(void **state)
     ssh_key privkey = NULL;
 
     struct pki_st *test_state = *state;
-
-    /* Skip test if in FIPS mode */
-    if (ssh_fips_mode()) {
-        skip();
-    }
 
     rc = ssh_pki_import_pubkey_file(test_state->pub_uri_invalid_object, &pubkey);
     assert_int_not_equal(rc, 0);

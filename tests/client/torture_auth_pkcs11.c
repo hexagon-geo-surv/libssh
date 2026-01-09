@@ -35,10 +35,11 @@
 /* agent_is_running */
 #include "agent.c"
 
-#define LIBSSH_RSA_TESTKEY  "id_pkcs11_rsa"
+#define LIBSSH_RSA_TESTKEY        "id_pkcs11_rsa"
 #define LIBSSH_ECDSA_256_TESTKEY  "id_pkcs11_ecdsa_256"
 #define LIBSSH_ECDSA_384_TESTKEY  "id_pkcs11_ecdsa_384"
 #define LIBSSH_ECDSA_521_TESTKEY  "id_pkcs11_ecdsa_521"
+#define LIBSSH_ED25519_TESTKEY    "id_pkcs11_ed25519"
 
 const char template[] = "/tmp/temp_dir_XXXXXX";
 
@@ -142,6 +143,9 @@ static int setup_pkcs11(void **state)
     setup_tokens(state, LIBSSH_ECDSA_256_TESTKEY, "ecdsa256");
     setup_tokens(state, LIBSSH_ECDSA_384_TESTKEY, "ecdsa384");
     setup_tokens(state, LIBSSH_ECDSA_521_TESTKEY, "ecdsa521");
+    if (!ssh_fips_mode()) {
+        setup_tokens(state, LIBSSH_ED25519_TESTKEY, "ed25519");
+    }
 
     return 0;
 }
@@ -238,6 +242,18 @@ static void torture_auth_autopubkey_ecdsa_key_521(void **state)
     torture_auth_autopubkey(state, "ecdsa521", "1234");
 }
 
+#ifdef WITH_PKCS11_PROVIDER
+static void torture_auth_autopubkey_ed25519(void **state)
+{
+    /* The Ed25519 keys are not supported in FIPS mode */
+    if (ssh_fips_mode()) {
+        skip();
+    }
+
+    torture_auth_autopubkey(state, "ed25519", "1234");
+}
+#endif /* WITH_PKCS11_PROVIDER */
+
 int torture_run_tests(void)
 {
     int rc;
@@ -254,6 +270,11 @@ int torture_run_tests(void)
         cmocka_unit_test_setup_teardown(torture_auth_autopubkey_ecdsa_key_521,
                                         session_setup,
                                         session_teardown),
+#ifdef WITH_PKCS11_PROVIDER
+        cmocka_unit_test_setup_teardown(torture_auth_autopubkey_ed25519,
+                                        session_setup,
+                                        session_teardown),
+#endif /* WITH_PKCS11_PROVIDER */
     };
 
     /* Do not use system openssl.cnf for the pkcs11 uri tests.

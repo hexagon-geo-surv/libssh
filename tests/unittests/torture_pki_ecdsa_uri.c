@@ -569,7 +569,7 @@ int torture_run_tests(void) {
      * tokens, causing unexpected failures.
      * Make sure this comes before ssh_init(), which initializes OpenSSL!
      */
-    setenv("OPENSSL_CONF", "/dev/null", 1);
+    setenv("OPENSSL_CONF", SOURCEDIR "/tests/etc/openssl.cnf", 1);
 
     ssh_init();
     ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);

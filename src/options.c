@@ -627,12 +627,12 @@ int ssh_options_set_algo(ssh_session session,
  *                Setting 0 will revert the value to defaults.
  *                Default is 3072 bits or 2048 bits in FIPS mode.
  *                (int)
-
+ *
  *              - SSH_OPTIONS_IDENTITY_AGENT
  *                Set the path to the SSH agent socket. If unset, the
  *                SSH_AUTH_SOCK environment is consulted.
  *                (const char *)
-
+ *
  *              - SSH_OPTIONS_IDENTITIES_ONLY
  *                Use only keys specified in the SSH config, even if agent
  *                offers more.

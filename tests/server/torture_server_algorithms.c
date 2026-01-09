@@ -263,7 +263,7 @@ static void test_algorithm_no_hmac_overlap(void **state, const char *algorithm)
     s = tss->state;
     assert_non_null(s);
 
-    /* Prepare key files */
+    /* Prepare config file */
     snprintf(config_content,
              sizeof(config_content),
              "HostKey %s\nCiphers %s\nMACs %s\n",
@@ -274,9 +274,10 @@ static void test_algorithm_no_hmac_overlap(void **state, const char *algorithm)
     assert_non_null(s->srv_config);
     torture_write_file(s->srv_config, config_content);
 
-    fprintf(stderr, "Config file %s content: \n\n%s\n", s->srv_config,
+    SSH_LOG(SSH_LOG_TRACE,
+            "Config file %s content: \n\n%s\n",
+            s->srv_config,
             config_content);
-    fflush(stderr);
 
     /* Start server */
     rc = start_server(state);
@@ -354,11 +355,27 @@ static void test_kex_self_compat(void **state, const char *kex)
     struct test_server_st *tss = *state;
     struct torture_state *s = NULL;
     ssh_session session = NULL;
+    char config_content[4096];
     int rc;
 
     assert_non_null(tss);
     s = tss->state;
     assert_non_null(s);
+
+    /* Prepare config file */
+    snprintf(config_content,
+             sizeof(config_content),
+             "HostKey %s\nKexAlgorithms %s\n",
+             tss->rsa_hostkey,
+             kex);
+
+    assert_non_null(s->srv_config);
+    torture_write_file(s->srv_config, config_content);
+
+    SSH_LOG(SSH_LOG_TRACE,
+            "Config file %s content: \n\n%s\n",
+            s->srv_config,
+            config_content);
 
     rc = start_server(state);
     assert_int_equal(rc, 0);

@@ -54,6 +54,7 @@ static int setup_files(void **state)
     struct test_server_st *tss;
     struct torture_state *s;
     char sshd_path[1024];
+    char log_file[1024];
 
     int rc;
 
@@ -74,11 +75,16 @@ static int setup_files(void **state)
     rc = mkdir(sshd_path, 0755);
     assert_return_code(rc, errno);
 
+    snprintf(log_file, sizeof(log_file), "%s/sshd/log", s->socket_dir);
+
     snprintf(tss->rsa_hostkey,
              sizeof(tss->rsa_hostkey),
              "%s/sshd/ssh_host_rsa_key",
              s->socket_dir);
     torture_write_file(tss->rsa_hostkey, torture_get_testkey(SSH_KEYTYPE_RSA, 0));
+
+    /* not to mix up the client and server messages */
+    s->log_file = strdup(log_file);
 
     tss->state = s;
     *state = tss;

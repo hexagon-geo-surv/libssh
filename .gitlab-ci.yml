@@ -184,7 +184,7 @@ centos10s/openssl_3.5.x/x86_64/fips:
 centos9s/openssl_3.5.x/x86_64:
   extends: .centos9
   variables:
-    CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON
+    CMAKE_ADDITIONAL_OPTIONS: -DWITH_PKCS11_URI=ON -DWITH_PKCS11_PROVIDER=ON
   script:
     - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&

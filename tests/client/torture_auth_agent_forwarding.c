@@ -18,6 +18,10 @@
 #include <sys/types.h>
 #include <unistd.h> /* usleep */
 
+#ifndef UNIX_PATH_MAX
+#define UNIX_PATH_MAX 108
+#endif
+
 /* struct to store the state of the test */
 struct agent_callback_state {
     int called;
@@ -137,6 +141,19 @@ static void torture_auth_agent_forwarding(void **state)
     int read_count = 0;
     bool agent_available = false;
     bool agent_not_available_found = false;
+    size_t exp_socket_len;
+
+    /* The forwarded agent socket is created under the home directory, which
+     * might easily extend the maximum unix domain socket path length.
+     * If we see this, just skip the test as it will not work */
+    exp_socket_len = strlen(BINARYDIR) +
+                     strlen("/home/bob/.ssh/agent.1234567890.sshd.XXXXXXXXXX");
+    if (exp_socket_len > UNIX_PATH_MAX) {
+        SSH_LOG(SSH_LOG_WARNING,
+                "The working directory is too long for agent forwarding to work"
+                ": Skipping the test");
+        skip();
+    }
 
     assert_non_null(s);
     session = s->ssh.ssh.session;

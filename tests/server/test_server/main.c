@@ -67,7 +67,7 @@ struct arguments_st {
 static void free_arguments(struct arguments_st *arguments)
 {
     if (arguments == NULL) {
-        goto end;
+        return;
     }
 
     SAFE_FREE(arguments->address);
@@ -87,9 +87,6 @@ static void free_arguments(struct arguments_st *arguments)
     SAFE_FREE(arguments->config_file);
     SAFE_FREE(arguments->log_file);
     SAFE_FREE(arguments->pid_file);
-
-end:
-    return;
 }
 
 #ifdef HAVE_ARGP_H

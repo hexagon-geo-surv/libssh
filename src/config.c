@@ -1575,9 +1575,10 @@ static int ssh_config_parse_line_internal(ssh_session session,
         break;
     case SOC_REQUIRED_RSA_SIZE:
         l = ssh_config_get_long(&s, -1);
-        CHECK_COND_OR_FAIL(l < 0, "Invalid argument");
+        CHECK_COND_OR_FAIL(l < 0 || l > INT_MAX, "Invalid argument");
         if (*parsing) {
-            ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, &l);
+            i = (int)l;
+            ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, &i);
         }
         break;
     case SOC_ADDRESSFAMILY:

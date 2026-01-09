@@ -602,8 +602,9 @@ ssh_bind_config_parse_line(ssh_bind bind,
         break;
     case BIND_CFG_REQUIRED_RSA_SIZE:
         l = ssh_config_get_long(&s, -1);
-        if (l >= 0 && (*parser_flags & PARSING)) {
-            rc = ssh_bind_options_set(bind, SSH_BIND_OPTIONS_RSA_MIN_SIZE, &l);
+        if (l >= 0 && l <= INT_MAX && (*parser_flags & PARSING)) {
+            int i = (int)l;
+            rc = ssh_bind_options_set(bind, SSH_BIND_OPTIONS_RSA_MIN_SIZE, &i);
             if (rc != 0) {
                 SSH_LOG(SSH_LOG_TRACE,
                         "line %d: Failed to set RequiredRSASize value '%ld'",

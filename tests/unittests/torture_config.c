@@ -877,13 +877,13 @@ static void torture_config_match(void **state,
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example1");
     _parse_config(session, file, string, SSH_OK);
-    assert_string_equal(session->opts.host, "exampleN");
+    assert_string_equal(session->opts.host, "examplen");
     assert_string_equal(session->opts.originalhost, "example1");
 
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example2");
     _parse_config(session, file, string, SSH_OK);
-    assert_string_equal(session->opts.host, "exampleN");
+    assert_string_equal(session->opts.host, "examplen");
     assert_string_equal(session->opts.originalhost, "example2");
 
     /* We can match by originalhost */
@@ -3517,6 +3517,15 @@ static void torture_config_hostname(void **state)
     assert_non_null(expanded);
     assert_string_equal(expanded, "my_alias");
     free(expanded);
+
+    /* HostName should be lowercased */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "my_host");
+    _parse_config(session,
+                  NULL,
+                  "Host my_host\n\tHostname LOCALHOST\n",
+                  SSH_OK);
+    assert_string_equal(session->opts.host, "localhost");
 }
 
 /* Invalid configuration files

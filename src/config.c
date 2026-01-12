@@ -1343,19 +1343,31 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     case SOC_HOSTNAME:
-      p = ssh_config_get_str_tok(&s, NULL);
-      CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
-      if (*parsing) {
-          char *z = ssh_path_expand_escape(session, p);
-          if (z == NULL) {
-              z = strdup(p);
-          }
-          session->opts.config_hostname_only = true;
-          ssh_options_set(session, SSH_OPTIONS_HOST, z);
-          session->opts.config_hostname_only = false;
-          free(z);
-      }
-      break;
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        if (*parsing) {
+            char *z = NULL;
+            char *lower = NULL;
+            z = ssh_path_expand_escape(session, p);
+            if (z == NULL) {
+                z = strdup(p);
+            }
+            if (z != NULL) {
+                /* Always lowercase hostname */
+                lower = ssh_lowercase(z);
+                if (lower == NULL) {
+                    SAFE_FREE(z);
+                    SAFE_FREE(x);
+                    return -1;
+                }
+                session->opts.config_hostname_only = true;
+                ssh_options_set(session, SSH_OPTIONS_HOST, lower);
+                free(lower);
+                session->opts.config_hostname_only = false;
+                free(z);
+            }
+        }
+        break;
     case SOC_PORT:
         p = ssh_config_get_str_tok(&s, NULL);
         CHECK_COND_OR_FAIL(p == NULL, "Missing argument");

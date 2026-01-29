@@ -74,6 +74,13 @@
 extern "C" {
 #endif
 
+/**
+ * @brief SSH agent connection context.
+ *
+ * This structure represents a connection to an SSH authentication agent.
+ * It is used by libssh to communicate with the agent for operations such
+ * as listing available identities and signing data during authentication.
+ */
 struct ssh_agent_struct {
   struct ssh_socket_struct *sock;
   ssh_buffer ident;
@@ -82,12 +89,23 @@ struct ssh_agent_struct {
 };
 
 /* agent.c */
+
 /**
  * @brief Create a new ssh agent structure.
  *
- * @return An allocated ssh agent structure or NULL on error.
+ * Creates and initializes an SSH agent context bound to the given
+ * SSH session. The agent connection relies on the session configuration
+ * (e.g. agent forwarding).
+ *
+ * @param session The SSH session the agent will be associated with.
+ *
+ * @return An allocated ssh agent structure on success, or NULL on error.
+ *
+ * @note This function does not start or manage an external agent
+ *       process; it only connects to an already running agent.
  */
 struct ssh_agent_struct *ssh_agent_new(struct ssh_session_struct *session);
+
 
 void ssh_agent_close(struct ssh_agent_struct *agent);
 
@@ -101,23 +119,64 @@ void ssh_agent_free(struct ssh_agent_struct *agent);
 /**
  * @brief Check if the ssh agent is running.
  *
- * @param session The ssh session to check for the agent.
+ * @param session The SSH session to check for agent availability.
  *
- * @return 1 if it is running, 0 if not.
+ * @return 1 if an agent is available, 0 otherwise.
  */
 int ssh_agent_is_running(struct ssh_session_struct *session);
 
 uint32_t ssh_agent_get_ident_count(struct ssh_session_struct *session);
 
-ssh_key ssh_agent_get_next_ident(struct ssh_session_struct *session,
-                                 char **comment);
-
+/**
+ * @brief Retrieve the first identity provided by the SSH agent.
+ *
+ * @param session The SSH session associated with the agent.
+ * @param comment Optional pointer to receive the key comment.
+ *
+ * @return A public key on success, or NULL if no identities are available.
+ *
+ * @note The returned key is owned by the caller and must be freed
+ *       using ssh_key_free().
+ */
 ssh_key ssh_agent_get_first_ident(struct ssh_session_struct *session,
                                   char **comment);
 
+/**
+ * @brief Retrieve the next identity provided by the SSH agent.
+ *
+ * @param session The SSH session associated with the agent.
+ * @param comment Optional pointer to receive the key comment.
+ *
+ * @return A public key on success, or NULL if no further identities exist.
+ *
+ * @note The returned key is owned by the caller and must be freed
+ *       using ssh_key_free().
+ */
+ssh_key ssh_agent_get_next_ident(struct ssh_session_struct *session,
+                                 char **comment);
+
+
+/**
+ * @brief Request the SSH agent to sign data using a public key.
+ *
+ * Asks the SSH agent to generate a signature over the provided data
+ * using the specified public key.
+ *
+ * @param session The SSH session associated with the agent.
+ * @param pubkey  The public key identifying the signing identity.
+ * @param data    The data to be signed.
+ *
+ * @return A newly allocated ssh_string containing the signature on
+ *         success, or NULL on failure.
+ *
+ * @note This operation requires that the agent possesses the
+ *       corresponding private key and may prompt the user for
+ *       confirmation depending on agent configuration.
+ */
 ssh_string ssh_agent_sign_data(ssh_session session,
                                const ssh_key pubkey,
                                struct ssh_buffer_struct *data);
+
 
 #ifdef __cplusplus
 }

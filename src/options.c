@@ -735,7 +735,8 @@ int ssh_options_set_algo(ssh_session session,
  *               to a pointer when it should have just been a pointer), then the
  *               behaviour is undefined.
  */
-int ssh_options_set(ssh_session session, enum ssh_options_e type,
+int ssh_options_set(ssh_session session,
+                    enum ssh_options_e type,
                     const void *value)
 {
     const char *v = NULL;
@@ -759,6 +760,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
             } else {
                 char *username = NULL, *hostname = NULL;
                 char *strict_hostname = NULL;
+                char *normalized = NULL;
 
                 /* Non-strict parse: reject shell metacharacters */
                 rc = ssh_config_parse_uri(value,
@@ -787,12 +789,22 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 }
 
                 /* Strict parse: set host only if valid hostname or IP */
-                rc = ssh_config_parse_uri(value,
-                                          NULL,
-                                          &strict_hostname,
-                                          NULL,
-                                          true,
-                                          true);
+                rc = ssh_normalize_loose_ip(value, &normalized);
+                if (rc == -1) {
+                    /* Error */
+                    SAFE_FREE(username);
+                    ssh_set_error_oom(session);
+                    return -1;
+                }
+                rc = ssh_config_parse_uri(
+                    (normalized != NULL) ? normalized : value,
+                    NULL,
+                    &strict_hostname,
+                    NULL,
+                    true,
+                    true);
+                SAFE_FREE(normalized);
+
                 if (rc != SSH_OK || strict_hostname == NULL) {
                     SAFE_FREE(session->opts.host);
                     SAFE_FREE(strict_hostname);
@@ -2221,6 +2233,23 @@ int ssh_options_apply(ssh_session session)
 {
     char *tmp = NULL;
     int rc;
+
+    if (session->opts.host != NULL) {
+        char *normalized_host = ssh_normalize_loose_ip(session->opts.host);
+        if (normalized_host != NULL) {
+            SAFE_FREE(session->opts.host);
+            session->opts.host = normalized_host;
+        } else {
+            bool is_ip = ssh_is_ipaddr(session->opts.host);
+            if (!is_ip) {
+                char *lower = ssh_lowercase(session->opts.host);
+                if (lower != NULL) {
+                    SAFE_FREE(session->opts.host);
+                    session->opts.host = lower;
+                }
+            }
+        }
+    }
 
     if (session->opts.sshdir == NULL) {
         rc = ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);

@@ -2686,4 +2686,67 @@ size_t strlcat(char *dst, const char *src, size_t size)
 }
 #endif /* HAVE_STRLCAT */
 
+/**
+ * @brief Normalizes a loose IPv4 string (e.g. "0", "127.1") to dotted-quad
+ *        format.
+ *
+ * @param[in]  host   The hostname string to normalize.
+ * @param[out] result On success (returns 0), set to a newly allocated
+ *                    dotted-quad string. The caller must free it.
+ *                    Untouched on other return values.
+ *
+ * @return  0 if the input was a loose IPv4 and was normalized successfully.
+ *          1 if the input is not a loose IPv4 address (not an error).
+ *         -1 on error (NULL input or internal failure).
+ */
+int ssh_normalize_loose_ip(const char *host, char **result)
+{
+    struct in_addr addr;
+    char buf[INET_ADDRSTRLEN];
+    const char *p = NULL;
+    int rc;
+    int is_ip;
+#ifdef _WIN32
+    unsigned long ip;
+    int is_broadcast;
+#endif
+
+    if (host == NULL || result == NULL) {
+        return -1;
+    }
+
+    /* We don't want to normalize stricter IP checks already handled by valid
+     * IPv4/IPv6 */
+    is_ip = ssh_is_ipaddr(host);
+    if (is_ip) {
+        return 1; /* not a loose IP — already a strict address */
+    }
+
+#ifdef _WIN32
+    ip = inet_addr(host);
+    is_broadcast = strcmp(host, "255.255.255.255");
+    if (ip == INADDR_NONE && is_broadcast != 0) {
+        return 1; /* not a loose IP */
+    }
+    addr.S_un.S_addr = ip;
+#else
+    rc = inet_aton(host, &addr);
+    if (rc == 0) {
+        return 1; /* not a loose IP */
+    }
+#endif
+
+    p = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
+    if (p == NULL) {
+        return -1;
+    }
+
+    *result = strdup(p);
+    if (*result == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
 /** @} */

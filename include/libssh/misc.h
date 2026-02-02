@@ -57,6 +57,7 @@ char *ssh_path_expand_escape(ssh_session session, const char *s);
 int ssh_analyze_banner(ssh_session session, int server);
 int ssh_is_ipaddr_v4(const char *str);
 int ssh_is_ipaddr(const char *str);
+int ssh_normalize_loose_ip(const char *host, char **result);
 
 /* list processing */
 

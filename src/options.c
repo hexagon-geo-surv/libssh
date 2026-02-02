@@ -2235,11 +2235,16 @@ int ssh_options_apply(ssh_session session)
     int rc;
 
     if (session->opts.host != NULL) {
-        char *normalized_host = ssh_normalize_loose_ip(session->opts.host);
-        if (normalized_host != NULL) {
+        char *normalized_host = NULL;
+        rc = ssh_normalize_loose_ip(session->opts.host, &normalized_host);
+        if (rc == -1) {
+            /* Error (e.g. NULL input or OOM) — leave host as it is */
+        } else if (rc == 0) {
+            /* Was a loose IP — use the normalized dotted-quad form */
             SAFE_FREE(session->opts.host);
             session->opts.host = normalized_host;
         } else {
+            /* rc == 1: not a loose IP — lowercase if it's not a strict IP */
             bool is_ip = ssh_is_ipaddr(session->opts.host);
             if (!is_ip) {
                 char *lower = ssh_lowercase(session->opts.host);

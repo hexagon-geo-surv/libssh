@@ -231,6 +231,13 @@ static void torture_options_set_host(void **state) {
     assert_non_null(session->opts.originalhost);
     assert_string_equal(session->opts.originalhost, "customer_1");
     assert_null(session->opts.username);
+
+    /* Implicit hostname lowercasing */
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "UPPERCASE-HOST");
+    assert_return_code(rc, errno);
+    rc = ssh_options_apply(session);
+    assert_return_code(rc, errno);
+    assert_string_equal(session->opts.host, "uppercase-host");
 }
 
 static void torture_options_set_ciphers(void **state)

@@ -21,7 +21,12 @@
 #ifndef SFTP_PRIV_H
 #define SFTP_PRIV_H
 
+#include "config.h"
+
 #include <stdbool.h>
+#include <stdint.h>
+
+#include "libssh/sftp.h"
 
 #ifdef __cplusplus
 extern "C" {

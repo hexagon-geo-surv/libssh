@@ -24,7 +24,11 @@
 #ifndef _TORTURE_KEY_H
 #define _TORTURE_KEY_H
 
+#include "config.h"
+
 #include <stdbool.h>
+
+#include "libssh/libssh.h"
 
 #define TORTURE_TESTKEY_PASSWORD "libssh-rocks"
 

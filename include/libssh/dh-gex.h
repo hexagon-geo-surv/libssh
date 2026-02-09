@@ -23,6 +23,10 @@
 #ifndef SRC_DH_GEX_H_
 #define SRC_DH_GEX_H_
 
+#include "config.h"
+
+#include "libssh/libssh.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

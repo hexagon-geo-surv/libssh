@@ -21,6 +21,9 @@
 #ifndef PACKET_H_
 #define PACKET_H_
 
+#include "config.h"
+
+#include "libssh/callbacks.h"
 #include "libssh/wrapper.h"
 
 struct ssh_socket_struct;

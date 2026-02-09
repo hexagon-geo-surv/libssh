@@ -21,6 +21,13 @@
 #ifndef _OPTIONS_H
 #define _OPTIONS_H
 
+#include "config.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "libssh/libssh.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

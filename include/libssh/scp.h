@@ -21,8 +21,12 @@
 #ifndef _SCP_H
 #define _SCP_H
 
+#include "config.h"
+
 #include <stddef.h>
 #include <stdint.h>
+
+#include "libssh/libssh.h"
 
 enum ssh_scp_states {
   SSH_SCP_NEW,          //Data structure just created

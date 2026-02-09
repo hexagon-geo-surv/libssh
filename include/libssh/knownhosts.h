@@ -22,6 +22,10 @@
 #ifndef SSH_KNOWNHOSTS_H_
 #define SSH_KNOWNHOSTS_H_
 
+#include "config.h"
+
+#include "libssh/libssh.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

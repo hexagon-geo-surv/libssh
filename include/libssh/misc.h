@@ -21,8 +21,9 @@
 #ifndef MISC_H_
 #define MISC_H_
 
-#ifdef _WIN32
+#include "config.h"
 
+#ifdef _WIN32
 # ifdef _MSC_VER
 #  ifndef _SSIZE_T_DEFINED
 #   undef ssize_t
@@ -31,12 +32,13 @@
 #   define _SSIZE_T_DEFINED
 #  endif /* _SSIZE_T_DEFINED */
 # endif /* _MSC_VER */
-
 #else
 #include <sys/types.h>
 #include <stdbool.h>
 #endif /* _WIN32 */
 #include <stdio.h>
+
+#include "libssh/libssh.h"
 
 #ifdef __cplusplus
 extern "C" {

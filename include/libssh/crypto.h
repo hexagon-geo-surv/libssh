@@ -25,14 +25,19 @@
 #ifndef _CRYPTO_H_
 #define _CRYPTO_H_
 
-#include <stdbool.h>
 #include "config.h"
+
+#include <stdbool.h>
 
 #ifdef HAVE_LIBGCRYPT
 #include <gcrypt.h>
 #elif defined(HAVE_LIBMBEDCRYPTO)
 #include <mbedtls/gcm.h>
 #endif
+#ifdef HAVE_OPENSSL_ECDH_H
+#include <openssl/ecdh.h>
+#endif
+
 #include "libssh/wrapper.h"
 
 #ifdef cbc_encrypt
@@ -42,9 +47,6 @@
 #undef cbc_decrypt
 #endif
 
-#ifdef HAVE_OPENSSL_ECDH_H
-#include <openssl/ecdh.h>
-#endif
 #include "libssh/curve25519.h"
 #include "libssh/dh.h"
 #include "libssh/ecdh.h"

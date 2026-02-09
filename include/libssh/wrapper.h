@@ -21,13 +21,14 @@
 #ifndef WRAPPER_H_
 #define WRAPPER_H_
 
+#include "config.h"
+
 #include <stdbool.h>
 
-#include "config.h"
-#include "libssh/libssh.h"
 #include "libssh/libcrypto.h"
 #include "libssh/libgcrypt.h"
 #include "libssh/libmbedcrypto.h"
+#include "libssh/libssh.h"
 
 #ifdef __cplusplus
 extern "C" {

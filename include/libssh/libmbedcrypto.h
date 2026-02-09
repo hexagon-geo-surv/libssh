@@ -27,7 +27,6 @@
 #include "config.h"
 
 #ifdef HAVE_LIBMBEDCRYPTO
-
 #include <mbedtls/md.h>
 #include <mbedtls/bignum.h>
 #include <mbedtls/pk.h>
@@ -35,6 +34,8 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/platform.h>
+
+#include "libssh/libssh.h"
 
 typedef mbedtls_md_context_t *SHACTX;
 typedef mbedtls_md_context_t *SHA256CTX;

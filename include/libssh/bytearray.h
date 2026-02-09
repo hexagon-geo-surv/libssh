@@ -20,6 +20,10 @@
 #ifndef _BYTEARRAY_H
 #define _BYTEARRAY_H
 
+#include "config.h"
+
+#include <stdint.h>
+
 #define _DATA_BYTE_CONST(data, pos) \
     ((uint8_t)(((const uint8_t *)(data))[(pos)]))
 

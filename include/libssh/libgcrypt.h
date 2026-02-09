@@ -24,8 +24,9 @@
 #include "config.h"
 
 #ifdef HAVE_LIBGCRYPT
-
 #include <gcrypt.h>
+#include "libssh/libssh.h"
+
 typedef gcry_md_hd_t SHACTX;
 typedef gcry_md_hd_t SHA256CTX;
 typedef gcry_md_hd_t SHA384CTX;

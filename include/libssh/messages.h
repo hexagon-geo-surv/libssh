@@ -23,6 +23,11 @@
 
 #include "config.h"
 
+#include <stdint.h>
+
+#include "libssh/callbacks.h"
+#include "libssh/libssh.h"
+
 struct ssh_auth_request {
     char *username;
     int method;

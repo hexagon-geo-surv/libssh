@@ -24,8 +24,12 @@
 #include "config.h"
 
 #ifdef HAVE_POLL
-
 #include <poll.h>
+#endif
+
+#include "libssh/libssh.h"
+
+#ifdef HAVE_POLL
 typedef struct pollfd ssh_pollfd_t;
 
 #else /* HAVE_POLL */

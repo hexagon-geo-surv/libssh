@@ -731,7 +731,8 @@ int ssh_gssapi_check_client_config(ssh_session session)
         gssapi = calloc(1, sizeof(struct ssh_gssapi_struct));
         if (gssapi == NULL) {
             ssh_set_error_oom(session);
-            return SSH_ERROR;
+            ret = SSH_ERROR;
+            break;
         }
         gssapi->server_creds = GSS_C_NO_CREDENTIAL;
         gssapi->client_creds = GSS_C_NO_CREDENTIAL;
@@ -819,6 +820,11 @@ int ssh_gssapi_check_client_config(ssh_session session)
         gss_release_oid(&min_stat, &gssapi->client.oid);
         gss_release_buffer(&min_stat, &output_token);
         gss_delete_sec_context(&min_stat, &gssapi->ctx, GSS_C_NO_BUFFER);
+
+        if (client_id != GSS_C_NO_NAME) {
+            gss_release_name(&min_stat, &client_id);
+            client_id = GSS_C_NO_NAME;
+        }
 
         SAFE_FREE(gssapi->canonic_user);
         SAFE_FREE(gssapi);

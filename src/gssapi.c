@@ -243,6 +243,7 @@ ssh_gssapi_handle_userauth(ssh_session session, const char *user,
     /* Get the server supported oids */
     rc = ssh_gssapi_server_oids(&supported);
     if (rc != SSH_OK) {
+        gss_release_oid_set(&min_stat, &both_supported);
         return SSH_ERROR;
     }
 

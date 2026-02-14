@@ -635,3 +635,91 @@ ssh_string ssh_agent_sign_data(ssh_session session,
 
     return sig_blob;
 }
+
+int ssh_agent_remove_identity(ssh_session session,
+                              const ssh_key key)
+{
+    ssh_buffer request = NULL;
+    ssh_buffer reply = NULL;
+    ssh_string key_blob = NULL;
+    uint8_t type = 0;
+    int rc = SSH_ERROR;
+
+    if (session == NULL || key == NULL) {
+        return SSH_ERROR;
+    }
+
+    if (session->agent == NULL) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "No agent connection available");
+        return SSH_ERROR;
+    }
+
+    /* Connect to the agent if not already connected */
+    if (!ssh_socket_is_open(session->agent->sock)) {
+        if (agent_connect(session) < 0) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "Could not connect to SSH agent");
+            return SSH_ERROR;
+        }
+    }
+
+    request = ssh_buffer_new();
+    if (request == NULL) {
+        ssh_set_error_oom(session);
+        goto fail;
+    }
+
+    if (ssh_buffer_add_u8(request, SSH2_AGENTC_REMOVE_IDENTITY) < 0) {
+        ssh_set_error_oom(session);
+        goto fail;
+    }
+
+    if (ssh_pki_export_pubkey_blob(key, &key_blob) < 0) {
+        ssh_set_error(session, SSH_FATAL, "Failed to export public key blob");
+        goto fail;
+    }
+
+    if (ssh_buffer_add_ssh_string(request, key_blob) < 0) {
+        ssh_set_error_oom(session);
+        goto fail;
+    }
+
+    reply = ssh_buffer_new();
+    if (reply == NULL) {
+        ssh_set_error_oom(session);
+        goto fail;
+    }
+
+    if (agent_talk(session, request, reply) < 0) {
+        goto fail;
+    }
+
+    if (ssh_buffer_get_u8(reply, &type) != sizeof(uint8_t)) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Failed to read agent reply type");
+        goto fail;
+    }
+
+    if (agent_failed(type)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Agent reports failure removing identity");
+        goto fail;
+    } else if (type != SSH_AGENT_SUCCESS) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Agent refused to remove identity: reply type %u",
+                      type);
+        goto fail;
+    }
+
+    rc = SSH_OK;
+
+fail:
+    SSH_STRING_FREE(key_blob);
+    SSH_BUFFER_FREE(request);
+    SSH_BUFFER_FREE(reply);
+    return rc;
+}

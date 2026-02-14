@@ -10,6 +10,7 @@
 
 #include "libssh/callbacks.h"
 #include "libssh/libssh.h"
+#include <libssh/agent.h>
 #include "libssh/priv.h"
 
 #include <errno.h>
@@ -286,6 +287,96 @@ static void torture_auth_agent_forwarding(void **state)
     }
 }
 
+static int agent_session_setup(void **state)
+{
+    struct torture_state *s = *state;
+    int verbosity = torture_libssh_verbosity();
+    int rc;
+
+    s->ssh.ssh.session = ssh_new();
+    assert_non_null(s->ssh.ssh.session);
+
+    rc = ssh_options_set(s->ssh.ssh.session,
+                         SSH_OPTIONS_LOG_VERBOSITY,
+                         &verbosity);
+    assert_int_equal(rc, SSH_OK);
+
+    /* No callbacks needed — only talking to the local agent.
+     * The group setup already started the agent and loaded keys.
+     * Do NOT call torture_setup_ssh_agent here — that would spawn
+     * a second agent and overwrite SSH_AUTH_SOCK. */
+    s->ssh.ssh.cb_state = NULL;
+    s->ssh.ssh.callbacks = NULL;
+
+    return 0;
+}
+
+static void torture_agent_remove_identity(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.ssh.session;
+    ssh_key key = NULL;
+    char *comment = NULL;
+    uint32_t count_before = 0;
+    uint32_t count_after = 0;
+    int rc;
+
+    assert_non_null(session);
+
+    assert_true(ssh_agent_is_running(session));
+
+    count_before = ssh_agent_get_ident_count(session);
+
+    assert_true(count_before > 0);
+
+    key = ssh_agent_get_first_ident(session, &comment);
+    assert_non_null(key);
+    assert_non_null(comment);
+
+    rc = ssh_agent_remove_identity(session, key);
+    assert_int_equal(rc, SSH_OK);
+
+    count_after = ssh_agent_get_ident_count(session);
+    assert_int_equal(count_after, count_before - 1);
+
+    ssh_key_free(key);
+    ssh_string_free_char(comment);
+}
+
+static void torture_agent_remove_identity_negative(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.ssh.session;
+    int rc;
+
+    assert_non_null(session);
+
+    /* NULL key should return SSH_ERROR */
+    rc = ssh_agent_remove_identity(session, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
+static void torture_agent_remove_identity_nonexistent(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.ssh.session;
+    ssh_key key = NULL;
+    int rc;
+
+    assert_non_null(session);
+    assert_true(ssh_agent_is_running(session));
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, NULL, &key);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(key);
+
+    /* Key not in agent should fail */
+    rc = ssh_agent_remove_identity(session, key);
+    assert_int_equal(rc, SSH_ERROR);
+
+    ssh_key_free(key);
+}
+
 /* Session setup function that configures SSH agent */
 static int session_setup(void **state)
 {
@@ -300,7 +391,6 @@ static int session_setup(void **state)
     /* Create a new session */
     s->ssh.ssh.session = ssh_new();
     assert_non_null(s->ssh.ssh.session);
-
     rc = ssh_options_set(s->ssh.ssh.session,
                          SSH_OPTIONS_LOG_VERBOSITY,
                          &verbosity);
@@ -342,19 +432,32 @@ static int session_setup(void **state)
 int torture_run_tests(void)
 {
     int rc;
+
     struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(torture_auth_agent_forwarding,
                                         session_setup,
+                                        session_teardown),
+
+        cmocka_unit_test_setup_teardown(torture_agent_remove_identity,
+                                        agent_session_setup,
+                                        session_teardown),
+
+        cmocka_unit_test_setup_teardown(torture_agent_remove_identity_negative,
+                                        agent_session_setup,
+                                        session_teardown),
+
+        cmocka_unit_test_setup_teardown(torture_agent_remove_identity_nonexistent,
+                                        agent_session_setup,
                                         session_teardown),
     };
 
     ssh_init();
 
-    /* Simplify the CMocka test filter handling */
 #if defined HAVE_CMOCKA_SET_TEST_FILTER
     cmocka_set_message_output(CM_OUTPUT_STDOUT);
 #endif
 
+    /* Apply test filtering */
     torture_filter_tests(tests);
 
     rc = cmocka_run_group_tests(tests,
@@ -365,5 +468,4 @@ int torture_run_tests(void)
 
     return rc;
 }
-
 #endif

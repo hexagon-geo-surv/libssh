@@ -176,6 +176,17 @@ ssh_key ssh_agent_get_next_ident(struct ssh_session_struct *session,
 ssh_string ssh_agent_sign_data(ssh_session session,
                                const ssh_key pubkey,
                                struct ssh_buffer_struct *data);
+/**
+ * @brief Remove an identity from the SSH agent.
+ *
+ * @param session   The SSH session.
+ * @param key       The public key to remove.
+ *
+ * @return `SSH_OK` on success, `SSH_ERROR` on failure.
+ */
+int ssh_agent_remove_identity(ssh_session session,
+                              const ssh_key key);
+
 
 
 #ifdef __cplusplus

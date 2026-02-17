@@ -110,6 +110,23 @@ LIBSSH_API int ssh_bind_config_parse_string(ssh_bind bind, const char *input);
  * @param  ssh_bind_o     The ssh server bind to use.
  *
  * @return 0 on success, < 0 on error.
+ *
+ * @warning This function implicitly calls ssh_bind_options_parse_config()
+ *          to process system-wide and user configuration files unless
+ *          configuration processing was already performed explicitly
+ *          by the caller.\n
+ *          As a result, any options previously set (e.g., manually via
+ *          ssh_bind_options_set() or ssh_bind_config_parse_string()) may be
+ *          overridden by values from the configuration files.\n
+ *          To guarantee that explicitly set options take precedence,
+ *          callers of this function should either:
+ *            - call ssh_bind_options_parse_config() themselves before
+ *              setting options, or
+ *            - disable automatic config processing via
+ *              SSH_BIND_OPTIONS_PROCESS_CONFIG (set to false).
+ *
+ * @see ssh_bind_options_parse_config()
+ * @see ssh_bind_options_set()
  */
 LIBSSH_API int ssh_bind_listen(ssh_bind ssh_bind_o);
 

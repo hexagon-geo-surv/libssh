@@ -2401,6 +2401,15 @@ static int ssh_bind_set_algo(ssh_bind sshbind,
  *                      not a pointer when it should have been a pointer, or if
  *                      its a pointer to a pointer when it should have just been
  *                      a pointer), then the behaviour is undefined.
+ *
+ * @warning             Options set via this function may be overridden if a
+ *                      configuration file is parsed afterwards (e.g., by an
+ *                      implicit call to ssh_bind_options_parse_config() inside
+ *                      ssh_bind_listen(), or by a manual call to the same
+ *                      function) and contains the same options.\n
+ *                      It is the caller’s responsibility to ensure the correct
+ *                      order of API calls if explicit options must take
+ *                      precedence.
  */
 int
 ssh_bind_options_set(ssh_bind sshbind,

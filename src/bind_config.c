@@ -683,6 +683,13 @@ int ssh_bind_config_parse_file(ssh_bind bind, const char *filename)
  * @params[in] bind      The ssh bind session
  * @params[in] input     Null terminated string containing the configuration
  *
+ * @warning Options set via this function may be overridden if a configuration
+ *          file is parsed afterwards (e.g., by an implicit call to
+ *          ssh_bind_options_parse_config() inside ssh_bind_listen(), or by a
+ *          manual call to the same function) and contains the same options.\n
+ *          It is the caller’s responsibility to ensure the correct order of
+ *          API calls if explicit options must take precedence.
+ *
  * @returns    SSH_OK on successful parsing the configuration string,
  *             SSH_ERROR on error
  */

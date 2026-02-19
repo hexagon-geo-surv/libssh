@@ -494,6 +494,38 @@ static void torture_packet_filter_check_msg_ext_info(void **state)
     assert_int_equal(rc, 0);
 }
 
+static void torture_packet_filter_check_msg_ping(UNUSED_PARAM(void **state))
+{
+    int rc;
+
+    /* SSH2_MSG_PING is transport-level and must be allowed in all states. */
+    global_state accepted[] = {{
+        .flags = 0,
+    }};
+
+    int accepted_count = 1;
+
+    rc = check_message_in_all_states(accepted, accepted_count, SSH2_MSG_PING);
+
+    assert_int_equal(rc, 0);
+}
+
+static void torture_packet_filter_check_msg_pong(UNUSED_PARAM(void **state))
+{
+    int rc;
+
+    /* SSH2_MSG_PONG is transport-level and must be allowed in all states. */
+    global_state accepted[] = {{
+        .flags = 0,
+    }};
+
+    int accepted_count = 1;
+
+    rc = check_message_in_all_states(accepted, accepted_count, SSH2_MSG_PONG);
+
+    assert_int_equal(rc, 0);
+}
+
 static void torture_packet_filter_check_channel_open(void **state)
 {
     int rc;
@@ -620,7 +652,9 @@ int torture_run_tests(void)
         cmocka_unit_test(torture_packet_filter_check_request_success),
         cmocka_unit_test(torture_packet_filter_check_request_failure),
         cmocka_unit_test(torture_packet_filter_check_unfiltered),
-        cmocka_unit_test(torture_packet_filter_check_msg_ext_info)
+        cmocka_unit_test(torture_packet_filter_check_msg_ext_info),
+        cmocka_unit_test(torture_packet_filter_check_msg_ping),
+        cmocka_unit_test(torture_packet_filter_check_msg_pong),
     };
 
     ssh_init();

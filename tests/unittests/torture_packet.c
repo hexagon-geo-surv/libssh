@@ -2,13 +2,14 @@
 
 #define LIBSSH_STATIC
 
-#include "torture.h"
-#include "libssh/libssh.h"
-#include "libssh/session.h"
-#include "libssh/crypto.h"
 #include "libssh/buffer.h"
+#include "libssh/crypto.h"
+#include "libssh/libssh.h"
+#include "libssh/packet.h"
+#include "libssh/session.h"
 #include "libssh/socket.h"
-#include "libssh/callbacks.h"
+#include "libssh/ssh2.h"
+#include "torture.h"
 
 #include "socket.c"
 
@@ -334,6 +335,123 @@ static void torture_packet_aes256_gcm(void **state)
     }
 }
 
+static ssh_buffer ext_info_ping_packet_new(const char *version)
+{
+    ssh_buffer packet = NULL;
+    int rc;
+
+    packet = ssh_buffer_new();
+    assert_non_null(packet);
+
+    rc = ssh_buffer_pack(packet,
+                         "dss",
+                         (uint32_t)1,
+                         "ping@openssh.com",
+                         version);
+    assert_int_equal(rc, SSH_OK);
+
+    return packet;
+}
+
+/**
+ * @brief ext-info ping@openssh.com version 0 enables SSH_EXT_PING.
+ */
+static void torture_ext_info_ping_version_zero(UNUSED_PARAM(void **state))
+{
+    ssh_session session = NULL;
+    ssh_buffer packet = NULL;
+    int rc;
+
+    session = ssh_new();
+    assert_non_null(session);
+
+    packet = ext_info_ping_packet_new("0");
+
+    rc = ssh_packet_ext_info(session, SSH2_MSG_EXT_INFO, packet, NULL);
+    assert_int_equal(rc, SSH_PACKET_USED);
+    assert_true((session->extensions & SSH_EXT_PING) != 0);
+
+    ssh_buffer_free(packet);
+    ssh_free(session);
+}
+
+/**
+ * @brief ext-info ping@openssh.com with non-zero version must not enable
+ * SSH_EXT_PING.
+ */
+static void torture_ext_info_ping_version_nonzero(UNUSED_PARAM(void **state))
+{
+    ssh_session session = NULL;
+    ssh_buffer packet = NULL;
+    int rc;
+
+    session = ssh_new();
+    assert_non_null(session);
+
+    packet = ext_info_ping_packet_new("1");
+
+    rc = ssh_packet_ext_info(session, SSH2_MSG_EXT_INFO, packet, NULL);
+    assert_int_equal(rc, SSH_PACKET_USED);
+    assert_true((session->extensions & SSH_EXT_PING) == 0);
+
+    ssh_buffer_free(packet);
+    ssh_free(session);
+}
+
+/**
+ * @brief ssh_packet_ping() must reject payloads without valid SSH string
+ * framing and transition the session to the error state.
+ */
+static void
+torture_packet_ping_invalid_packet_buffer(UNUSED_PARAM(void **state))
+{
+    ssh_session session = NULL;
+    ssh_buffer packet = NULL;
+    int rc;
+
+    session = ssh_new();
+    assert_non_null(session);
+
+    packet = ssh_buffer_new();
+    assert_non_null(packet);
+
+    session->dh_handshake_state = DH_STATE_FINISHED;
+
+    rc = ssh_packet_ping(session, SSH2_MSG_PING, packet, NULL);
+    assert_int_equal(rc, SSH_PACKET_USED);
+    assert_int_equal(session->session_state, SSH_SESSION_STATE_ERROR);
+
+    ssh_buffer_free(packet);
+    ssh_free(session);
+}
+
+/**
+ * @brief ssh_packet_pong() must reject payloads without valid SSH string
+ * framing and keep pending_pings unchanged.
+ */
+static void
+torture_packet_pong_empty_payload_invalid(UNUSED_PARAM(void **state))
+{
+    ssh_session session = NULL;
+    ssh_buffer packet = NULL;
+    int rc;
+
+    session = ssh_new();
+    assert_non_null(session);
+
+    packet = ssh_buffer_new();
+    assert_non_null(packet);
+
+    session->pending_pings = 1;
+    rc = ssh_packet_pong(session, SSH2_MSG_PONG, packet, NULL);
+    assert_int_equal(rc, SSH_PACKET_USED);
+    assert_int_equal(session->session_state, SSH_SESSION_STATE_ERROR);
+    assert_int_equal(session->pending_pings, 1);
+
+    ssh_buffer_free(packet);
+    ssh_free(session);
+}
+
 #ifdef WITH_ZLIB
 static void torture_packet_compress_zlib(void **state)
 {
@@ -374,6 +492,10 @@ int torture_run_tests(void) {
         cmocka_unit_test(torture_packet_chacha20),
         cmocka_unit_test(torture_packet_aes128_gcm),
         cmocka_unit_test(torture_packet_aes256_gcm),
+        cmocka_unit_test(torture_ext_info_ping_version_zero),
+        cmocka_unit_test(torture_ext_info_ping_version_nonzero),
+        cmocka_unit_test(torture_packet_ping_invalid_packet_buffer),
+        cmocka_unit_test(torture_packet_pong_empty_payload_invalid),
 #ifdef WITH_ZLIB
         cmocka_unit_test(torture_packet_compress_zlib),
         cmocka_unit_test(torture_packet_compress_zlib_openssh),

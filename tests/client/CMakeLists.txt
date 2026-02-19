@@ -21,6 +21,7 @@ set(LIBSSH_CLIENT_TESTS
     torture_request_pty_modes
     torture_client_global_requests
     torture_get_kex_algo
+    torture_ping_pong
     )
 
 find_program(SCP_EXECUTABLE NAMES scp)

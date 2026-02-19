@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include <stdlib.h> /* For calloc/free */
 
+#include "libssh/agent.h"
 #include "libssh/callbacks.h"
 #include "libssh/libssh.h"
-#include <libssh/agent.h>
 #include "libssh/priv.h"
 
 #include <errno.h>

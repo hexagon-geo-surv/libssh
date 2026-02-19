@@ -290,6 +290,20 @@ static void torture_tinyssh_neg_kex(void **state)
                             SSH_ERROR);
 }
 
+static void torture_tinyssh_ping_not_supported(void **state)
+{
+    struct torture_state *s = *state;
+    int rc;
+
+    rc = ssh_connect(s->ssh.session);
+    assert_ssh_return_code(s->ssh.session, rc);
+
+    assert_false(ssh_is_ping_supported(s->ssh.session));
+
+    rc = ssh_send_ping(s->ssh.session, "hello", 5);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
 int torture_run_tests(void)
 {
     int rc;
@@ -314,6 +328,9 @@ int torture_run_tests(void)
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_tinyssh_neg_kex,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_tinyssh_ping_not_supported,
                                         session_setup,
                                         session_teardown),
     };

@@ -62,6 +62,12 @@
 #define SSH2_MSG_CHANNEL_REQUEST 98
 #define SSH2_MSG_CHANNEL_SUCCESS 99
 #define SSH2_MSG_CHANNEL_FAILURE 100
+/*
+ * Defined in OpenSSH PROTOCOL: 1.8 transport: ping facility
+ * https://github.com/openssh/openssh-portable/blob/master/PROTOCOL
+ */
+#define SSH2_MSG_PING 192
+#define SSH2_MSG_PONG 193
 
 #define SSH2_DISCONNECT_HOST_NOT_ALLOWED_TO_CONNECT 1
 #define SSH2_DISCONNECT_PROTOCOL_ERROR 2

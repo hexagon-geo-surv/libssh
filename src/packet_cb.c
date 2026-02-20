@@ -361,12 +361,148 @@ SSH_PACKET_CALLBACK(ssh_packet_ext_info)
         } else if (strcmp(name, "publickey-hostbound@openssh.com") == 0) {
             SSH_LOG(SSH_LOG_PACKET, "Extension: %s=<%s>", name, value);
             session->extensions |= SSH_EXT_PUBLICKEY_HOSTBOUND;
+        } else if (strcmp(name, "ping@openssh.com") == 0) {
+            if (strcmp(value, "0") == 0) {
+                SSH_LOG(SSH_LOG_PACKET,
+                        "Extension: %s=<%s> (supported)",
+                        name,
+                        value);
+                session->extensions |= SSH_EXT_PING;
+            } else {
+                SSH_LOG(SSH_LOG_PACKET,
+                        "Extension: %s=<%s> (unsupported version, expected 0)",
+                        name,
+                        value);
+            }
         } else {
             SSH_LOG(SSH_LOG_PACKET, "Unknown extension: %s", name);
         }
         free(name);
         free(value);
     }
+
+    return SSH_PACKET_USED;
+}
+
+SSH_PACKET_CALLBACK(ssh_packet_ping)
+{
+    int rc;
+    ssh_string payload = NULL;
+
+    (void)type;
+    (void)user;
+
+    SSH_LOG(SSH_LOG_PACKET, "Received SSH2_MSG_PING");
+
+    /* Drop PING before the initial key exchange completes. During rekeying,
+     * ssh_packet_send() queues the PONG response automatically via out_queue.
+     */
+    if (!(session->flags & SSH_SESSION_FLAG_AUTHENTICATED) &&
+        session->dh_handshake_state != DH_STATE_FINISHED) {
+        SSH_LOG(SSH_LOG_DEBUG,
+                "Ignoring PING before initial key exchange is complete");
+        return SSH_PACKET_USED;
+    }
+
+    payload = ssh_buffer_get_ssh_string(packet);
+    if (payload == NULL) {
+        SSH_LOG(SSH_LOG_PACKET, "SSH2_MSG_PING: missing string payload");
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "SSH2_MSG_PING: missing string payload");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        return SSH_PACKET_USED;
+    }
+
+    if (ssh_buffer_get_len(packet) != 0) {
+        SSH_LOG(SSH_LOG_PACKET,
+                "SSH2_MSG_PING: unexpected trailing data after payload");
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "SSH2_MSG_PING: unexpected trailing data after payload");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        SSH_STRING_FREE(payload);
+        return SSH_PACKET_USED;
+    }
+
+    rc = ssh_buffer_pack(session->out_buffer, "bS", SSH2_MSG_PONG, payload);
+    SSH_STRING_FREE(payload);
+    if (rc != SSH_OK) {
+        ssh_set_error_oom(session);
+        ssh_buffer_reinit(session->out_buffer);
+        return SSH_PACKET_USED;
+    }
+
+    rc = ssh_packet_send(session);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_PACKET, "Failed to send SSH2_MSG_PONG");
+        return SSH_PACKET_USED;
+    }
+
+    return SSH_PACKET_USED;
+}
+
+/**
+ * @internal
+ *
+ * @brief Handle a SSH2_MSG_PONG packet.
+ *
+ * This handler consumes PONG messages and invokes the user callback if
+ * provided.
+ */
+SSH_PACKET_CALLBACK(ssh_packet_pong)
+{
+    const void *payload_data = NULL;
+    ssh_string payload = NULL;
+    size_t payload_len = 0;
+
+    (void)type;
+    (void)user;
+
+    SSH_LOG(SSH_LOG_DEBUG, "Received SSH2_MSG_PONG");
+
+    if (session->pending_pings == 0) {
+        SSH_LOG(SSH_LOG_PACKET, "Received unsolicited SSH2_MSG_PONG");
+        ssh_set_error(session, SSH_FATAL, "Received unsolicited SSH2_MSG_PONG");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        return SSH_PACKET_USED;
+    }
+
+    payload = ssh_buffer_get_ssh_string(packet);
+    if (payload == NULL) {
+        SSH_LOG(SSH_LOG_PACKET, "SSH2_MSG_PONG: missing string payload");
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "SSH2_MSG_PONG: missing string payload");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        return SSH_PACKET_USED;
+    }
+
+    if (ssh_buffer_get_len(packet) != 0) {
+        SSH_LOG(SSH_LOG_PACKET,
+                "SSH2_MSG_PONG: unexpected trailing data after payload");
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "SSH2_MSG_PONG: unexpected trailing data after payload");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        SSH_STRING_FREE(payload);
+        return SSH_PACKET_USED;
+    }
+
+    payload_data = ssh_string_data(payload);
+    payload_len = ssh_string_len(payload);
+
+    /* If user provided a high-level PONG callback, decode and invoke it. */
+    if (ssh_callbacks_exists(session->common.callbacks, pong_function)) {
+        session->common.callbacks->pong_function(
+            session,
+            payload_data,
+            payload_len,
+            session->common.callbacks->userdata);
+    }
+
+    SSH_STRING_FREE(payload);
+    session->pending_pings--;
 
     return SSH_PACKET_USED;
 }

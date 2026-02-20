@@ -128,6 +128,8 @@ static ssh_packet_callback default_packet_handlers[]= {
   channel_rcv_request,                     // SSH2_MSG_CHANNEL_REQUEST            98
   ssh_packet_channel_success,              // SSH2_MSG_CHANNEL_SUCCESS            99
   ssh_packet_channel_failure,              // SSH2_MSG_CHANNEL_FAILURE            100
+  [SSH2_MSG_PING - 1] = ssh_packet_ping,
+  [SSH2_MSG_PONG - 1] = ssh_packet_pong,
 };
 
 /** @internal
@@ -1106,6 +1108,24 @@ static enum ssh_packet_filter_result_e ssh_packet_incoming_filter(ssh_session se
 
         rc = SSH_PACKET_ALLOWED;
         break;
+    case SSH2_MSG_PING: // 192
+    case SSH2_MSG_PONG: // 193
+        /*
+         * Transport-level ping/pong messages.
+         *
+         * Always allow PING and PONG messages through the filter.
+         * State checking (auth/rekey) is handled in the packet handler itself,
+         * following OpenSSH's approach of treating these as implicit
+         * transport-level messages (like IGNORE and DEBUG).
+         *
+         * States required:
+         * - None (always allowed)
+         *
+         * Transitions:
+         * - None
+         */
+        rc = SSH_PACKET_ALLOWED;
+        break;
     default:
         /* Unknown message, do not filter */
         rc = SSH_PACKET_UNKNOWN;
@@ -2050,6 +2070,11 @@ int ssh_packet_send(ssh_session session)
     bool need_rekey, in_rekey;
     int rc;
 
+    if (session->socket == NULL || !ssh_socket_is_open(session->socket)) {
+        ssh_buffer_reinit(session->out_buffer);
+        return SSH_ERROR;
+    }
+
     payloadsize = ssh_buffer_get_len(session->out_buffer);
     if (payloadsize < 1) {
         return SSH_ERROR;
@@ -2129,6 +2154,85 @@ int ssh_packet_send(ssh_session session)
     }
 
     return rc;
+}
+
+/**
+ * @brief Check whether the ping@openssh.com extension is available.
+ *
+ * This function allows an application to determine whether ping can be sent
+ * to the current peer.
+ *
+ * @note Use ssh_send_ping() only after verifying support with this function.
+ *
+ * @param[in]  session  The SSH session handle.
+ *
+ * @return true if the extension was negotiated, false otherwise or if
+ *         session is NULL.
+ *
+ * @see ssh_send_ping()
+ */
+bool ssh_is_ping_supported(ssh_session session)
+{
+    if (session == NULL) {
+        return false;
+    }
+    return (session->extensions & SSH_EXT_PING) != 0;
+}
+
+/**
+ * @brief Send a transport-level SSH ping message.
+ *
+ * This function sends a SSH2_MSG_PING packet to the remote peer.
+ * Optional payload data is sent as part of the ping message.
+ * Use ssh_is_ping_supported() to check whether the remote peer supports
+ * pings before calling this function.
+ *
+ * @param[in]  session  The SSH session handle.
+ * @param[in]  data     Optional payload data (may be NULL).
+ * @param[in]  len      Length of the payload data in bytes.
+ *
+ * @return SSH_OK on success, SSH_ERROR on failure.
+ *
+ * @see ssh_is_ping_supported()
+ */
+int ssh_send_ping(ssh_session session, const void *data, size_t len)
+{
+    int rc;
+    ssh_string payload = NULL;
+
+    if (session == NULL) {
+        return SSH_ERROR;
+    }
+
+    /* Only send ping if the peer has advertised ping@openssh.com */
+    if (!ssh_is_ping_supported(session)) {
+        ssh_set_error(session,
+                      SSH_REQUEST_DENIED,
+                      "ping@openssh.com extension was not negotiated");
+        return SSH_ERROR;
+    }
+
+    payload = ssh_string_from_data(data, len);
+    if (payload == NULL) {
+        ssh_set_error_oom(session);
+        return SSH_ERROR;
+    }
+
+    rc = ssh_buffer_pack(session->out_buffer, "bS", SSH2_MSG_PING, payload);
+    SSH_STRING_FREE(payload);
+    if (rc != SSH_OK) {
+        ssh_set_error_oom(session);
+        ssh_buffer_reinit(session->out_buffer);
+        return SSH_ERROR;
+    }
+
+    rc = ssh_packet_send(session);
+    if (rc != SSH_OK) {
+        return SSH_ERROR;
+    }
+    session->pending_pings++;
+
+    return SSH_OK;
 }
 
 static void

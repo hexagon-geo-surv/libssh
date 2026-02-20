@@ -813,6 +813,8 @@ LIBSSH_API char *ssh_get_fingerprint_hash(enum ssh_publickey_hash_type type,
 LIBSSH_API void ssh_print_hash(enum ssh_publickey_hash_type type, unsigned char *hash, size_t len);
 LIBSSH_API int ssh_send_ignore (ssh_session session, const char *data);
 LIBSSH_API int ssh_send_debug (ssh_session session, const char *message, int always_display);
+LIBSSH_API bool ssh_is_ping_supported(ssh_session session);
+LIBSSH_API int ssh_send_ping(ssh_session session, const void *data, size_t len);
 LIBSSH_API void ssh_gssapi_set_creds(ssh_session session, const ssh_gssapi_creds creds);
 LIBSSH_API int ssh_select(ssh_channel *channels, ssh_channel *outchannels, socket_t maxfd,
     fd_set *readfds, struct timeval *timeout);

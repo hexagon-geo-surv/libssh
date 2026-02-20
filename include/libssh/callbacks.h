@@ -114,6 +114,22 @@ typedef void (*ssh_global_request_callback) (ssh_session session,
                                         ssh_message message, void *userdata);
 
 /**
+ * @brief SSH PONG callback.
+ *
+ * Called when a `SSH2_MSG_PONG` packet is received.
+ *
+ * @param session      Current session handle.
+ * @param payload      Pointer to payload bytes. Can be NULL when
+ *                     `payload_len` is 0.
+ * @param payload_len  Length of payload in bytes.
+ * @param userdata     Userdata passed through callbacks structure.
+ */
+typedef void (*ssh_pong_callback)(ssh_session session,
+                                  const void *payload,
+                                  size_t payload_len,
+                                  void *userdata);
+
+/**
  * @brief SSH connect status callback. These are functions that report the
  * status of the connection i,e. a function indicating the completed percentage
  * of the connection
@@ -208,6 +224,10 @@ struct ssh_callbacks_struct {
    * request is received.
    */
   ssh_channel_open_request_forwarded_tcpip_callback channel_open_request_forwarded_tcpip_function;
+  /**
+   * This function will be called when a `SSH2_MSG_PONG` packet is received.
+   */
+  ssh_pong_callback pong_function;
 };
 typedef struct ssh_callbacks_struct *ssh_callbacks;
 

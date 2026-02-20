@@ -126,6 +126,8 @@ enum ssh_pending_call_e {
 #define SSH_EXT_SIG_RSA_SHA512  0x04
 /* Host-bound public key authentication extension */
 #define SSH_EXT_PUBLICKEY_HOSTBOUND 0x08
+/* ping@openssh.com extension */
+#define SSH_EXT_PING 0x10
 
 /* members that are common to ssh_session and ssh_bind */
 struct ssh_common_struct {
@@ -147,7 +149,7 @@ struct ssh_session_struct {
     uint32_t recv_seq;
     struct ssh_timestamp last_rekey_time;
     bool proxy_root;
-
+    uint32_t pending_pings;
     int connected;
     /* !=0 when the user got a session handle */
     int alive;

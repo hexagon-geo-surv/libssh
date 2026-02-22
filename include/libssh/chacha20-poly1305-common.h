@@ -29,6 +29,8 @@
 #ifndef CHACHA20_POLY1305_H
 #define CHACHA20_POLY1305_H
 
+#include <stdint.h>
+
 #define CHACHA20_BLOCKSIZE 64
 #define CHACHA20_KEYLEN 32
 

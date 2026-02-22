@@ -9,6 +9,8 @@
 #ifndef SC25519_H
 #define SC25519_H
 
+#include <stdint.h>
+
 #define sc25519                  crypto_sign_ed25519_ref_sc25519
 #define shortsc25519             crypto_sign_ed25519_ref_shortsc25519
 #define sc25519_from32bytes      crypto_sign_ed25519_ref_sc25519_from32bytes

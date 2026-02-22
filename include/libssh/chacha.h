@@ -9,6 +9,8 @@ Public domain.
 #ifndef CHACHA_H
 #define CHACHA_H
 
+#include <stdint.h>
+
 struct chacha_ctx {
     uint32_t input[16];
 };

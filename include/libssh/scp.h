@@ -21,6 +21,9 @@
 #ifndef _SCP_H
 #define _SCP_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 enum ssh_scp_states {
   SSH_SCP_NEW,          //Data structure just created
   SSH_SCP_WRITE_INITED, //Gave our intention to write

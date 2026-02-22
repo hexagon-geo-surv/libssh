@@ -31,6 +31,8 @@
 #ifndef _BLF_H_
 #define _BLF_H_
 
+#include <stdint.h>
+
 //#include "includes.h"
 
 #if !defined(HAVE_BCRYPT_PBKDF) && !defined(HAVE_BLH_H)

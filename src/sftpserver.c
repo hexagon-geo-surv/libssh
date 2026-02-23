@@ -1343,6 +1343,15 @@ process_opendir(sftp_client_message client_msg)
     }
     h->dirp = dir;
     h->name = strdup(dir_name);
+    if (h->name == NULL) {
+        free(h);
+        closedir(dir);
+        SSH_LOG(SSH_LOG_PROTOCOL, "failed to duplicate directory name");
+        sftp_reply_status(client_msg,
+                          SSH_FX_FAILURE,
+                          "Failed to allocate new handle");
+        return SSH_ERROR;
+    }
     h->type = SFTP_DIR_HANDLE;
     handle_s = sftp_handle_alloc(client_msg->sftp, h);
 
@@ -1350,6 +1359,7 @@ process_opendir(sftp_client_message client_msg)
         sftp_reply_handle(client_msg, handle_s);
         ssh_string_free(handle_s);
     } else {
+        SAFE_FREE(h->name);
         free(h);
         closedir(dir);
         sftp_reply_status(client_msg, SSH_FX_FAILURE, "No handle available");

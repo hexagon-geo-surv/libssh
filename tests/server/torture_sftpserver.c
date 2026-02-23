@@ -1130,6 +1130,46 @@ static void torture_server_sftp_handles_exhaustion(void **state)
     }
 }
 
+static void torture_server_sftp_opendir_handles_exhaustion(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    char name[128] = {0};
+    sftp_file handles[SFTP_HANDLES] = {0};
+    sftp_dir dir = NULL;
+    sftp_session sftp = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    sftp = tsftp->sftp;
+    assert_non_null(sftp);
+
+    /* Occupy all handles with files */
+    for (int i = 0; i < SFTP_HANDLES; i++) {
+        snprintf(name, sizeof(name), "%s/fn%d", tsftp->testdir, i);
+        handles[i] = sftp_open(sftp, name, O_WRONLY | O_CREAT, 0700);
+        assert_non_null(handles[i]);
+    }
+
+    /* Opening a directory should fail gracefully without leaking h->name */
+    dir = sftp_opendir(sftp, tsftp->testdir);
+    assert_null(dir);
+
+    /* cleanup */
+    for (int i = 0; i < SFTP_HANDLES; i++) {
+        rc = sftp_close(handles[i]);
+        assert_int_equal(rc, SSH_OK);
+    }
+}
+
 static void torture_server_sftp_handle_overrun(void **state)
 {
     struct test_server_st *tss = *state;
@@ -1288,6 +1328,9 @@ int torture_run_tests(void) {
                                         session_setup_sftp,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_handles_exhaustion,
+                                        session_setup_sftp,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_server_sftp_opendir_handles_exhaustion,
                                         session_setup_sftp,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_handle_overrun,

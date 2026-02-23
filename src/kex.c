@@ -1688,11 +1688,6 @@ int ssh_make_sessionid(ssh_session session)
     switch (session->next_crypto->kex_type) {
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
-        rc = ssh_buffer_pack(buf,
-                             "F",
-                             session->next_crypto->shared_secret,
-                             SHA512_DIGEST_LEN);
-        break;
     case SSH_KEX_MLKEM768X25519_SHA256:
     case SSH_KEX_MLKEM768NISTP256_SHA256:
 #ifdef HAVE_MLKEM1024
@@ -1919,9 +1914,6 @@ int ssh_generate_session_keys(ssh_session session)
     switch (session->next_crypto->kex_type) {
     case SSH_KEX_SNTRUP761X25519_SHA512:
     case SSH_KEX_SNTRUP761X25519_SHA512_OPENSSH_COM:
-        k_string = ssh_make_padded_bignum_string(crypto->shared_secret,
-                                                 crypto->digest_len);
-        break;
     case SSH_KEX_MLKEM768X25519_SHA256:
     case SSH_KEX_MLKEM768NISTP256_SHA256:
 #ifdef HAVE_MLKEM1024

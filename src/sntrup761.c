@@ -28,7 +28,6 @@
 #include "libssh/sntrup761.h"
 #ifdef HAVE_SNTRUP761
 
-#include "libssh/bignum.h"
 #include "libssh/buffer.h"
 #include "libssh/crypto.h"
 #include "libssh/dh.h"
@@ -141,7 +140,7 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
 {
     unsigned char ssk[SNTRUP761_SIZE + CURVE25519_PUBKEY_SIZE];
     unsigned char *k = ssk + SNTRUP761_SIZE;
-    unsigned char hss[SHA512_DIGEST_LEN];
+    void *shared_secret_data = NULL;
     int rc;
 
     rc = ssh_curve25519_create_k(session, k);
@@ -216,22 +215,27 @@ static int ssh_sntrup761x25519_build_k(ssh_session session)
     ssh_log_hexdump("kem key", ssk, SNTRUP761_SIZE);
 #endif
 
-    sha512(ssk, sizeof ssk, hss);
-
-    bignum_bin2bn(hss, sizeof hss, &session->next_crypto->shared_secret);
-    if (session->next_crypto->shared_secret == NULL) {
+    ssh_string_burn(session->next_crypto->hybrid_shared_secret);
+    ssh_string_free(session->next_crypto->hybrid_shared_secret);
+    session->next_crypto->hybrid_shared_secret =
+        ssh_string_new(SHA512_DIGEST_LEN);
+    if (session->next_crypto->hybrid_shared_secret == NULL) {
+        ssh_set_error_oom(session);
         rc = SSH_ERROR;
         goto cleanup;
     }
+    shared_secret_data =
+        ssh_string_data(session->next_crypto->hybrid_shared_secret);
+
+    sha512(ssk, sizeof ssk, shared_secret_data);
 
 #ifdef DEBUG_CRYPTO
-    ssh_print_bignum("Shared secret key", session->next_crypto->shared_secret);
+    ssh_log_hexdump("Shared secret key", shared_secret_data, SHA512_DIGEST_LEN);
 #endif
 
     return 0;
 cleanup:
     ssh_burn(ssk, sizeof ssk);
-    ssh_burn(hss, sizeof hss);
 
     return rc;
 }

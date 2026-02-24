@@ -489,7 +489,10 @@ sftp_reply_name(sftp_client_message msg, const char *name, sftp_attributes attr)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending name %s", ssh_string_get_char(file));
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Sending name %s, ID %" PRIu32,
+            ssh_string_get_char(file),
+            msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_u32(out, htonl(1)) < 0 ||
@@ -532,6 +535,7 @@ int sftp_reply_handle(sftp_client_message msg, ssh_string handle)
     ssh_log_hexdump("Sending handle:",
                     (const unsigned char *)ssh_string_get_char(handle),
                     ssh_string_len(handle));
+    SSH_LOG(SSH_LOG_PROTOCOL, "packet ID %" PRIu32, msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_ssh_string(out, handle) < 0 ||
@@ -565,7 +569,7 @@ int sftp_reply_attr(sftp_client_message msg, sftp_attributes attr)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending attr");
+    SSH_LOG(SSH_LOG_PROTOCOL, "Sending attr, ID %" PRIu32, msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         buffer_add_attributes(out, attr) < 0 ||
@@ -653,7 +657,10 @@ int sftp_reply_names(sftp_client_message msg)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending %d names", msg->attr_num);
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Sending %d names, ID %" PRIu32,
+            msg->attr_num,
+            msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_u32(out, htonl(msg->attr_num)) < 0 ||
@@ -705,8 +712,11 @@ sftp_reply_status(sftp_client_message msg, uint32_t status, const char *message)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending status %d, message: %s", status,
-            ssh_string_get_char(s));
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Sending status %d, message: %s, ID %" PRIu32,
+            status,
+            ssh_string_get_char(s),
+            msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_u32(out, htonl(status)) < 0 ||
@@ -745,7 +755,10 @@ int sftp_reply_data(sftp_client_message msg, const void *data, int len)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending data, length: %d", len);
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Sending data, length: %d, ID %" PRIu32,
+            len,
+            msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_u32(out, ntohl(len)) < 0 ||
@@ -780,7 +793,7 @@ sftp_reply_statvfs(sftp_client_message msg, sftp_statvfs_t st)
         return -1;
     }
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending statvfs reply");
+    SSH_LOG(SSH_LOG_PROTOCOL, "Sending statvfs reply, ID %" PRIu32, msg->id);
 
     if (ssh_buffer_add_u32(out, msg->id) < 0 ||
         ssh_buffer_add_u64(out, ntohll(st->f_bsize)) < 0 ||
@@ -810,7 +823,9 @@ int sftp_reply_version(sftp_client_message client_msg)
     ssh_buffer reply;
     int rc;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Sending version packet");
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Sending version packet, ID %" PRIu32,
+            client_msg->id);
 
     version = sftp->client_version;
     reply = ssh_buffer_new();
@@ -1183,6 +1198,10 @@ process_read(sftp_client_message client_msg)
     ssh_log_hexdump("Processing read: handle:",
                     (const unsigned char *)ssh_string_get_char(handle),
                     ssh_string_len(handle));
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Offset %" PRIu64", length %" PRIu32,
+            client_msg->offset,
+            client_msg->len);
 
     h = sftp_handle(sftp, handle);
     if (h != NULL && h->type == SFTP_FILE_HANDLE) {
@@ -1241,6 +1260,10 @@ process_write(sftp_client_message client_msg)
     ssh_log_hexdump("Processing write: handle",
                     (const unsigned char *)ssh_string_get_char(handle),
                     ssh_string_len(handle));
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "Offset %" PRIu64", length %" PRIu32,
+            client_msg->offset,
+            client_msg->len);
 
     h = sftp_handle(sftp, handle);
     if (h != NULL && h->type == SFTP_FILE_HANDLE) {
@@ -1968,7 +1991,10 @@ dispatch_sftp_request(sftp_client_message sftp_msg)
     sftp_server_message_callback handler = NULL;
     uint8_t type = sftp_client_message_get_type(sftp_msg);
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "processing request type: %u", type);
+    SSH_LOG(SSH_LOG_PROTOCOL,
+            "processing request type: %" PRIu8 ", ID %" PRIu32,
+            type,
+            sftp_msg->id);
 
     for (int i = 0; message_handlers[i].cb != NULL; i++) {
         if (type == message_handlers[i].type) {

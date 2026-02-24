@@ -108,7 +108,6 @@ if (DOXYGEN_FOUND)
         packet_struct,
         pem_get_password_struct,
         ssh_tokens_st,
-        sftp_attributes_struct,
         sftp_client_message_struct,
         sftp_dir_struct,
         sftp_ext_struct,

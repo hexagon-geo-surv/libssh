@@ -177,28 +177,113 @@ struct sftp_status_message_struct {
     char *langmsg;
 };
 
+/**
+ * @brief SFTP file attributes structure.
+ *
+ * This type represents file attributes. It is used both for
+ * sending and receiving file attributes from the server.
+ *
+ * `flags` determines which of the struct fields are present.
+ *
+ * @see sftp_attributes_free()
+ */
 struct sftp_attributes_struct {
+    /** File name */
     char *name;
-    char *longname; /* ls -l output on openssh, not reliable else */
+
+    /** Extended name i.e output of `ls -l` (requires SFTP v3 with OpenSSH) */
+    char *longname;
+
+    /** Determines which of the struct fields are present */
     uint32_t flags;
+
+    /** File type */
     uint8_t type;
+
+    /** File size (requires flag `SSH_FILEXFER_ATTR_SIZE`) */
     uint64_t size;
+
+    /** User ID (requires SFTP v3 with flag `SSH_FILEXFER_ATTR_UIDGID`) */
     uint32_t uid;
+
+    /** Group ID (requires SFTP v3 with flag `SSH_FILEXFER_ATTR_UIDGID`) */
     uint32_t gid;
-    char *owner; /* set if openssh and version 4 */
-    char *group; /* set if openssh and version 4 */
+
+    /**
+     * File owner
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_OWNERGROUP`
+     * or SFTP v3 with OpenSSH)
+     */
+    char *owner;
+
+    /**
+     * File group
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_OWNERGROUP`
+     * or SFTP v3 with OpenSSH)
+     */
+    char *group;
+
+    /** File permissions (requires flag `SSH_FILEXFER_ATTR_PERMISSIONS`) */
     uint32_t permissions;
+
+    /**
+     * Access time
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_ACCESSTIME`)
+     */
     uint64_t atime64;
+
+    /**
+     * Access time
+     * (requires SFTP v3 with flag `SSH_FILEXFER_ATTR_ACMODTIME`)
+     */
     uint32_t atime;
+
+    /**
+     * Access time nanoseconds
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_SUBSECOND_TIMES`)
+     */
     uint32_t atime_nseconds;
+
+    /**
+     * Creation time
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_CREATETIME`)
+     */
     uint64_t createtime;
+
+    /**
+     * Creation time nanoseconds
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_SUBSECOND_TIMES`)
+     */
     uint32_t createtime_nseconds;
+
+    /**
+     * Modification time
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_MODIFYTIME`)
+     */
     uint64_t mtime64;
+
+    /**
+     * Modification time
+     * (requires SFTP v3 with flag `SSH_FILEXFER_ATTR_ACMODTIME`)
+     */
     uint32_t mtime;
+
+    /**
+     * Modification time nanoseconds
+     * (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_SUBSECOND_TIMES`)
+     */
     uint32_t mtime_nseconds;
+
+    /** ACL data (requires SFTP v4 with flag `SSH_FILEXFER_ATTR_ACL`) */
     ssh_string acl;
+
+    /** Unused */
     uint32_t extended_count;
+
+    /** Unused */
     ssh_string extended_type;
+
+    /** Unused */
     ssh_string extended_data;
 };
 

@@ -267,10 +267,10 @@ static void torture_ssh_buffer_bignum(void **state)
     bignum num = NULL;
     int rc;
     size_t len;
-    uint8_t verif[] = "\x00\x00\x00\x04" /* len 4 byte */
-                      "\x00\x00\x00\xff" /* padded 255 */
-                      "\x00\x00\x00\x02" /* len 2 byte */
-                      "\x00\xff";        /* padded 255 */
+    uint8_t verif[] = "\x00\x00\x00\x02" /* len */
+                      "\x00\xff"         /* pad, num */
+                      "\x00\x00\x00\x02" /* len */
+                      "\x00\xff";        /* pad, num */
 
     (void)state;
 
@@ -283,19 +283,12 @@ static void torture_ssh_buffer_bignum(void **state)
     rc = bignum_set_word(num, 255);
     assert_int_equal(rc, 1);
 
-    rc = ssh_buffer_pack(buffer, "FB", num, (size_t)4, num);
+    rc = ssh_buffer_pack(buffer, "BB", num, num);
     assert_int_equal(rc, SSH_OK);
 
     len = ssh_buffer_get_len(buffer);
     assert_int_equal(len, sizeof(verif) - 1);
     assert_memory_equal(ssh_buffer_get(buffer), verif, sizeof(verif) - 1);
-
-    /* negative test -- this number requires 3 bytes */
-    rc = bignum_set_word(num, 256 * 256);
-    assert_int_equal(rc, 1);
-
-    rc = ssh_buffer_pack(buffer, "FB", num, (size_t)2, num);
-    assert_int_equal(rc, SSH_ERROR);
 
     bignum_safe_free(num);
 

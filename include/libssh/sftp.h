@@ -291,27 +291,55 @@ struct sftp_attributes_struct {
  * @brief SFTP statvfs structure.
  */
 struct sftp_statvfs_struct {
-  uint64_t f_bsize;   /** file system block size */
-  uint64_t f_frsize;  /** fundamental fs block size */
-  uint64_t f_blocks;  /** number of blocks (unit f_frsize) */
-  uint64_t f_bfree;   /** free blocks in file system */
-  uint64_t f_bavail;  /** free blocks for non-root */
-  uint64_t f_files;   /** total file inodes */
-  uint64_t f_ffree;   /** free file inodes */
-  uint64_t f_favail;  /** free file inodes for to non-root */
-  uint64_t f_fsid;    /** file system id */
-  uint64_t f_flag;    /** bit mask of f_flag values */
-  uint64_t f_namemax; /** maximum filename length */
+    /** file system block size */
+    uint64_t f_bsize;
+
+    /** fundamental fs block size */
+    uint64_t f_frsize;
+
+    /** number of blocks (unit f_frsize) */
+    uint64_t f_blocks;
+
+    /** free blocks in file system */
+    uint64_t f_bfree;
+
+    /** free blocks for non-root */
+    uint64_t f_bavail;
+
+    /** total file inodes */
+    uint64_t f_files;
+
+    /** free file inodes */
+    uint64_t f_ffree;
+
+    /** free file inodes for non-root */
+    uint64_t f_favail;
+
+    /** file system id */
+    uint64_t f_fsid;
+
+    /** bit mask of f_flag values */
+    uint64_t f_flag;
+
+    /** maximum filename length */
+    uint64_t f_namemax;
 };
 
 /**
  * @brief SFTP limits structure.
  */
 struct sftp_limits_struct {
-    uint64_t max_packet_length;   /** maximum number of bytes in a single sftp packet */
-    uint64_t max_read_length;     /** maximum length in a SSH_FXP_READ packet */
-    uint64_t max_write_length;    /** maximum length in a SSH_FXP_WRITE packet */
-    uint64_t max_open_handles;    /** maximum number of active handles allowed by server */
+    /** maximum number of bytes in a single sftp packet */
+    uint64_t max_packet_length;
+
+    /** maximum length in a SSH_FXP_READ packet */
+    uint64_t max_read_length;
+
+    /** maximum length in a SSH_FXP_WRITE packet */
+    uint64_t max_write_length;
+
+    /** maximum number of active handles allowed by server */
+    uint64_t max_open_handles;
 };
 
 /**

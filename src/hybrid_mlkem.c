@@ -244,7 +244,7 @@ int ssh_client_hybrid_mlkem_init(ssh_session session)
                              "PP",
                              ssh_string_len(crypto->mlkem_client_pubkey),
                              ssh_string_data(crypto->mlkem_client_pubkey),
-                             CURVE25519_PUBKEY_SIZE,
+                             (size_t)CURVE25519_PUBKEY_SIZE,
                              crypto->curve25519_client_pubkey);
         break;
     case SSH_KEX_MLKEM768NISTP256_SHA256:

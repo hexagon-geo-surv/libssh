@@ -129,6 +129,11 @@ pass environment variables to the container:
 
     python infra/helper.py reproduce -eLIBSSH_VERBOSITY=9 libssh ssh_client_fuzzer ~/Downloads/clusterfuzz-testcase-ssh_client_fuzzer-4637376441483264
 
+In case the nalloc fuzzer fails, running the test with `NALLOC_VERBOSE=1`
+environment variable will help to pinpoint the failed malloc:
+
+    python infra/helper.py reproduce -eNALLOC_VERBOSE=1 libssh ssh_known_hosts_fuzzer_nalloc ~/Downloads/clusterfuzz-testcase-minimized-ssh_known_hosts_fuzzer_nalloc-5555469543604224
+
 ### Fix the issue and verify the fix
 
 Now, we can properly investigate the issue and once we have a fix, we can

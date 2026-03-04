@@ -310,7 +310,11 @@ static int ssh_known_hosts_read_entries(const char *match,
             }
         }
         if (entry != NULL) {
-            ssh_list_append(*entries, entry);
+            rc = ssh_list_append(*entries, entry);
+            if (rc != SSH_OK) {
+                ssh_knownhosts_entry_free(entry);
+                goto error;
+            }
         }
     }
 

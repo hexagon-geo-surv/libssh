@@ -1,4 +1,4 @@
-/* This is a sample implementation of a libssh based SSH server */
+/* This is a sample implementation of a libssh based SFTP server */
 /*
 Copyright 2014 Audrius Butkevicius
 
@@ -9,6 +9,28 @@ domain. This does not apply to the rest of the library though, but it is
 allowed to cut-and-paste working code from this file to any license of
 program.
 The goal is to show the API in action.
+
+!!! WARNING / ACHTUNG !!!
+
+This is not a production-ready SFTP server implementation. While it demonstrates
+how an SFTP server can be implemented on the SFTP layer and integrated into
+existing SSH server, it lacks many steps int the authentication and
+session establishment!
+
+It allows to log in any user with hardcoded credentials below or with public
+key provided from authorized keys file.
+
+The resulting SFTP session keeps running under original user who runs the
+example server and therefore the SFTP session has access to all files that are
+accessible to the user running the server.
+
+Real-world servers should at very least switch the user to unprivileged one
+after authentication using setuid(). If some more restrictions are needed,
+generally limiting what files should and should not be accessible, it is
+recommended to use chroot() as handling symlinks can be tricky in the SFTP
+callbacks.
+
+!!! WARNING / ACHTUNG !!!
 */
 
 #include "config.h"

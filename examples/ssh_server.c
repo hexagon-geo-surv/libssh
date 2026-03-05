@@ -9,6 +9,23 @@ domain. This does not apply to the rest of the library though, but it is
 allowed to cut-and-paste working code from this file to any license of
 program.
 The goal is to show the API in action.
+
+!!! WARNING / ACHTUNG !!!
+
+This is not a production-ready SSH server implementation. While it demonstrates
+how an SSH server can be implemented, it lacks many steps during
+the authentication and session establishment!
+
+It allows to log in any user with hardcoded credentials below or with public
+key provided from authorized keys file.
+
+The resulting session keeps running under original user who runs the example
+server and therefore it retains the same permissions.
+
+Real-world servers should at very least switch the user to unprivileged one
+after authentication using setuid().
+
+!!! WARNING / ACHTUNG !!!
 */
 
 #include "config.h"

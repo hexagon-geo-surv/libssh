@@ -1837,8 +1837,8 @@ sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),
     int decode_len;
     int rc;
 
-    if (sftpp == NULL) {
-        SSH_LOG(SSH_LOG_WARNING, "NULL userdata passed to callback");
+    if (sftpp == NULL || *sftpp == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "invalid userdata passed to callback");
         return SSH_ERROR;
     }
     sftp = *sftpp;

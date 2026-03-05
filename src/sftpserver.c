@@ -376,6 +376,9 @@ const char *sftp_client_message_get_filename(sftp_client_message msg)
  *
  * @param[in] msg     The SFTP client message to modify.
  * @param[in] newname The new filename to store in the message.
+ *
+ * @warn On failure, the filename in the message is set to `NULL`. Users of
+ *       sftp_client_message_get_filename() need to check the return value!
  */
 void
 sftp_client_message_set_filename(sftp_client_message msg, const char *newname)
@@ -1497,6 +1500,12 @@ process_open(sftp_client_message client_msg)
     int fd = -1;
     int status;
 
+    if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
+        sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
+        return SSH_ERROR;
+    }
+
     SSH_LOG(SSH_LOG_PROTOCOL, "Processing open: filename %s, mode=0%o" PRIu32,
             filename, mode);
 
@@ -1728,6 +1737,12 @@ process_opendir(sftp_client_message client_msg)
     ssh_string handle_s = NULL;
     struct sftp_handle *h = NULL;
 
+    if (dir_name == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing dir_name from in message");
+        sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
+        return SSH_ERROR;
+    }
+
     SSH_LOG(SSH_LOG_PROTOCOL, "Processing opendir %s", dir_name);
 
     dir = opendir(dir_name);
@@ -1954,13 +1969,14 @@ process_mkdir(sftp_client_message client_msg)
     int status = SSH_FX_OK;
     int rv;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing mkdir %s, mode=0%o" PRIu32,
-            filename, mode);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing mkdir %s, mode=0%o" PRIu32,
+            filename, mode);
 
     rv = mkdir(filename, mode);
     if (rv < 0) {
@@ -1983,12 +1999,13 @@ process_rmdir(sftp_client_message client_msg)
     int status = SSH_FX_OK;
     int rv;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing rmdir %s", filename);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing rmdir %s", filename);
 
     rv = rmdir(filename);
     if (rv < 0) {
@@ -2006,6 +2023,12 @@ process_realpath(sftp_client_message client_msg)
 {
     const char *filename = sftp_client_message_get_filename(client_msg);
     char *path = NULL;
+
+    if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
+        sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
+        return SSH_ERROR;
+    }
 
     SSH_LOG(SSH_LOG_PROTOCOL, "Processing realpath %s", filename);
 
@@ -2038,12 +2061,13 @@ process_lstat(sftp_client_message client_msg)
     int status = SSH_FX_OK;
     int rv;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing lstat %s", filename);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing lstat %s", filename);
 
     rv = lstat(filename, &st);
     if (rv < 0) {
@@ -2070,12 +2094,13 @@ process_stat(sftp_client_message client_msg)
     int status = SSH_FX_OK;
     int rv;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing stat %s", filename);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing stat %s", filename);
 
     rv = stat(filename, &st);
     if (rv < 0) {
@@ -2101,12 +2126,13 @@ process_setstat(sftp_client_message client_msg)
     uint32_t msg_flags = client_msg->attr->flags;
     const char *filename = sftp_client_message_get_filename(client_msg);
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing setstat %s", filename);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing setstat %s", filename);
 
     if (msg_flags & SSH_FILEXFER_ATTR_SIZE) {
         rv = truncate(filename, client_msg->attr->size);
@@ -2195,12 +2221,13 @@ process_readlink(sftp_client_message client_msg)
     const char *sftp_err_msg = NULL;
     int status = SSH_FX_OK;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "Processing readlink %s", filename);
-
     if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing readlink %s", filename);
 
     len = readlink(filename, buf, sizeof(buf) - 1);
     if (len < 0) {
@@ -2232,13 +2259,14 @@ process_symlink(sftp_client_message client_msg)
     int status = SSH_FX_OK;
     int rv;
 
-    SSH_LOG(SSH_LOG_PROTOCOL, "processing symlink: src=%s dest=%s",
-            srcpath, destpath);
-
     if (srcpath == NULL || destpath == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
         sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
         return SSH_ERROR;
     }
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "processing symlink: src=%s dest=%s",
+            srcpath, destpath);
 
     rv = symlink(srcpath, destpath);
     if (rv < 0) {
@@ -2261,6 +2289,12 @@ process_remove(sftp_client_message client_msg)
     const char *filename = sftp_client_message_get_filename(client_msg);
     int rv;
     int status = SSH_FX_OK;
+
+    if (filename == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
+        sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
+        return SSH_ERROR;
+    }
 
     SSH_LOG(SSH_LOG_PROTOCOL, "processing remove: %s", filename);
 
@@ -2296,6 +2330,12 @@ process_extended_statvfs(sftp_client_message client_msg)
     uint64_t flag;
     int status;
     int rv;
+
+    if (path == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "missing filename from in message");
+        sftp_reply_status(client_msg, SSH_FX_NO_SUCH_FILE, "File name error");
+        return SSH_ERROR;
+    }
 
     SSH_LOG(SSH_LOG_PROTOCOL, "processing extended statvfs: %s", path);
 

@@ -42,13 +42,13 @@
 static sftp_session create_minimal_sftp_session(ssh_session session)
 {
     sftp_session sftp;
-    
+
     sftp = calloc(1, sizeof(struct sftp_session_struct));
     if (sftp == NULL) {
         return NULL;
     }
     sftp->session = session;
-    
+
     return sftp;
 }
 

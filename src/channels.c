@@ -572,6 +572,15 @@ SSH_PACKET_CALLBACK(channel_rcv_change_window)
 
     was_empty = channel->remote_window == 0;
 
+    if (UINT32_MAX - channel->remote_window < bytes) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Window adjust %" PRIu32 " overflows remote window.",
+                      bytes);
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        return SSH_PACKET_USED;
+    }
+
     channel->remote_window += bytes;
 
     /* Writing to the channel is non-blocking until the receive window is empty.

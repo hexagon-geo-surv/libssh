@@ -131,7 +131,7 @@ void torture_sftp_close(struct torture_sftp *t);
 void torture_write_file(const char *filename, const char *data);
 
 #define torture_filter_tests(tests) \
-    _torture_filter_tests(tests, sizeof(tests) / sizeof(tests)[0])
+    _torture_filter_tests(tests, ARRAY_SIZE(tests))
 void _torture_filter_tests(struct CMUnitTest *tests, size_t ntests);
 
 const char *torture_server_address(int domain);

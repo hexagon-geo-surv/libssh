@@ -127,7 +127,7 @@ static void torture_ssh_buffer_get_ssh_string(void **state)
     (void)state;
 
     memset(data, 'X', sizeof(data));
-    for (i = 0; i < (int)(sizeof(values) / sizeof(values[0])); ++i) {
+    for (i = 0; i < (int)ARRAY_SIZE(values); ++i) {
         for (j = 0; j < (int)sizeof(data); ++j) {
             for (k = 1; k < 5; ++k) {
                 buffer = ssh_buffer_new();

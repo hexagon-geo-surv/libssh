@@ -584,7 +584,7 @@ torture_match_cidr_address_list_ipv6(void **state)
     (void)state;
 
     /* Test valid link-local addresses */
-    valid_addr_len = sizeof(valid_addr) / sizeof(valid_addr[0]);
+    valid_addr_len = ARRAY_SIZE(valid_addr);
     for (i = 0; i < valid_addr_len; i++) {
         rc = match_cidr_address_list(valid_addr[i], IPV6_LIST, AF_INET6);
         assert_int_equal(rc, 1);
@@ -601,7 +601,7 @@ torture_match_cidr_address_list_ipv6(void **state)
     assert_int_equal(rc, 1);
 
     /* Test some invalid input */
-    invalid_addr_len = sizeof(invalid_addr) / sizeof(invalid_addr[0]);
+    invalid_addr_len = ARRAY_SIZE(invalid_addr);
     for (i = 0; i < invalid_addr_len; i++) {
         rc = match_cidr_address_list(invalid_addr[i], IPV6_LIST, AF_INET6);
         assert_int_equal(rc, 0);

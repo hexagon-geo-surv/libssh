@@ -142,8 +142,7 @@ static int setup_sshsig_compat(void **state)
     test_state->original_cwd = original_cwd;
     test_state->temp_dir = temp_dir;
     test_state->test_combinations = test_combinations;
-    test_state->num_combinations =
-        sizeof(test_combinations) / sizeof(test_combinations[0]);
+    test_state->num_combinations = ARRAY_SIZE(test_combinations);
 
     *state = test_state;
 

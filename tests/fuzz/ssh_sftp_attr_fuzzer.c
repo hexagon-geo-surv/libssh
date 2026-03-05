@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "config.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -22,6 +23,7 @@
 
 #define LIBSSH_STATIC 1
 #include "libssh/libssh.h"
+#include "libssh/priv.h"
 #include "libssh/sftp.h"
 #include "libssh/sftp_priv.h"
 
@@ -109,7 +111,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     /* Main fuzzing target: sftp_parse_attr */
     /* Parses untrusted SFTP messages from client */
     /* Test all combinations (v3/v4, with/without name) */
-    for (i = 0; i < (sizeof(versions) / sizeof(versions[0])); i++) {
+    for (i = 0; i < ARRAY_SIZE(versions); i++) {
         sftp->version = versions[i];
 
         /* Reset and repopulate buffer for each iteration */

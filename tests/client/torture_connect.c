@@ -167,7 +167,7 @@ static void torture_connect_addrfamily(void **state)
         {SSH_ADDRESS_FAMILY_INET6, "afinet6", SSH_OK},
     };
 
-    int aftest_count = sizeof(aftests) / sizeof(aftests[0]);
+    int aftest_count = ARRAY_SIZE(aftests);
     for (int i = 0; i < aftest_count; ++i) {
         struct aftest const *t = &aftests[i];
 

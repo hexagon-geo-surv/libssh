@@ -94,8 +94,7 @@ static void torture_kex_basic_functionality(void **state)
     assert_non_null(kex_algo);
 
     is_valid_algo = false;
-    valid_algorithms_count =
-        sizeof(valid_algorithms) / sizeof(valid_algorithms[0]);
+    valid_algorithms_count = ARRAY_SIZE(valid_algorithms);
     for (i = 0; i < valid_algorithms_count; i++) {
         if (strcmp(kex_algo, valid_algorithms[i]) == 0) {
             is_valid_algo = true;

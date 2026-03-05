@@ -849,10 +849,10 @@ static int pkd_run_tests(void) {
     };
 
     /* Test list is populated depending on which clients are enabled. */
-    struct CMUnitTest all_tests[(sizeof(openssh_tests) / sizeof(openssh_tests[0])) +
-                                (sizeof(dropbear_tests) / sizeof(dropbear_tests[0])) +
-                                (sizeof(putty_tests) / sizeof(putty_tests[0])) +
-                                (sizeof(noop_tests) / sizeof(noop_tests[0]))];
+    struct CMUnitTest all_tests[ARRAY_SIZE(openssh_tests) +
+                                ARRAY_SIZE(dropbear_tests) +
+                                ARRAY_SIZE(putty_tests) +
+                                ARRAY_SIZE(noop_tests)];
     memset(&all_tests[0], 0x0, sizeof(all_tests));
 
     /* Generate client keys and populate test list for each enabled client. */
@@ -860,10 +860,10 @@ static int pkd_run_tests(void) {
         setup_openssh_client_keys();
         if (ssh_fips_mode()) {
             memcpy(&all_tests[tindex], &openssh_fips_tests[0], sizeof(openssh_fips_tests));
-            tindex += (sizeof(openssh_fips_tests) / sizeof(openssh_fips_tests[0]));
+            tindex += ARRAY_SIZE(openssh_fips_tests);
         } else {
             memcpy(&all_tests[tindex], &openssh_tests[0], sizeof(openssh_tests));
-            tindex += (sizeof(openssh_tests) / sizeof(openssh_tests[0]));
+            tindex += ARRAY_SIZE(openssh_tests);
         }
     }
 
@@ -871,7 +871,7 @@ static int pkd_run_tests(void) {
         setup_dropbear_client_keys();
         if (!ssh_fips_mode()) {
             memcpy(&all_tests[tindex], &dropbear_tests[0], sizeof(dropbear_tests));
-            tindex += (sizeof(dropbear_tests) / sizeof(dropbear_tests[0]));
+            tindex += ARRAY_SIZE(dropbear_tests);
         }
     }
 
@@ -879,12 +879,12 @@ static int pkd_run_tests(void) {
         setup_putty_client_keys();
         if (!ssh_fips_mode()) {
             memcpy(&all_tests[tindex], &putty_tests[0], sizeof(putty_tests));
-            tindex += (sizeof(putty_tests) / sizeof(putty_tests[0]));
+            tindex += ARRAY_SIZE(putty_tests);
         }
     }
 
     memcpy(&all_tests[tindex], &noop_tests[0], sizeof(noop_tests));
-    tindex += (sizeof(noop_tests) / sizeof(noop_tests[0]));
+    tindex += ARRAY_SIZE(noop_tests);
 
     if ((pkd_dargs.opts.testname == NULL) &&
         (pkd_dargs.opts.testmatch == NULL)) {

@@ -2471,7 +2471,7 @@ sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),
 {
     sftp_session *sftpp = (sftp_session *)userdata;
     sftp_session sftp = NULL;
-    sftp_client_message msg;
+    sftp_client_message msg = NULL;
     uint32_t undecoded_len = len;
     int rc;
 

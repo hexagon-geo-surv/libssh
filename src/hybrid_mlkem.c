@@ -656,6 +656,8 @@ static SSH_PACKET_CALLBACK(ssh_packet_server_hybrid_mlkem_init)
                       SSH_FATAL,
                       "Could not read ML-KEM pubkey from "
                       "the client init buffer, buffer too short");
+        session->session_state = SSH_SESSION_STATE_ERROR;
+        goto cleanup;
     }
 
 #ifdef DEBUG_CRYPTO

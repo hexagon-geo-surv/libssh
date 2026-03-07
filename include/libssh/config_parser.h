@@ -54,6 +54,11 @@ int ssh_config_get_yesno(char **str, int notfound);
  *                       be stored or NULL if we do not care about the result.
  * @param[in]   ignore_port Set to true if we should not attempt to parse
  *                       port number.
+ * @param[in]   strict   Set to true to validate hostname against RFC1035
+ *                       (for resolving to a real host).
+ *                       Set to false to only reject shell metacharacters
+ *                       (allowing config aliases with non-RFC1035 chars
+ *                       like underscores, resolved later via Hostname).
  *
  * @returns     SSH_OK if the provided string is in format of SSH URI,
  *              SSH_ERROR on failure
@@ -62,7 +67,8 @@ int ssh_config_parse_uri(const char *tok,
                          char **username,
                          char **hostname,
                          char **port,
-                         bool ignore_port);
+                         bool ignore_port,
+                         bool strict);
 
 /**
  * @brief: Parse the ProxyJump configuration line and if parsing,

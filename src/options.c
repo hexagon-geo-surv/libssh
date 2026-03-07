@@ -718,7 +718,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 char *username = NULL, *hostname = NULL;
-                rc = ssh_config_parse_uri(value, &username, &hostname, NULL, true);
+                rc = ssh_config_parse_uri(value, &username, &hostname, NULL, true, true);
                 if (rc != SSH_OK) {
                     ssh_set_error_invalid(session);
                     return -1;

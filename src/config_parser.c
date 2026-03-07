@@ -172,7 +172,8 @@ int ssh_config_parse_uri(const char *tok,
                          char **username,
                          char **hostname,
                          char **port,
-                         bool ignore_port)
+                         bool ignore_port,
+                         bool strict)
 {
     char *endp = NULL;
     long port_n;
@@ -243,12 +244,30 @@ int ssh_config_parse_uri(const char *tok,
         if (*hostname == NULL) {
             goto error;
         }
-        /* if not an ip, check syntax */
-        rc = ssh_is_ipaddr(*hostname);
-        if (rc == 0) {
-            rc = ssh_check_hostname_syntax(*hostname);
-            if (rc != SSH_OK) {
+        if (strict) {
+            /* if not an ip, check syntax */
+            rc = ssh_is_ipaddr(*hostname);
+            if (rc == 0) {
+                rc = ssh_check_hostname_syntax(*hostname);
+                if (rc != SSH_OK) {
+                    goto error;
+                }
+            }
+        } else {
+            /* Reject shell metacharacters to allow config aliases with
+             * non-RFC1035 chars (e.g. %, _). Modeled on OpenSSH's
+             * valid_hostname() in ssh.c. */
+            const char *c = NULL;
+            if ((*hostname)[0] == '-') {
                 goto error;
+            }
+            for (c = *hostname; *c != '\0'; c++) {
+                char *is_meta = strchr("'`\"$\\;&<>|(){},", *c);
+                int is_space = isspace((unsigned char)*c);
+                int is_ctrl = iscntrl((unsigned char)*c);
+                if (is_meta != NULL || is_space || is_ctrl) {
+                    goto error;
+                }
             }
         }
     }

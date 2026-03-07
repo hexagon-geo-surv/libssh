@@ -2762,21 +2762,21 @@ static void torture_config_parse_uri(void **state)
 
     (void)state; /* unused */
 
-    rc = ssh_config_parse_uri("localhost", &username, &hostname, &port, false);
+    rc = ssh_config_parse_uri("localhost", &username, &hostname, &port, false, true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "localhost");
     SAFE_FREE(hostname);
     assert_null(port);
 
-    rc = ssh_config_parse_uri("1.2.3.4", &username, &hostname, &port, false);
+    rc = ssh_config_parse_uri("1.2.3.4", &username, &hostname, &port, false, true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1.2.3.4");
     SAFE_FREE(hostname);
     assert_null(port);
 
-    rc = ssh_config_parse_uri("1.2.3.4:2222", &username, &hostname, &port, false);
+    rc = ssh_config_parse_uri("1.2.3.4:2222", &username, &hostname, &port, false, true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1.2.3.4");
@@ -2784,7 +2784,7 @@ static void torture_config_parse_uri(void **state)
     assert_string_equal(port, "2222");
     SAFE_FREE(port);
 
-    rc = ssh_config_parse_uri("[1:2:3::4]:2222", &username, &hostname, &port, false);
+    rc = ssh_config_parse_uri("[1:2:3::4]:2222", &username, &hostname, &port, false, true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1:2:3::4");
@@ -2793,13 +2793,39 @@ static void torture_config_parse_uri(void **state)
     SAFE_FREE(port);
 
     /* do not want port */
-    rc = ssh_config_parse_uri("1:2:3::4", &username, &hostname, NULL, true);
+    rc = ssh_config_parse_uri("1:2:3::4", &username, &hostname, NULL, true, true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1:2:3::4");
     SAFE_FREE(hostname);
 
-    rc = ssh_config_parse_uri("user -name@", &username, NULL, NULL, true);
+    rc = ssh_config_parse_uri("user -name@", &username, NULL, NULL, true, true);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Non-strict accepts non-RFC1035 chars (e.g. _, %) */
+    rc = ssh_config_parse_uri("customer_1", &username, &hostname, NULL, true, false);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "customer_1");
+    SAFE_FREE(hostname);
+
+    rc = ssh_config_parse_uri("admin@%prod", &username, &hostname, NULL, true, false);
+    assert_return_code(rc, errno);
+    assert_string_equal(username, "admin");
+    assert_string_equal(hostname, "%prod");
+    SAFE_FREE(username);
+    SAFE_FREE(hostname);
+
+    /* Strict rejects what non-strict accepts */
+    rc = ssh_config_parse_uri("customer_1", &username, &hostname, NULL, true, true);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Non-strict rejects shell metacharacters */
+    rc = ssh_config_parse_uri("host;cmd", &username, &hostname, NULL, true, false);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Non-strict rejects leading dash */
+    rc = ssh_config_parse_uri("-host", &username, &hostname, NULL, true, false);
     assert_int_equal(rc, SSH_ERROR);
 }
 

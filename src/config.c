@@ -544,6 +544,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
                                       &jump_host->username,
                                       &jump_host->hostname,
                                       &port,
+                                      false,
                                       false);
             if (rv != SSH_OK) {
                 ssh_set_error_invalid(session);
@@ -566,7 +567,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
             }
         } else if (parse_entry) {
             /* We actually care only about the first item */
-            rv = ssh_config_parse_uri(cp, &username, &hostname, &port, false);
+            rv = ssh_config_parse_uri(cp, &username, &hostname, &port, false, false);
             if (rv != SSH_OK) {
                 ssh_set_error_invalid(session);
                 goto out;
@@ -582,7 +583,7 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
             }
         } else {
             /* The rest is just sanity-checked to avoid failures later */
-            rv = ssh_config_parse_uri(cp, NULL, NULL, NULL, false);
+            rv = ssh_config_parse_uri(cp, NULL, NULL, NULL, false, false);
             if (rv != SSH_OK) {
                 ssh_set_error_invalid(session);
                 goto out;

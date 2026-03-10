@@ -288,6 +288,20 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     return 0;
 }
 
+/** @internal
+ * @brief Set a key exchange algorithm list option on the session.
+ *
+ * Supports prefix modifiers: '+' to append, '-' to remove, '^' to prepend
+ * to the default algorithm list.
+ *
+ * @param[in]  session  The SSH session.
+ * @param[in]  algo     The algorithm type to configure.
+ * @param[in]  list     The algorithm list string.
+ * @param[out] place    Pointer to the string to store
+ *                      the resulting algorithm list.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_options_set_algo(ssh_session session,
                          enum ssh_kex_types_e algo,
                          const char *list,
@@ -2081,6 +2095,16 @@ out:
     return r;
 }
 
+/** @internal
+ * @brief Apply default values for unset session options.
+ *
+ * Sets default SSH directory and username if not already configured,
+ * and resolves any remaining option expansions.
+ *
+ * @param[in] session  The SSH session to apply defaults to.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_options_apply(ssh_session session)
 {
     char *tmp = NULL;

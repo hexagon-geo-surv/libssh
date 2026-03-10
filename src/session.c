@@ -1010,7 +1010,9 @@ int ssh_get_version(ssh_session session) {
 /**
  * @internal
  * @brief Callback to be called when the socket received an exception code.
- * @param user is a pointer to session
+ * @param code        The exception code from the socket layer.
+ * @param errno_code  The errno value associated with the exception.
+ * @param user        Pointer to the SSH session.
  */
 void ssh_socket_exception_callback(int code, int errno_code, void *user){
     ssh_session session = (ssh_session)user;

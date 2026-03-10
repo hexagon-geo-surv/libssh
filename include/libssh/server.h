@@ -35,6 +35,11 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Options for configuring an SSH server bind session.
+ *
+ * Used with ssh_bind_options_set() to configure server-side options.
+ */
 enum ssh_bind_options_e {
     SSH_BIND_OPTIONS_BINDADDR,
     SSH_BIND_OPTIONS_BINDPORT,

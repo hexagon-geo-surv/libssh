@@ -43,11 +43,9 @@
  * @brief Registers an error with a description.
  *
  * @param  error       The place to store the error.
- *
  * @param  code        The class of error.
- *
+ * @param  function    The name of the calling function.
  * @param  descr       The description, which can be a format string.
- *
  * @param  ...         The arguments for the format string.
  */
 void _ssh_set_error(void *error,
@@ -76,6 +74,7 @@ void _ssh_set_error(void *error,
  * @brief Registers an out of memory error
  *
  * @param  error       The place to store the error.
+ * @param  function    The name of the calling function.
  *
  */
 void _ssh_set_error_oom(void *error, const char *function)

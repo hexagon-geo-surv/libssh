@@ -1684,11 +1684,12 @@ int ssh_config_parse_line_cli(ssh_session session, const char *line)
                                           true);
 }
 
-/* @brief Parse configuration from a file pointer
+/** 
+ * @brief Parse configuration from a file pointer
  *
- * @params[in] session   The ssh session
- * @params[in] fp        A valid file pointer
- * @params[in] global    Whether the config is global or not
+ * @param[in] session   The ssh session
+ * @param[in] fp        A valid file pointer
+ * @param[in] global    Whether the config is global or not
  *
  * @returns    0 on successful parsing the configuration file, -1 on error
  */
@@ -1710,10 +1711,11 @@ int ssh_config_parse(ssh_session session, FILE *fp, bool global)
     return 0;
 }
 
-/* @brief Parse configuration file and set the options to the given session
+/** 
+ * @brief Parse configuration file and set the options to the given session
  *
- * @params[in] session   The ssh session
- * @params[in] filename  The path to the ssh configuration file
+ * @param[in] session   The ssh session
+ * @param[in] filename  The path to the ssh configuration file
  *
  * @returns    0 on successful parsing the configuration file, -1 on error
  */
@@ -1748,10 +1750,11 @@ int ssh_config_parse_file(ssh_session session, const char *filename)
     return rv;
 }
 
-/* @brief Parse configuration string and set the options to the given session
+/** 
+ * @brief Parse configuration string and set the options to the given session
  *
- * @params[in] session   The ssh session
- * @params[in] input     Null terminated string containing the configuration
+ * @param[in] session   The ssh session
+ * @param[in] input     Null terminated string containing the configuration
  *
  * @returns    SSH_OK on successful parsing the configuration string,
  *             SSH_ERROR on error

@@ -127,7 +127,13 @@ static char *ssh_get_user_home_dir_internal(void)
     return NULL;
 }
 
-/* we have read access on file */
+/** @internal
+ * @brief Check whether the current process has read access to a file.
+ *
+ * @param[in] file  Path to the file to check.
+ *
+ * @return  1 if the file is readable, 0 otherwise.
+ */
 int ssh_file_readaccess_ok(const char *file)
 {
     if (_access(file, 4) < 0) {
@@ -208,11 +214,11 @@ struct tm *ssh_localtime(const time_t *timer, struct tm *result)
     return result;
 }
 
-/**
- * @brief  Get username from the calling process.
+/** @internal
+ * @brief Get the username of the currently running process.
  *
- * @return An allocated string with the user on success, NULL on failure. The
- * caller is responsible for freeing returned string.
+ * @return  A newly allocated string with the username, or NULL on error.
+ *          The caller is responsible for freeing it.
  */
 char *ssh_get_local_username(void)
 {
@@ -240,6 +246,13 @@ char *ssh_get_local_username(void)
     return NULL;
 }
 
+/** @internal
+ * @brief Check whether a string is a valid IPv4 address.
+ *
+ * @param[in] str  The string to check.
+ *
+ * @return  1 if the string is a valid IPv4 address, 0 otherwise.
+ */
 int ssh_is_ipaddr_v4(const char *str)
 {
     struct sockaddr_storage ss;
@@ -263,6 +276,13 @@ int ssh_is_ipaddr_v4(const char *str)
     return 0;
 }
 
+/** @internal
+ * @brief Check whether a string is a valid IPv4 or IPv6 address.
+ *
+ * @param[in] str  The string to check.
+ *
+ * @return  1 if valid IP address, 0 if not, -1 on memory error.
+ */
 int ssh_is_ipaddr(const char *str)
 {
     int rc = SOCKET_ERROR;
@@ -328,7 +348,13 @@ static char *ssh_get_user_home_dir_internal(void)
     return szPath;
 }
 
-/* we have read access on file */
+/** @internal
+ * @brief Check whether the current process has read access to a file.
+ *
+ * @param[in] file  Path to the file to check.
+ *
+ * @return  1 if the file is readable, 0 otherwise.
+ */
 int ssh_file_readaccess_ok(const char *file)
 {
     if (access(file, R_OK) < 0) {
@@ -363,11 +389,11 @@ int ssh_dir_writeable(const char *path)
     return 0;
 }
 
-/**
- * @brief  Get username from the calling process.
+/** @internal
+ * @brief Get the username of the currently running process.
  *
- * @return An allocated string with the name on success, NULL on failure. The
- * caller is responsible for freeing returned string.
+ * @return  A newly allocated string with the username, or NULL on error.
+ *          The caller is responsible for freeing it.
  */
 char *ssh_get_local_username(void)
 {
@@ -393,6 +419,13 @@ char *ssh_get_local_username(void)
     return name;
 }
 
+/** @internal
+ * @brief Check whether a string is a valid IPv4 address.
+ *
+ * @param[in] str  The string to check.
+ *
+ * @return  1 if the string is a valid IPv4 address, 0 otherwise.
+ */
 int ssh_is_ipaddr_v4(const char *str)
 {
     int rc = -1;
@@ -406,6 +439,13 @@ int ssh_is_ipaddr_v4(const char *str)
     return 0;
 }
 
+/** @internal
+ * @brief Check whether a string is a valid IPv4 or IPv6 address.
+ *
+ * @param[in] str  The string to check.
+ *
+ * @return  1 if valid IP address, 0 if not, -1 on memory error.
+ */
 int ssh_is_ipaddr(const char *str)
 {
     int rc = -1;
@@ -440,6 +480,17 @@ int ssh_is_ipaddr(const char *str)
 
 #endif /* _WIN32 */
 
+/** @internal
+ * @brief Get the home directory of the current user.
+ *
+ * If a session is provided and a cached value exists, it is returned directly.
+ * Otherwise the home directory is looked up and cached in the session.
+ *
+ * @param[in] session  The SSH session to cache the result in, or NULL.
+ *
+ * @return  A newly allocated string with the home directory path, or NULL
+ *          on error. The caller is responsible for freeing it.
+ */
 char *ssh_get_user_home_dir(ssh_session session)
 {
     char *szPath = NULL;
@@ -463,6 +514,14 @@ char *ssh_get_user_home_dir(ssh_session session)
     return szPath;
 }
 
+/** @internal
+ * @brief Convert a string to lowercase.
+ *
+ * @param[in] str  The string to convert.
+ *
+ * @return  A newly allocated lowercase copy of the string, or NULL on error.
+ *          The caller is responsible for freeing it.
+ */
 char *ssh_lowercase(const char* str)
 {
     char *new = NULL, *p = NULL;
@@ -483,6 +542,15 @@ char *ssh_lowercase(const char* str)
     return new;
 }
 
+/** @internal
+ * @brief Format a host and port into a "[host]:port" string.
+ *
+ * @param[in] host  The hostname or IP address.
+ * @param[in] port  The port number.
+ *
+ * @return  A newly allocated string of the form "[host]:port", or NULL
+ *          on error. The caller is responsible for freeing it.
+ */
 char *ssh_hostport(const char *host, int port)
 {
     char *dest = NULL;
@@ -788,6 +856,11 @@ const char *ssh_version(int req_version)
     return NULL;
 }
 
+/** @internal
+ * @brief Create a new empty linked list.
+ *
+ * @return  A newly allocated ssh_list, or NULL on memory error.
+ */
 struct ssh_list *ssh_list_new(void)
 {
     struct ssh_list *ret = malloc(sizeof(struct ssh_list));
@@ -798,6 +871,13 @@ struct ssh_list *ssh_list_new(void)
     return ret;
 }
 
+/** @internal
+ * @brief Free a linked list and all its iterator nodes.
+ *
+ * The data pointed to by each node is not freed.
+ *
+ * @param[in] list  The list to free.
+ */
 void ssh_list_free(struct ssh_list *list)
 {
     struct ssh_iterator *ptr = NULL, *next = NULL;
@@ -812,6 +892,13 @@ void ssh_list_free(struct ssh_list *list)
     SAFE_FREE(list);
 }
 
+/** @internal
+ * @brief Get the first iterator of a linked list.
+ *
+ * @param[in] list  The list to iterate.
+ *
+ * @return  Pointer to the first iterator, or NULL if the list is empty.
+ */
 struct ssh_iterator *ssh_list_get_iterator(const struct ssh_list *list)
 {
     if (!list)
@@ -819,6 +906,14 @@ struct ssh_iterator *ssh_list_get_iterator(const struct ssh_list *list)
     return list->root;
 }
 
+/** @internal
+ * @brief Find the iterator pointing to a specific value in the list.
+ *
+ * @param[in] list   The list to search.
+ * @param[in] value  The data pointer to find.
+ *
+ * @return  The iterator pointing to the value, or NULL if not found.
+ */
 struct ssh_iterator *ssh_list_find(const struct ssh_list *list, void *value)
 {
     struct ssh_iterator *it = NULL;
@@ -894,6 +989,14 @@ int ssh_list_append(struct ssh_list *list, const void *data)
   return SSH_OK;
 }
 
+/** @internal
+ * @brief Prepend an element at the beginning of the list.
+ *
+ * @param[in] list  The list to prepend to.
+ * @param[in] data  The element to prepend.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_list_prepend(struct ssh_list *list, const void *data)
 {
   struct ssh_iterator *it = NULL;
@@ -919,6 +1022,12 @@ int ssh_list_prepend(struct ssh_list *list, const void *data)
   return SSH_OK;
 }
 
+/** @internal
+ * @brief Remove an element from the list by its iterator.
+ *
+ * @param[in] list      The list to remove from.
+ * @param[in] iterator  The iterator pointing to the element to remove.
+ */
 void ssh_list_remove(struct ssh_list *list, struct ssh_iterator *iterator)
 {
     struct ssh_iterator *ptr = NULL, *prev = NULL;
@@ -1257,6 +1366,12 @@ char *ssh_path_expand_tilde(const char *d)
     return r;
 }
 
+/** @internal
+ * @brief Get the hostname of the local machine.
+ *
+ * @return  A newly allocated string with the hostname, or NULL on error.
+ *          The caller is responsible for freeing it.
+ */
 char *ssh_get_local_hostname(void)
 {
     char host[NI_MAXHOST] = {0};
@@ -1359,6 +1474,7 @@ err:
 /** @internal
  * @brief expands a string in function of session options
  *
+ * @param[in] session  The SSH session providing option values for expansion.
  * @param[in] s Format string to expand. Known parameters:
  *               - %d user home directory (~)
  *               - %h target host name
@@ -1791,6 +1907,15 @@ void burn_free(void *ptr, size_t len)
 }
 
 #if !defined(HAVE_STRNDUP)
+
+/** @internal
+ * @brief Compatibility implementation of strndup for systems that lack it.
+ *
+ * @param[in] s  The string to duplicate.
+ * @param[in] n  Maximum number of characters to copy.
+ *
+ * @return  A newly allocated null-terminated string, or NULL on error.
+ */
 char *strndup(const char *s, size_t n)
 {
     char *x = NULL;
@@ -1811,7 +1936,11 @@ char *strndup(const char *s, size_t n)
 }
 #endif /* ! HAVE_STRNDUP */
 
-/* Increment 64b integer in network byte order */
+/** @internal
+ * @brief Increment a 64-bit counter stored in network byte order.
+ *
+ * @param[in,out] counter  Pointer to an 8-byte buffer holding the counter.
+ */
 void
 uint64_inc(unsigned char *counter)
 {

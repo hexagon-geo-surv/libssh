@@ -64,6 +64,7 @@ extern "C" {
 #endif /* _MSC_VER */
 #endif /* _WIN32 */
 
+/** @brief The SFTP protocol version implemented by this library. */
 #define LIBSFTP_VERSION 3
 
 typedef struct sftp_attributes_struct* sftp_attributes;
@@ -90,10 +91,76 @@ typedef struct sftp_request_queue_struct* sftp_request_queue;
  * @see sftp_free
  */
 typedef struct sftp_session_struct* sftp_session;
+
+/**
+ * @brief Handle for an SFTP status message received from the server.
+ *
+ * This type represents a status response returned by the SFTP server in
+ * reply to a client request. It carries a numeric status code and an optional
+ * human-readable error message. This type is used internally by libssh and
+ * is not part of the public API.
+ *
+ * @see sftp_status_message_struct
+ */
 typedef struct sftp_status_message_struct* sftp_status_message;
+
+/**
+ * @brief Handle for SFTP file system statistics.
+ *
+ * This type represents file system statistics as reported by the SFTP server,
+ * analogous to the POSIX @c statvfs structure. It is obtained via
+ * sftp_statvfs() or sftp_fstatvfs() and must be freed with
+ * sftp_statvfs_free().
+ *
+ * @see sftp_statvfs_struct
+ * @see sftp_statvfs
+ * @see sftp_fstatvfs
+ * @see sftp_statvfs_free
+ */
 typedef struct sftp_statvfs_struct* sftp_statvfs_t;
+
+/**
+ * @brief Handle for SFTP server limits information.
+ *
+ * This type represents the server-reported SFTP limits such as the maximum
+ * packet, read, and write lengths and the maximum number of open handles.
+ * It is obtained via sftp_limits() and must be freed with sftp_limits_free().
+ *
+ * @see sftp_limits_struct
+ * @see sftp_limits
+ * @see sftp_limits_free
+ */
 typedef struct sftp_limits_struct* sftp_limits_t;
+
+/**
+ * @brief Handle for an asynchronous SFTP I/O operation.
+ *
+ * This type represents an in-flight asynchronous SFTP read or write request.
+ * It is allocated by sftp_aio_begin_read() or sftp_aio_begin_write() and
+ * consumed by the corresponding sftp_aio_wait_read() or sftp_aio_wait_write()
+ * call. If the wait call is not reached, the handle must be freed explicitly
+ * with sftp_aio_free() to avoid memory leaks.
+ *
+ * @see sftp_aio_begin_read
+ * @see sftp_aio_wait_read
+ * @see sftp_aio_begin_write
+ * @see sftp_aio_wait_write
+ * @see sftp_aio_free
+ */
 typedef struct sftp_aio_struct* sftp_aio;
+
+/**
+ * @brief Handle for an SFTP name-to-id mapping.
+ *
+ * This type stores a mapping between numeric user or group IDs and their
+ * corresponding names. It is allocated via sftp_name_id_map_new(), populated
+ * by sftp_get_users_groups_by_id(), and freed with sftp_name_id_map_free().
+ *
+ * @see sftp_name_id_map_struct
+ * @see sftp_name_id_map_new
+ * @see sftp_get_users_groups_by_id
+ * @see sftp_name_id_map_free
+ */
 typedef struct sftp_name_id_map_struct *sftp_name_id_map;
 
 struct sftp_session_struct {
@@ -391,7 +458,6 @@ LIBSSH_API sftp_session sftp_new(ssh_session session);
  * @see ssh_set_blocking()
  */
 LIBSSH_API sftp_session sftp_new_channel(ssh_session session, ssh_channel channel);
-
 
 /**
  * @brief Close and deallocate a sftp session.
@@ -1582,7 +1648,9 @@ LIBSSH_API void sftp_handle_remove(sftp_session sftp, void *handle);
 #define SFTP_EXTENDED SSH_FXP_EXTENDED
 
 /* openssh flags */
+/** @brief statvfs flag: file system is mounted read-only. */
 #define SSH_FXE_STATVFS_ST_RDONLY 0x1 /* read-only */
+/** @brief statvfs flag: file system does not support setuid/setgid. */
 #define SSH_FXE_STATVFS_ST_NOSUID 0x2 /* no setuid */
 
 #ifdef __cplusplus

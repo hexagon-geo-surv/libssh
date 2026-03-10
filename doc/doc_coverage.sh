@@ -49,4 +49,4 @@ ALL_FUNC=$(echo "$FUNC_LINES" | sed -e "s/$F_CUT_BEFORE//g" -e "s/$F_CUT_AFTER//
 ALL_FUNC=$(echo "$ALL_FUNC" | sort - | uniq | wc -l)
 
 # percentage of the documented functions
-awk "BEGIN {printf \"Documentation coverage is %.2f%\n\", 100 - (${UNDOC_FUNC}/${ALL_FUNC}*100)}"
+awk "BEGIN {printf \"Documentation coverage is %.2f%%\n\", 100 - (${UNDOC_FUNC}/${ALL_FUNC}*100)}"

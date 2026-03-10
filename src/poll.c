@@ -84,16 +84,33 @@ struct ssh_poll_ctx_struct {
 #ifdef HAVE_POLL
 #include <poll.h>
 
+/** @internal
+ * @brief Initialize the poll subsystem. No-op when native poll is available.
+ */
 void ssh_poll_init(void)
 {
     return;
 }
 
+/** @internal
+ * @brief Clean up the poll subsystem. No-op when native poll is available.
+ */
 void ssh_poll_cleanup(void)
 {
     return;
 }
 
+/** @internal
+ * @brief Wait for events on a set of file descriptors.
+ *
+ * @param fds      Array of pollfd structures specifying the file descriptors.
+ * @param nfds     Number of file descriptors in the array.
+ * @param timeout  Timeout in milliseconds, `SSH_TIMEOUT_INFINITE`
+ *                 to block indefinitely.
+ *
+ * @return         Number of file descriptors with events, 0 on timeout,
+ *                 -1 on error.
+ */
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout)
 {
     return poll((struct pollfd *)fds, nfds, timeout);
@@ -321,16 +338,33 @@ static int bsd_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout)
     return rc;
 }
 
+/** @internal
+ * @brief Initialize the poll subsystem using the BSD poll emulation.
+ */
 void ssh_poll_init(void)
 {
     ssh_poll_emu = bsd_poll;
 }
 
+/** @internal
+ * @brief Clean up the poll subsystem, resetting to the BSD poll emulation.
+ */
 void ssh_poll_cleanup(void)
 {
     ssh_poll_emu = bsd_poll;
 }
 
+/** @internal
+ * @brief Wait for events on a set of file descriptors.
+ *
+ * @param fds      Array of pollfd structures specifying the file descriptors.
+ * @param nfds     Number of file descriptors in the array.
+ * @param timeout  Timeout in milliseconds, `SSH_TIMEOUT_INFINITE`
+ *                 to block indefinitely.
+ *
+ * @return         Number of file descriptors with events, 0 on timeout,
+ *                 -1 on error.
+ */
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout)
 {
     return (ssh_poll_emu)(fds, nfds, timeout);

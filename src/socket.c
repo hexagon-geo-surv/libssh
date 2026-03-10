@@ -65,6 +65,9 @@ struct sockaddr_un {
  * @{
  */
 
+/** @internal
+ * @brief Represents the possible states of an SSH socket connection.
+ */
 enum ssh_socket_states_e {
 	SSH_SOCKET_NONE,
 	SSH_SOCKET_CONNECTING,
@@ -1063,12 +1066,26 @@ int ssh_socket_get_poll_flags(ssh_socket s)
 }
 
 #ifdef _WIN32
+/** @internal
+ * @brief Set a socket file descriptor to non-blocking mode.
+ *
+ * @param fd  The socket file descriptor to configure.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_socket_set_nonblocking(socket_t fd)
 {
     u_long nonblocking = 1;
     return ioctlsocket(fd, FIONBIO, &nonblocking);
 }
 
+/** @internal
+ * @brief Set a socket file descriptor to blocking mode.
+ *
+ * @param fd  The socket file descriptor to configure.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_socket_set_blocking(socket_t fd)
 {
     u_long nonblocking = 0;
@@ -1076,11 +1093,25 @@ int ssh_socket_set_blocking(socket_t fd)
 }
 
 #else /* _WIN32 */
+/** @internal
+ * @brief Set a socket file descriptor to non-blocking mode.
+ *
+ * @param fd  The socket file descriptor to configure.
+ *
+ * @return  `SSH_OK` on success, `SSH_ERROR` on error.
+ */
 int ssh_socket_set_nonblocking(socket_t fd)
 {
     return fcntl(fd, F_SETFL, O_NONBLOCK);
 }
 
+/** @internal
+ * @brief Set a socket file descriptor to blocking mode.
+ *
+ * @param fd  The socket file descriptor to configure.
+ *
+ * @return    0 on success, -1 on error.
+ */
 int ssh_socket_set_blocking(socket_t fd)
 {
     return fcntl(fd, F_SETFL, 0);

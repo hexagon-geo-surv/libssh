@@ -57,10 +57,11 @@ enum ssh_bind_config_opcode_e {
     BIND_CFG_MAX /* Keep this one last in the list */
 };
 
-/* @brief Parse configuration file and set the options to the given ssh_bind
+/**
+ * @brief Parse configuration file and set the options to the given ssh_bind
  *
- * @params[in] sshbind   The ssh_bind context to be configured
- * @params[in] filename  The path to the configuration file
+ * @param[in] sshbind   The ssh_bind context to be configured
+ * @param[in] filename  The path to the configuration file
  *
  * @returns    0 on successful parsing the configuration file, -1 on error
  */

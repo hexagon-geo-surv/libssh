@@ -70,9 +70,15 @@ struct ssh_iterator {
   const void *data;
 };
 
+/**
+ * @brief Holds connection details for an SSH proxyjump host.
+ */
 struct ssh_jump_info_struct {
+    /** Hostname or IP address of the jump host. */
     char *hostname;
+    /** Username to authenticate with on the jump host. */
     char *username;
+    /** Port number of the jump host. */
     int port;
 };
 

@@ -538,12 +538,9 @@ typedef struct ssh_socket_callbacks_struct *ssh_socket_callbacks;
  * automatically passed through.
  *
  * @param list     list of callbacks
- *
  * @param cbtype   type of the callback
- *
  * @param c        callback name
- *
- * @param va_args parameters to be passed
+ * @param ...      Parameters to be passed to the callback.
  */
 #define ssh_callbacks_execute_list(list, cbtype, c, ...)      \
     do {                                                      \
@@ -585,9 +582,18 @@ typedef struct ssh_socket_callbacks_struct *ssh_socket_callbacks;
             _cb = ssh_iterator_value(_cb_type, _cb_i);                \
             if (ssh_callbacks_exists(_cb, _cb_name))
 
+/** @internal
+ * @brief Execute the current callback in an ssh_callbacks_iterate() loop.
+ *
+ * @param _cb_name  The name of the callback field to invoke.
+ * @param ...       Parameters to be passed to the callback.
+ */
 #define ssh_callbacks_iterate_exec(_cb_name, ...) \
                 _cb->_cb_name(__VA_ARGS__, _cb->userdata)
 
+/** @internal
+ * @brief End an ssh_callbacks_iterate() loop.
+ */
 #define ssh_callbacks_iterate_end() \
         }                           \
     } while(0)
@@ -1060,8 +1066,18 @@ LIBSSH_API int ssh_remove_channel_callbacks(ssh_channel channel,
  * @{
  */
 
+/** @brief Callback for thread mutex operations (init, destroy, lock, unlock).
+ *
+ * @param lock  Pointer to the mutex lock.
+ *
+ * @return      0 on success, non-zero on error.
+ */
 typedef int (*ssh_thread_callback) (void **lock);
 
+/** @brief Callback to retrieve the current thread identifier.
+ *
+ * @return  The unique identifier of the calling thread.
+ */
 typedef unsigned long (*ssh_thread_id_callback) (void);
 struct ssh_threads_callbacks_struct {
 	const char *type;
@@ -1172,10 +1188,20 @@ typedef int (*ssh_jump_verify_knownhost_callback)(ssh_session session,
 typedef int (*ssh_jump_authenticate_callback)(ssh_session session,
                                               void *userdata);
 
+/**
+ * @brief Callback collection for managing an SSH proxyjump connection.
+ *
+ * Set these callbacks to control knownhost verification and authentication
+ * on the jump host before the final destination is reached.
+ */
 struct ssh_jump_callbacks_struct {
+    /** Userdata passed to each callback. */
     void *userdata;
+    /** Called before connecting to the jump host. */
     ssh_jump_before_connection_callback before_connection;
+    /** Called to verify the jump host's identity. */
     ssh_jump_verify_knownhost_callback verify_knownhost;
+    /** Called to authenticate on the jump host. */
     ssh_jump_authenticate_callback authenticate;
 };
 

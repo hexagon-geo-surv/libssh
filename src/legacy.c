@@ -770,6 +770,16 @@ ssh_string ssh_get_pubkey(ssh_session session)
  ****************************************************************************/
 
 #ifdef WITH_SERVER
+
+/**
+ * @brief Accept an incoming SSH connection on a bind socket.
+ *
+ * @deprecated  Use ssh_bind_accept() instead.
+ *
+ * @param session  The SSH session to accept the connection on.
+ *
+ * @return  SSH_OK on success, SSH_ERROR on error.
+ */
 int ssh_accept(ssh_session session) {
     return ssh_handle_key_exchange(session);
 }

@@ -948,6 +948,14 @@ void *sftp_handle(sftp_session sftp, ssh_string handle)
     return sftp->handles[val];
 }
 
+/**
+ * @brief Remove an SFTP file or directory handle from the session.
+ *
+ * @param sftp    The SFTP session.
+ * @param handle  The handle to remove.
+ *
+ * @see sftp_handle_alloc()
+ */
 void sftp_handle_remove(sftp_session sftp, void *handle)
 {
     int i;
@@ -2071,16 +2079,19 @@ sftp_channel_default_subsystem_request(ssh_session session,
 }
 
 /**
- * @brief Default data callback for sftp server
+ * @brief Default channel data callback for an SFTP server subsystem.
  *
- * @param[in] session   The ssh session
- * @param[in] channel   The ssh channel with SFTP session opened
- * @param[in] data      The data to be processed.
- * @param[in] len       The length of input data to be processed
- * @param[in] is_stderr Unused channel flag for stderr flagging
- * @param[in] userdata  The pointer to sftp_session
+ * Processes incoming data on the channel and dispatches it to the SFTP
+ * server message handler.
  *
- * @return number of bytes processed, -1 when error occurs.
+ * @param[in] session   The SSH session.
+ * @param[in] channel   The SSH channel carrying the SFTP data.
+ * @param[in] data      The received data buffer.
+ * @param[in] len       The length of the data buffer.
+ * @param[in] is_stderr Unused; SFTP does not use the stderr stream.
+ * @param[in] userdata  Pointer to the sftp_session handle.
+ *
+ * @return Number of bytes processed on success, `SSH_ERROR` on error.
  */
 int
 sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),

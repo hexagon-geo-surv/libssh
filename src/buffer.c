@@ -109,6 +109,11 @@ static void buffer_verify(ssh_buffer buf)
 }
 
 #else
+/** @internal
+ * @brief No-op stub for buffer_verify when debug checks are disabled.
+ *
+ * @param x  The buffer to verify (ignored).
+ */
 #define buffer_verify(x)
 #endif
 
@@ -964,9 +969,12 @@ static int ssh_buffer_pack_allocate_va(struct ssh_buffer_struct *buffer,
 
 /** @internal
  * @brief Add multiple values in a buffer on a single function call
+ * 
  * @param[in] buffer    The buffer to add to
  * @param[in] format    A format string of arguments.
+ * @param[in] argc      Number of arguments passed after format.
  * @param[in] ap        A va_list of arguments.
+ * 
  * @returns             SSH_OK on success
  *                      SSH_ERROR on error
  * @see ssh_buffer_add_format() for format list values.
@@ -1112,6 +1120,9 @@ ssh_buffer_pack_va(struct ssh_buffer_struct *buffer,
  *                         'P': size_t, void * (len of data, pointer to data)
  *                              only pushes data.
  *                         'B': bignum (pushed as SSH string)
+ * @param[in] argc      Number of arguments passed after format.
+ * @param[in] ...       Arguments as described by the format string.
+ * 
  * @returns             SSH_OK on success
  *                      SSH_ERROR on error
  * @warning             when using 'P' with a constant size (e.g. 8), do not
@@ -1148,7 +1159,9 @@ int _ssh_buffer_pack(struct ssh_buffer_struct *buffer,
  * @brief Get multiple values from a buffer on a single function call
  * @param[in] buffer    The buffer to get from
  * @param[in] format    A format string of arguments.
+ * @param[in] argc      Number of arguments passed in the va_list.
  * @param[in] ap        A va_list of arguments.
+ * 
  * @returns             SSH_OK on success
  *                      SSH_ERROR on error
  * @see ssh_buffer_get_format() for format list values.
@@ -1411,6 +1424,9 @@ cleanup:
  *                         'P': size_t, void ** (len of data, pointer to data)
  *                              only pulls data.
  *                         'B': bignum * (pulled as SSH string)
+ * @param[in] argc      Number of arguments passed after format.
+ * @param[in] ...       Arguments as described by the format string.
+ * 
  * @returns             SSH_OK on success
  *                      SSH_ERROR on error
  * @warning             when using 'P' with a constant size (e.g. 8), do not

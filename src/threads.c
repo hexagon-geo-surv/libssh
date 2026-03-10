@@ -62,6 +62,9 @@ int ssh_threads_init(void)
     return rc;
 }
 
+/** @internal
+ * @brief Finalize and clean up the threading backend of the crypto libraries.
+ */
 void ssh_threads_finalize(void)
 {
     crypto_thread_finalize();
@@ -83,6 +86,12 @@ int ssh_threads_set_callbacks(struct ssh_threads_callbacks_struct *cb)
     return rc;
 }
 
+/** @internal
+ * @brief Get the type identifier of the currently active threading callbacks.
+ *
+ * @return  A string identifying the threading backend, or NULL if no
+ *          callbacks are registered.
+ */
 const char *ssh_threads_get_type(void)
 {
     if (user_callbacks != NULL) {

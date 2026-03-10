@@ -109,6 +109,16 @@ static void ssh_log_custom(ssh_logging_callback log_fn,
     log_fn(verbosity, function, buf, ssh_get_log_userdata());
 }
 
+/** @internal
+ * @brief Dispatch a pre-formatted log message to the active logging backend.
+ *
+ * If a custom logging callback is registered, the message is passed to it.
+ * Otherwise, the message is written to stderr.
+ *
+ * @param verbosity  The verbosity level of the message.
+ * @param function   The name of the calling function.
+ * @param buffer     The already-formatted log message string.
+ */
 void ssh_log_function(int verbosity,
                       const char *function,
                       const char *buffer)
@@ -123,6 +133,15 @@ void ssh_log_function(int verbosity,
     ssh_log_stderr(verbosity, function, buffer);
 }
 
+/** @internal
+ * @brief Format a log message from a va_list and dispatch it for logging.
+ *
+ * @param verbosity  The verbosity level of the message.
+ * @param function   The name of the calling function.
+ * @param format     A printf-style format string.
+ * @param va         Pointer to the variable argument list
+ *                   for the format string.
+ */
 void ssh_vlog(int verbosity,
               const char *function,
               const char *format,
@@ -134,6 +153,15 @@ void ssh_vlog(int verbosity,
     ssh_log_function(verbosity, function, buffer);
 }
 
+/** @internal
+ * @brief Log a message if the given verbosity does not 
+ *                   exceed the global log level.
+ *
+ * @param verbosity  The verbosity level of the message.
+ * @param function   The name of the calling function.
+ * @param format     A printf-style format string.
+ * @param ...        Additional arguments corresponding to the format string.
+ */
 void _ssh_log(int verbosity,
               const char *function,
               const char *format, ...)
@@ -149,6 +177,15 @@ void _ssh_log(int verbosity,
 
 /* LEGACY */
 
+/** @brief Log a message using the verbosity level of the given session.
+ *
+ * @deprecated      Use the SSH_LOG() macro instead.
+ *
+ * @param session    The SSH session whose verbosity level is checked.
+ * @param verbosity  The verbosity level of the message.
+ * @param format     A printf-style format string.
+ * @param  ...       Arguments as described by the format string.
+ */
 void ssh_log(ssh_session session,
              int verbosity,
              const char *format, ...)
@@ -164,9 +201,14 @@ void ssh_log(ssh_session session,
 
 /** @internal
  * @brief log a SSH event with a common pointer
- * @param common       The SSH/bind session.
- * @param verbosity     The verbosity of the event.
- * @param format        The format string of the log entry.
+ *
+ * Works for both ssh_session and ssh_bind as both embed ssh_common_struct.
+ *
+ * @param common     The SSH/bind session.
+ * @param verbosity  The verbosity of the event.
+ * @param function   The name of the calling function.
+ * @param format     The format string of the log entry.
+ * @param ...        Additional arguments corresponding to the format string.
  */
 void ssh_log_common(struct ssh_common_struct *common,
                     int verbosity,
@@ -221,6 +263,9 @@ int ssh_set_log_callback(ssh_logging_callback cb) {
   return SSH_OK;
 }
 
+/** @internal
+ * @brief Clear the thread-local logging callback, reverting to stderr logging.
+ */
 void
 _ssh_reset_log_cb(void)
 {

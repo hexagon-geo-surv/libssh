@@ -43,17 +43,35 @@ extern "C" {
  * @{
  */
 
+/**
+ * @brief Macro to declare an SFTP message callback function.
+ *
+ * @param name  The name of the callback function to declare.
+ */
 #define SSH_SFTP_CALLBACK(name) \
     static int name(sftp_client_message message)
 
+/**
+ * @brief Callback for handling SFTP client messages.
+ *
+ * @param message  The SFTP client message to handle.
+ *
+ * @return  0 on success, -1 on error.
+ */
 typedef int (*sftp_server_message_callback)(sftp_client_message message);
 
+/**
+ * @brief Maps an SFTP message type to its handler callback.
+ */
 struct sftp_message_handler
 {
+    /** The name of the SFTP operation (e.g. "read", "write"). */
     const char *name;
+    /** The extended operation name for SSH_FXP_EXTENDED requests, or NULL. */
     const char *extended_name;
+    /** The SFTP message type code (e.g. SSH_FXP_READ). */
     uint8_t type;
-
+    /** The callback function to invoke for this message type. */
     sftp_server_message_callback cb;
 };
 
@@ -61,6 +79,7 @@ LIBSSH_API int sftp_channel_default_subsystem_request(ssh_session session,
                                                       ssh_channel channel,
                                                       const char *subsystem,
                                                       void *userdata);
+
 LIBSSH_API int sftp_channel_default_data_callback(ssh_session session,
                                                   ssh_channel channel,
                                                   void *data,

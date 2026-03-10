@@ -208,6 +208,12 @@ struct tm *ssh_localtime(const time_t *timer, struct tm *result)
     return result;
 }
 
+/**
+ * @brief  Get username from the calling process.
+ *
+ * @return An allocated string with the user on success, NULL on failure. The
+ * caller is responsible for freeing returned string.
+ */
 char *ssh_get_local_username(void)
 {
     DWORD size = 0;
@@ -357,6 +363,12 @@ int ssh_dir_writeable(const char *path)
     return 0;
 }
 
+/**
+ * @brief  Get username from the calling process.
+ *
+ * @return An allocated string with the name on success, NULL on failure. The
+ * caller is responsible for freeing returned string.
+ */
 char *ssh_get_local_username(void)
 {
     struct passwd pwd;

@@ -38,7 +38,6 @@ static struct ssh_threads_callbacks_struct *user_callbacks = NULL;
 /** @internal
  * @brief inits the threading with the backend cryptographic libraries
  */
-
 int ssh_threads_init(void)
 {
     static int threads_initialized = 0;

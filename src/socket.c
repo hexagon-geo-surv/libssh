@@ -444,7 +444,8 @@ int ssh_socket_pollcallback(struct ssh_poll_handle_struct *p,
 /** @internal
  * @brief returns the poll handle corresponding to the socket,
  * creates it if it does not exist.
- * @returns allocated and initialized ssh_poll_handle object
+ *
+ * @return allocated and initialized ssh_poll_handle object
  */
 ssh_poll_handle ssh_socket_get_poll_handle(ssh_socket s)
 {

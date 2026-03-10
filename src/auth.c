@@ -1835,6 +1835,14 @@ int ssh_userauth_agent_pubkey(ssh_session session,
     return rc;
 }
 
+/**
+ * @internal
+ *
+ * @brief  Allocates memory for keyboard interactive auth structure.
+ *
+ * @return A newly allocated ssh_kbdint structure `kbd` on success, NULL on failure.
+ *         The caller is responsible for freeing allocated memory.
+ */
 ssh_kbdint ssh_kbdint_new(void)
 {
     ssh_kbdint kbd;
@@ -1847,7 +1855,11 @@ ssh_kbdint ssh_kbdint_new(void)
     return kbd;
 }
 
-
+/**
+ * @brief Deallocate memory for keyboard interactive auth structure.
+ *
+ * @param[in] kbd   The keyboard interactive structure to free.
+ */
 void ssh_kbdint_free(ssh_kbdint kbd)
 {
     size_t i, n;
@@ -1885,6 +1897,14 @@ void ssh_kbdint_free(ssh_kbdint kbd)
     SAFE_FREE(kbd);
 }
 
+/**
+ * @brief Clean a keyboard interactive auth structure.
+ *
+ * Clears structure's fields and resets nanswers and nprompts to 0, allowing
+ * reuse.
+ *
+ * @param[in] kbd The keyboard interactive struct to clean
+ */
 void ssh_kbdint_clean(ssh_kbdint kbd)
 {
     size_t i, n;

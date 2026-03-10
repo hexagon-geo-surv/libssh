@@ -522,7 +522,7 @@ typedef struct ssh_socket_callbacks_struct *ssh_socket_callbacks;
  *  verifies that the callback pointer exists
  * @param p callback pointer
  * @param c callback name
- * @returns nonzero if callback can be called
+ * @return nonzero if callback can be called
  */
 #define ssh_callbacks_exists(p,c) (\
   (p != NULL) && ( (char *)&((p)-> c) < (char *)(p) + (p)->size ) && \

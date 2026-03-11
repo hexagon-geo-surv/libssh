@@ -582,9 +582,8 @@ int ssh_connect(ssh_session session)
     session->client = 1;
 
     if (session->opts.fd == SSH_INVALID_SOCKET &&
-        session->opts.host == NULL &&
-        session->opts.ProxyCommand == NULL)
-    {
+        session->opts.originalhost == NULL &&
+        session->opts.ProxyCommand == NULL) {
         ssh_set_error(session, SSH_FATAL, "Hostname required");
         return SSH_ERROR;
     }

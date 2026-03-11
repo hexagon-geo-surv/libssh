@@ -567,7 +567,12 @@ ssh_config_parse_proxy_jump(ssh_session session, const char *s, bool do_parsing)
             }
         } else if (parse_entry) {
             /* We actually care only about the first item */
-            rv = ssh_config_parse_uri(cp, &username, &hostname, &port, false, false);
+            rv = ssh_config_parse_uri(cp,
+                                      &username,
+                                      &hostname,
+                                      &port,
+                                      false,
+                                      false);
             if (rv != SSH_OK) {
                 ssh_set_error_invalid(session);
                 goto out;
@@ -1041,20 +1046,20 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 break;
 
             case MATCH_ORIGINALHOST:
-                /* Skip one argument */
+                /* Here we match only one argument */
                 p = ssh_config_get_str_tok(&s, NULL);
                 if (p == NULL || p[0] == '\0') {
-                    SSH_LOG(SSH_LOG_TRACE, "line %d: Match keyword "
-                            "'%s' requires argument", count, p2);
+                    ssh_set_error(session,
+                                  SSH_FATAL,
+                                  "line %d: ERROR - Match originalhost keyword "
+                                  "requires argument",
+                                  count);
                     SAFE_FREE(x);
                     return -1;
                 }
+                result &=
+                    ssh_config_match(session->opts.originalhost, p, negate);
                 args++;
-                SSH_LOG(SSH_LOG_TRACE,
-                        "line %d: Unsupported Match keyword '%s', ignoring",
-                        count,
-                        p2);
-                result = 0;
                 break;
 
             case MATCH_HOST:
@@ -1067,7 +1072,11 @@ static int ssh_config_parse_line_internal(ssh_session session,
                     SAFE_FREE(x);
                     return -1;
                 }
-                result &= ssh_config_match(session->opts.host, p, negate);
+                result &= ssh_config_match(session->opts.host
+                                               ? session->opts.host
+                                               : session->opts.originalhost,
+                                           p,
+                                           negate);
                 args++;
                 break;
 
@@ -1155,7 +1164,9 @@ static int ssh_config_parse_line_internal(ssh_session session,
         int ok = 0, result = -1;
 
         *parsing = 0;
-        lowerhost = (session->opts.host) ? ssh_lowercase(session->opts.host) : NULL;
+        lowerhost = (session->opts.originalhost)
+                        ? ssh_lowercase(session->opts.originalhost)
+                        : NULL;
         for (p = ssh_config_get_str_tok(&s, NULL);
              p != NULL && p[0] != '\0';
              p = ssh_config_get_str_tok(&s, NULL)) {
@@ -1182,7 +1193,9 @@ static int ssh_config_parse_line_internal(ssh_session session,
           if (z == NULL) {
               z = strdup(p);
           }
+          session->opts.config_hostname_only = true;
           ssh_options_set(session, SSH_OPTIONS_HOST, z);
+          session->opts.config_hostname_only = false;
           free(z);
       }
       break;

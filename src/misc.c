@@ -1432,6 +1432,8 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
         case 'h':
             if (session->opts.host) {
                 x = strdup(session->opts.host);
+            } else if (session->opts.originalhost) {
+                x = strdup(session->opts.originalhost);
             } else {
                 ssh_set_error(session, SSH_FATAL, "Cannot expand host");
                 free(buf);

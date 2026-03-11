@@ -23,6 +23,7 @@
  */
 
 #include "config.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -101,6 +102,14 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     if (src->opts.host != NULL) {
         new->opts.host = strdup(src->opts.host);
         if (new->opts.host == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+    }
+
+    if (src->opts.originalhost != NULL) {
+        new->opts.originalhost = strdup(src->opts.originalhost);
+        if (new->opts.originalhost == NULL) {
             ssh_free(new);
             return -1;
         }
@@ -718,18 +727,52 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 return -1;
             } else {
                 char *username = NULL, *hostname = NULL;
-                rc = ssh_config_parse_uri(value, &username, &hostname, NULL, true, true);
-                if (rc != SSH_OK) {
+                char *strict_hostname = NULL;
+
+                /* Non-strict parse: reject shell metacharacters */
+                rc = ssh_config_parse_uri(value,
+                                          &username,
+                                          &hostname,
+                                          NULL,
+                                          true,
+                                          false);
+                if (rc != SSH_OK || hostname == NULL) {
+                    SAFE_FREE(username);
+                    SAFE_FREE(hostname);
                     ssh_set_error_invalid(session);
                     return -1;
                 }
+
+                /* Non-strict passed: set username and originalhost */
                 if (username != NULL) {
                     SAFE_FREE(session->opts.username);
                     session->opts.username = username;
                 }
-                if (hostname != NULL) {
+                if (!session->opts.config_hostname_only) {
+                    SAFE_FREE(session->opts.originalhost);
+                    session->opts.originalhost = hostname;
+                } else {
+                    SAFE_FREE(hostname);
+                }
+
+                /* Strict parse: set host only if valid hostname or IP */
+                rc = ssh_config_parse_uri(value,
+                                          NULL,
+                                          &strict_hostname,
+                                          NULL,
+                                          true,
+                                          true);
+                if (rc != SSH_OK || strict_hostname == NULL) {
                     SAFE_FREE(session->opts.host);
-                    session->opts.host = hostname;
+                    SAFE_FREE(strict_hostname);
+                    if (session->opts.config_hostname_only) {
+                        /* Config path: Hostname must be valid */
+                        ssh_set_error_invalid(session);
+                        return -1;
+                    }
+                } else {
+                    SAFE_FREE(session->opts.host);
+                    session->opts.host = strict_hostname;
                 }
             }
             break;
@@ -1646,7 +1689,8 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
     switch(type)
     {
         case SSH_OPTIONS_HOST:
-            src = session->opts.host;
+            src = session->opts.host ? session->opts.host
+                                     : session->opts.originalhost;
             break;
 
         case SSH_OPTIONS_USER:
@@ -1980,7 +2024,7 @@ int ssh_options_parse_config(ssh_session session, const char *filename)
     if (session == NULL) {
         return -1;
     }
-    if (session->opts.host == NULL) {
+    if (session->opts.originalhost == NULL) {
         ssh_set_error_invalid(session);
         return -1;
     }

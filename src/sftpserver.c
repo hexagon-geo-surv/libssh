@@ -2104,7 +2104,7 @@ sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),
     sftp_session *sftpp = (sftp_session *)userdata;
     sftp_session sftp = NULL;
     sftp_client_message msg;
-    int decode_len;
+    uint32_t undecoded_len = len;
     int rc;
 
     if (sftpp == NULL) {
@@ -2113,17 +2113,25 @@ sftp_channel_default_data_callback(UNUSED_PARAM(ssh_session session),
     }
     sftp = *sftpp;
 
-    decode_len = sftp_decode_channel_data_to_packet(sftp, data, len);
-    if (decode_len == SSH_ERROR)
-        return SSH_ERROR;
+    do {
+        int decode_len =
+            sftp_decode_channel_data_to_packet(sftp, data, undecoded_len);
+        if (decode_len == SSH_ERROR) {
+            return SSH_ERROR;
+        }
 
-    msg = sftp_get_client_message_from_packet(sftp);
-    rc = process_client_message(msg);
-    sftp_client_message_free(msg);
-    if (rc != SSH_OK)
-        SSH_LOG(SSH_LOG_PROTOCOL, "process sftp failed!");
+        msg = sftp_get_client_message_from_packet(sftp);
+        rc = process_client_message(msg);
+        sftp_client_message_free(msg);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_PROTOCOL, "process sftp failed!");
+        }
 
-    return decode_len;
+        undecoded_len -= decode_len;
+        data = (uint8_t *)data + decode_len;
+    } while (undecoded_len > 0);
+
+    return len;
 }
 #else
 /* Not available on Windows for now */

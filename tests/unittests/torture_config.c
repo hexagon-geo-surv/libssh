@@ -130,23 +130,23 @@ extern LIBSSH_THREAD int ssh_log_level;
     "ProxyJump = many-spaces.com\n" /* valid */
 
 /* Match keyword */
-#define LIBSSH_TESTCONFIG_STRING10 \
-    "Match host example\n" \
-    "\tHostName example.com\n" \
-    "Match host example1,example2\n" \
-    "\tHostName exampleN\n" \
-    "Match user guest\n" \
-    "\tHostName guest.com\n" \
-    "Match user tester host testhost\n" \
-    "\tHostName testhost.com\n" \
+#define LIBSSH_TESTCONFIG_STRING10       \
+    "Match host example\n"               \
+    "\tHostName example.com\n"           \
+    "Match host example1,example2\n"     \
+    "\tHostName exampleN\n"              \
+    "Match user guest\n"                 \
+    "\tHostName guest.com\n"             \
+    "Match user tester host testhost\n"  \
+    "\tHostName testhost.com\n"          \
     "Match !user tester host testhost\n" \
-    "\tHostName nonuser-testhost.com\n" \
-    "Match all\n" \
-    "\tHostName all-matched.com\n" \
-    /* Unsupported options */ \
-    "Match originalhost example\n" \
-    "\tHostName original-example.com\n" \
-    "Match localuser guest\n" \
+    "\tHostName nonuser-testhost.com\n"  \
+    "Match all\n"                        \
+    "\tHostName all-matched.com\n"       \
+    "Match originalhost example\n"       \
+    "\tHostName original-example.com\n"  \
+    "\tUser originaluser\n"              \
+    "Match localuser guest\n"            \
     "\tHostName local-guest.com\n"
 
 /* ProxyJump */
@@ -851,26 +851,40 @@ static void torture_config_match(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "unmatched");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "all-matched.com");
+    assert_string_equal(session->opts.originalhost, "unmatched");
 
     /* Hostname example does simple hostname matching */
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "example.com");
+    assert_string_equal(session->opts.originalhost, "example");
 
     /* We can match also both hosts from a comma separated list */
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example1");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "exampleN");
+    assert_string_equal(session->opts.originalhost, "example1");
 
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example2");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "exampleN");
+    assert_string_equal(session->opts.originalhost, "example2");
 
-    /* We can match by user */
+    /* We can match by originalhost */
     torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "example");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "example.com");
+    assert_string_equal(session->opts.originalhost, "example");
+    /* Match originalhost sets User */
+    assert_string_equal(session->opts.username, "originaluser");
+
+    /* We can match by user - clear originalhost to isolate user match */
+    torture_reset_config(session);
+    SAFE_FREE(session->opts.originalhost);
     ssh_options_set(session, SSH_OPTIONS_USER, "guest");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "guest.com");
@@ -881,6 +895,7 @@ static void torture_config_match(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "testhost");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "testhost.com");
+    assert_string_equal(session->opts.originalhost, "testhost");
 
     /* We can also negate conditions */
     torture_reset_config(session);
@@ -888,8 +903,42 @@ static void torture_config_match(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "testhost");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "nonuser-testhost.com");
+    assert_string_equal(session->opts.originalhost, "testhost");
 
     /* In this part, we try various other config files and strings. */
+
+    /* Match host compares against resolved hostname */
+    config = "Host ssh-host\n"
+             "\tHostname 10.1.1.1\n"
+             "Match host 10.1.1.*\n"
+             "\tPort 2222\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    session->opts.port = 0;
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ssh-host");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "10.1.1.1");
+    assert_string_equal(session->opts.originalhost, "ssh-host");
+    assert_int_equal(session->opts.port, 2222);
+
+    /* Match host falls back to originalhost when host is NULL */
+    config = "Match host my_alias\n"
+             "\tHostName alias-matched.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    SAFE_FREE(session->opts.username);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_null(session->opts.host);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "alias-matched.com");
 
     /* Match final is not completely supported, but should do quite much the
      * same as "match all". The trailing "all" is not mandatory. */
@@ -1018,7 +1067,7 @@ static void torture_config_match(void **state,
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "unmatched");
 
-    /* Missing argument to unsupported option originalhost */
+    /* Missing argument to option originalhost */
     config = "Match originalhost\n"
              "\tHost originalhost.com\n";
     if (file != NULL) {
@@ -1289,7 +1338,6 @@ static void torture_config_proxyjump(void **state,
     assert_string_equal(session->opts.ProxyCommand,
                         "ssh -W '[%h]:%p' 2620:52:0::fed");
 
-
     /* Multiple @ is allowed in second jump */
     config = "Host allowed-hostname\n"
              "\tProxyJump localhost,user@principal.com@jumpbox:22\n";
@@ -1351,7 +1399,73 @@ static void torture_config_proxyjump(void **state,
                             "jumpbox",
                             "user@principal.com",
                             "22");
+    /* Non-RFC-1035 alias (underscore) — accepted with non-strict parse */
+    config = "Host alias-jump\n"
+             "\tProxyJump my_alias\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
     torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "alias-jump");
+    _parse_config(session, file, string, SSH_OK);
+    helper_proxy_jump_check(session->opts.proxy_jumps->root,
+                            "my_alias",
+                            NULL,
+                            NULL);
+
+    /* Non-RFC-1035 alias in multi-hop second jump */
+    config = "Host alias-multi\n"
+             "\tProxyJump localhost,my_alias:2222\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "alias-multi");
+    _parse_config(session, file, string, SSH_OK);
+    helper_proxy_jump_check(session->opts.proxy_jumps->root,
+                            "my_alias",
+                            NULL,
+                            "2222");
+    helper_proxy_jump_check(session->opts.proxy_jumps->root->next,
+                            "localhost",
+                            NULL,
+                            NULL);
+
+    /* Non-RFC-1035 alias — proxycommand based */
+    torture_setenv("OPENSSH_PROXYJUMP", "1");
+
+    config = "Host alias-jump\n"
+             "\tProxyJump my_alias\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "alias-jump");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.ProxyCommand,
+                        "ssh -W '[%h]:%p' my_alias");
+
+    /* Non-RFC-1035 alias in multi-hop — proxycommand based */
+    config = "Host alias-multi\n"
+             "\tProxyJump localhost,my_alias:2222\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "alias-multi");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.ProxyCommand,
+                        "ssh -J my_alias:2222 -W '[%h]:%p' localhost");
+
+    torture_unsetenv("OPENSSH_PROXYJUMP");
 
     /* In this part, we try various other config files and strings. */
     torture_setenv("OPENSSH_PROXYJUMP", "1");
@@ -2762,21 +2876,36 @@ static void torture_config_parse_uri(void **state)
 
     (void)state; /* unused */
 
-    rc = ssh_config_parse_uri("localhost", &username, &hostname, &port, false, true);
+    rc = ssh_config_parse_uri("localhost",
+                              &username,
+                              &hostname,
+                              &port,
+                              false,
+                              true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "localhost");
     SAFE_FREE(hostname);
     assert_null(port);
 
-    rc = ssh_config_parse_uri("1.2.3.4", &username, &hostname, &port, false, true);
+    rc = ssh_config_parse_uri("1.2.3.4",
+                              &username,
+                              &hostname,
+                              &port,
+                              false,
+                              true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1.2.3.4");
     SAFE_FREE(hostname);
     assert_null(port);
 
-    rc = ssh_config_parse_uri("1.2.3.4:2222", &username, &hostname, &port, false, true);
+    rc = ssh_config_parse_uri("1.2.3.4:2222",
+                              &username,
+                              &hostname,
+                              &port,
+                              false,
+                              true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1.2.3.4");
@@ -2784,7 +2913,12 @@ static void torture_config_parse_uri(void **state)
     assert_string_equal(port, "2222");
     SAFE_FREE(port);
 
-    rc = ssh_config_parse_uri("[1:2:3::4]:2222", &username, &hostname, &port, false, true);
+    rc = ssh_config_parse_uri("[1:2:3::4]:2222",
+                              &username,
+                              &hostname,
+                              &port,
+                              false,
+                              true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1:2:3::4");
@@ -2793,7 +2927,12 @@ static void torture_config_parse_uri(void **state)
     SAFE_FREE(port);
 
     /* do not want port */
-    rc = ssh_config_parse_uri("1:2:3::4", &username, &hostname, NULL, true, true);
+    rc = ssh_config_parse_uri("1:2:3::4",
+                              &username,
+                              &hostname,
+                              NULL,
+                              true,
+                              true);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "1:2:3::4");
@@ -2803,13 +2942,23 @@ static void torture_config_parse_uri(void **state)
     assert_int_equal(rc, SSH_ERROR);
 
     /* Non-strict accepts non-RFC1035 chars (e.g. _, %) */
-    rc = ssh_config_parse_uri("customer_1", &username, &hostname, NULL, true, false);
+    rc = ssh_config_parse_uri("customer_1",
+                              &username,
+                              &hostname,
+                              NULL,
+                              true,
+                              false);
     assert_return_code(rc, errno);
     assert_null(username);
     assert_string_equal(hostname, "customer_1");
     SAFE_FREE(hostname);
 
-    rc = ssh_config_parse_uri("admin@%prod", &username, &hostname, NULL, true, false);
+    rc = ssh_config_parse_uri("admin@%prod",
+                              &username,
+                              &hostname,
+                              NULL,
+                              true,
+                              false);
     assert_return_code(rc, errno);
     assert_string_equal(username, "admin");
     assert_string_equal(hostname, "%prod");
@@ -2817,11 +2966,21 @@ static void torture_config_parse_uri(void **state)
     SAFE_FREE(hostname);
 
     /* Strict rejects what non-strict accepts */
-    rc = ssh_config_parse_uri("customer_1", &username, &hostname, NULL, true, true);
+    rc = ssh_config_parse_uri("customer_1",
+                              &username,
+                              &hostname,
+                              NULL,
+                              true,
+                              true);
     assert_int_equal(rc, SSH_ERROR);
 
     /* Non-strict rejects shell metacharacters */
-    rc = ssh_config_parse_uri("host;cmd", &username, &hostname, NULL, true, false);
+    rc = ssh_config_parse_uri("host;cmd",
+                              &username,
+                              &hostname,
+                              NULL,
+                              true,
+                              false);
     assert_int_equal(rc, SSH_ERROR);
 
     /* Non-strict rejects leading dash */
@@ -2957,6 +3116,48 @@ static void torture_config_jump(void **state)
     assert_ssh_return_code_equal(session, ret, SSH_ERROR);
 
     printf("%s: EOF\n", __func__);
+}
+
+/* Verify Hostname directive resolves host without overwriting originalhost
+ */
+static void torture_config_hostname(void **state)
+{
+    ssh_session session = *state;
+    char *expanded = NULL;
+
+    /* Hostname directive sets host, originalhost is unchanged */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_null(session->opts.host);
+    assert_string_equal(session->opts.originalhost, "my_alias");
+    _parse_config(session,
+                  NULL,
+                  "Host my_alias\n\tHostname 192.168.1.1\n",
+                  SSH_OK);
+    assert_string_equal(session->opts.host, "192.168.1.1");
+    assert_string_equal(session->opts.originalhost, "my_alias");
+
+    /* Host keyword compares against originalhost, not the resolved IP */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ssh-host");
+    _parse_config(session,
+                  NULL,
+                  "Host ssh-host\n\tHostname 10.1.1.1\n"
+                  "Host 10.1.1.*\n\tProxyJump ssh-host\n",
+                  SSH_OK);
+    assert_string_equal(session->opts.host, "10.1.1.1");
+    assert_string_equal(session->opts.originalhost, "ssh-host");
+    assert_int_equal(ssh_list_count(session->opts.proxy_jumps), 0);
+    assert_null(session->opts.ProxyCommand);
+
+    /* %h falls back to originalhost when host is not yet resolved */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_null(session->opts.host);
+    expanded = ssh_path_expand_escape(session, "%h");
+    assert_non_null(expanded);
+    assert_string_equal(expanded, "my_alias");
+    free(expanded);
 }
 
 /* Invalid configuration files
@@ -3127,7 +3328,8 @@ int torture_run_tests(void)
         cmocka_unit_test_setup_teardown(torture_config_loglevel_missing_value,
                                         setup,
                                         teardown),
-        cmocka_unit_test_setup_teardown(torture_config_jump,
+        cmocka_unit_test_setup_teardown(torture_config_jump, setup, teardown),
+        cmocka_unit_test_setup_teardown(torture_config_hostname,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_invalid,

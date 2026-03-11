@@ -17,6 +17,13 @@
 #include <libssh/pki.h>
 #include <libssh/pki_priv.h>
 #include <libssh/session.h>
+
+#ifdef _WIN32
+#include <netioapi.h>
+#else
+#include <net/if.h>
+#endif
+
 #ifdef WITH_SERVER
 #include <libssh/bind.h>
 #define LIBSSH_CUSTOM_BIND_CONFIG_FILE "my_bind_config"
@@ -59,12 +66,16 @@ static void torture_options_set_host(void **state) {
     assert_true(rc == 0);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "localhost");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "localhost");
 
     /* IPv4 address */
     rc = ssh_options_set(session, SSH_OPTIONS_HOST, "127.1.1.1");
     assert_true(rc == 0);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "127.1.1.1");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "127.1.1.1");
     assert_null(session->opts.username);
 
     /* IPv6 address */
@@ -72,12 +83,16 @@ static void torture_options_set_host(void **state) {
     assert_true(rc == 0);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "::1");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "::1");
     assert_null(session->opts.username);
 
     rc = ssh_options_set(session, SSH_OPTIONS_HOST, "guru@meditation");
     assert_true(rc == 0);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "meditation");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "meditation");
     assert_non_null(session->opts.username);
     assert_string_equal(session->opts.username, "guru");
 
@@ -86,6 +101,8 @@ static void torture_options_set_host(void **state) {
     assert_true(rc == 0);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "hostname");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "hostname");
     assert_non_null(session->opts.username);
     assert_string_equal(session->opts.username, "at@login");
 
@@ -104,6 +121,9 @@ static void torture_options_set_host(void **state) {
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host,
                         "fd4d:5449:7400:111:626d:3cff:fedf:4d39");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost,
+                        "fd4d:5449:7400:111:626d:3cff:fedf:4d39");
     assert_null(session->opts.username);
 
     /* IPv6 hostnames should work also with square braces */
@@ -114,20 +134,103 @@ static void torture_options_set_host(void **state) {
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host,
                         "fd4d:5449:7400:111:626d:3cff:fedf:4d39");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost,
+                        "fd4d:5449:7400:111:626d:3cff:fedf:4d39");
     assert_null(session->opts.username);
 
+    /* user@IPv6%interface
+     * Use dynamic interface name for cross-platform portability */
+    {
+        char interf[IF_NAMESIZE] = {0};
+        char ipv6_zone[128] = {0};
+        char expected_host[128] = {0};
+
+        if_indextoname(1, interf);
+        assert_non_null(interf);
+        snprintf(ipv6_zone, sizeof(ipv6_zone), "user@fe80::1%%%s", interf);
+        snprintf(expected_host, sizeof(expected_host), "fe80::1%%%s", interf);
+
+        rc = ssh_options_set(session, SSH_OPTIONS_HOST, ipv6_zone);
+        assert_return_code(rc, errno);
+        assert_non_null(session->opts.host);
+        assert_string_equal(session->opts.host, expected_host);
+        assert_non_null(session->opts.originalhost);
+        assert_string_equal(session->opts.originalhost, expected_host);
+        assert_string_equal(session->opts.username, "user");
+    }
+
     /* IDN need to be in punycode format */
+    SAFE_FREE(session->opts.username);
     rc = ssh_options_set(session, SSH_OPTIONS_HOST, "xn--bcher-kva.tld");
     assert_return_code(rc, errno);
     assert_non_null(session->opts.host);
     assert_string_equal(session->opts.host, "xn--bcher-kva.tld");
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "xn--bcher-kva.tld");
     assert_null(session->opts.username);
 
-    /* IDN in UTF8 won't work */
+    /* IDN in UTF-8 is accepted but not as a valid hostname,
+     * only originalhost is set */
     rc = ssh_options_set(session, SSH_OPTIONS_HOST, "bücher.tld");
-    assert_string_equal(ssh_get_error(session),
-                        "Invalid argument in ssh_options_set");
+    assert_return_code(rc, errno);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "bücher.tld");
+
+    /* Config alias '%' rejected by RFC1035, only originalhost is set */
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "%customer1");
+    assert_return_code(rc, errno);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "%customer1");
+
+    /* user@alias '_' rejected by RFC1035, alias stored in originalhost */
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "admin@customer_1");
+    assert_return_code(rc, errno);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_string_equal(session->opts.username, "admin");
+
+    /* Shell metacharacters and leading dash rejected.
+     * Verify failure cases do not update session options. */
+    SAFE_FREE(session->opts.username);
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "host;rm -rf /");
     assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_null(session->opts.username);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "-leading-dash");
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_null(session->opts.username);
+
+    /* Empty user or host rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "@hostname");
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_null(session->opts.username);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "user@");
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_null(session->opts.username);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "");
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+    assert_string_equal(session->opts.originalhost, "customer_1");
+    assert_null(session->opts.username);
 }
 
 static void torture_options_set_ciphers(void **state)
@@ -714,6 +817,26 @@ static void torture_options_get_host(void **state)
 
     assert_string_equal(host, "localhost");
     ssh_string_free_char(host);
+
+    /* When host is not yet resolved, falls back to originalhost */
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_true(rc == 0);
+    assert_null(session->opts.host);
+    assert_non_null(session->opts.originalhost);
+
+    assert_false(ssh_options_get(session, SSH_OPTIONS_HOST, &host));
+    assert_string_equal(host, "my_alias");
+    ssh_string_free_char(host);
+
+    /* After config resolution, get returns resolved host, not originalhost */
+    session->opts.host = strdup("192.168.1.1");
+    assert_non_null(session->opts.host);
+
+    assert_false(ssh_options_get(session, SSH_OPTIONS_HOST, &host));
+    assert_string_equal(host, "192.168.1.1");
+    ssh_string_free_char(host);
+    /* originalhost is unchanged */
+    assert_string_equal(session->opts.originalhost, "my_alias");
 }
 
 static void torture_options_set_port(void **state)
@@ -1074,6 +1197,7 @@ static void torture_options_config_host(void **state)
 {
     ssh_session session = *state;
     FILE *config = NULL;
+    int rv;
 
     /* create a new config file */
     config = fopen("test_config", "w");
@@ -1112,6 +1236,33 @@ static void torture_options_config_host(void **state)
     ssh_options_set(session, SSH_OPTIONS_HOST, "testhost5");
     ssh_options_parse_config(session, "test_config");
     assert_int_equal(session->opts.port, 44);
+
+    /* ssh_options_parse_config rejects when originalhost is NULL */
+    SAFE_FREE(session->opts.host);
+    SAFE_FREE(session->opts.originalhost);
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_int_equal(rv, -1);
+
+    /* Config Hostname with invalid hostname: verify stale host not leaked */
+    torture_write_file("test_config", "Host 192.168.1.1\nHostname my_alias\n");
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "192.168.1.1");
+    assert_string_equal(session->opts.host, "192.168.1.1");
+    assert_string_equal(session->opts.originalhost, "192.168.1.1");
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_int_equal(rv, 0);
+    assert_null(session->opts.host);
+    assert_string_equal(session->opts.originalhost, "192.168.1.1");
+
+    /* Calling ssh_options_set(HOST) twice: verify stale host not leaked */
+    ssh_options_set(session, SSH_OPTIONS_HOST, "real.server.com");
+    assert_string_equal(session->opts.host, "real.server.com");
+    assert_string_equal(session->opts.originalhost, "real.server.com");
+
+    ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_null(session->opts.host);
+    assert_string_equal(session->opts.originalhost, "my_alias");
 
     unlink("test_config");
 }
@@ -1437,6 +1588,7 @@ static void torture_options_copy(void **state)
 
     assert_string_equal(session->opts.username, new->opts.username);
     assert_string_equal(session->opts.host, new->opts.host);
+    assert_string_equal(session->opts.originalhost, new->opts.originalhost);
     assert_string_equal(session->opts.bindaddr, new->opts.bindaddr);
     assert_string_equal(session->opts.sshdir, new->opts.sshdir);
     assert_string_equal(session->opts.knownhosts, new->opts.knownhosts);

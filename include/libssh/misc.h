@@ -59,8 +59,8 @@ int ssh_is_ipaddr(const char *str);
 /* list processing */
 
 struct ssh_list {
-  struct ssh_iterator *root;
-  struct ssh_iterator *end;
+    struct ssh_iterator *root;
+    struct ssh_iterator *end;
 };
 
 struct ssh_iterator {

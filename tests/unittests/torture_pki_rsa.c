@@ -754,12 +754,11 @@ static void torture_pki_rsa_sha2(void **state)
 
 static void torture_pki_rsa_key_size(void **state)
 {
-    int rc;
+    int rc, bit_size;
     ssh_key key = NULL, pubkey = NULL;
     ssh_signature sign = NULL;
     ssh_session session=ssh_new();
     unsigned int length = 4096;
-    int bit_size = 2048;
     ssh_pki_ctx ctx = NULL;
 
     (void)state;
@@ -767,6 +766,17 @@ static void torture_pki_rsa_key_size(void **state)
     ctx = ssh_pki_ctx_new();
     assert_non_null(ctx);
 
+    /* Invalid argument NULL */
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, NULL);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    /* Too small size */
+    bit_size = 768;
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &bit_size);
+    assert_ssh_return_code_equal(session, rc, SSH_ERROR);
+
+    /* Ok value */
+    bit_size = 2048;
     rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &bit_size);
     assert_return_code(rc, errno);
 

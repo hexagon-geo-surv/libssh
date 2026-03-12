@@ -651,8 +651,6 @@ static void torture_pki_generate_rsa_deprecated(void **state)
         ssh_signature_free(sign);
         SSH_KEY_FREE(key);
         SSH_KEY_FREE(pubkey);
-        key = NULL;
-        pubkey = NULL;
     }
 
     rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &key);
@@ -668,8 +666,6 @@ static void torture_pki_generate_rsa_deprecated(void **state)
     ssh_signature_free(sign);
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
-    key = NULL;
-    pubkey = NULL;
 
     rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 4096, &key);
     assert_return_code(rc, errno);
@@ -684,8 +680,6 @@ static void torture_pki_generate_rsa_deprecated(void **state)
     ssh_signature_free(sign);
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
-    key = NULL;
-    pubkey = NULL;
 
     ssh_free(session);
 }

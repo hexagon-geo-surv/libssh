@@ -440,7 +440,7 @@ static void torture_pki_rsa_copy_cert_to_privkey(void **state)
     SSH_KEY_FREE(pubkey);
 
     /* Generate different key and try to assign it this certificate */
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &privkey);
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, NULL, &privkey);
     assert_return_code(rc, errno);
     assert_non_null(privkey);
     rc = ssh_pki_export_privkey_to_pubkey(privkey, &pubkey);
@@ -765,10 +765,18 @@ static void torture_pki_rsa_key_size(void **state)
     ssh_signature sign = NULL;
     ssh_session session=ssh_new();
     unsigned int length = 4096;
+    int bit_size = 2048;
+    ssh_pki_ctx ctx = NULL;
 
-    (void) state;
+    (void)state;
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &key);
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &bit_size);
+    assert_return_code(rc, errno);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
     assert_return_code(rc, errno);
     assert_non_null(key);
     rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);
@@ -790,9 +798,7 @@ static void torture_pki_rsa_key_size(void **state)
     ssh_signature_free(sign);
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
-    key = NULL;
-    pubkey = NULL;
-
+    SSH_PKI_CTX_FREE(ctx);
     ssh_free(session);
 }
 
@@ -890,11 +896,19 @@ static void torture_pki_sign_data_rsa(void **state)
 {
     int rc;
     ssh_key key = NULL;
+    ssh_pki_ctx ctx = NULL;
+    int bit_size = 2048;
 
     (void) state;
 
     /* Setup */
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &key);
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &bit_size);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
     assert_int_equal(rc, SSH_OK);
     assert_non_null(key);
 
@@ -914,6 +928,7 @@ static void torture_pki_sign_data_rsa(void **state)
 
     /* Cleanup */
     SSH_KEY_FREE(key);
+    SSH_PKI_CTX_FREE(ctx);
 }
 
 static void torture_pki_fail_sign_with_incompatible_hash(void **state)
@@ -921,12 +936,20 @@ static void torture_pki_fail_sign_with_incompatible_hash(void **state)
     int rc;
     ssh_key key = NULL;
     ssh_key pubkey = NULL;
+    ssh_pki_ctx ctx = NULL;
+    int bit_size = 2048;
     ssh_signature sig, bad_sig;
 
     (void) state;
 
     /* Setup */
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &key);
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &bit_size);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
     assert_int_equal(rc, SSH_OK);
     assert_non_null(key);
 
@@ -956,6 +979,7 @@ static void torture_pki_fail_sign_with_incompatible_hash(void **state)
     ssh_signature_free(sig);
     SSH_KEY_FREE(pubkey);
     SSH_KEY_FREE(key);
+    SSH_PKI_CTX_FREE(ctx);
 }
 
 static void

@@ -647,7 +647,7 @@ static void torture_pki_generate_key_ecdsa(void **state)
     ssh_session session=ssh_new();
     (void) state;
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_ECDSA_P256, 0, &key);
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_ECDSA_P256, NULL, &key);
     assert_return_code(rc, errno);
     assert_non_null(key);
     rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);
@@ -690,7 +690,7 @@ static void torture_pki_generate_key_ecdsa(void **state)
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_ECDSA_P384, 0, &key);
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_ECDSA_P384, NULL, &key);
     assert_return_code(rc, errno);
     assert_non_null(key);
     rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);
@@ -733,7 +733,7 @@ static void torture_pki_generate_key_ecdsa(void **state)
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_ECDSA_P521, 0, &key);
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_ECDSA_P521, NULL, &key);
     assert_return_code(rc, errno);
     assert_non_null(key);
     rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);

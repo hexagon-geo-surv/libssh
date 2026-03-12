@@ -550,14 +550,23 @@ static void *thread_pki_rsa_generate_key(void *threadid)
     ssh_key key = NULL, pubkey = NULL;
     ssh_signature sign = NULL;
     ssh_session session = NULL;
+    ssh_pki_ctx ctx = NULL;
+    int size = 0;
 
     (void) threadid;
 
     session = ssh_new();
     assert_non_null(session);
 
+    ctx = ssh_pki_ctx_new();
+    assert_non_null(ctx);
+
     if (!ssh_fips_mode()) {
-        rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 1024, &key);
+        size = 1024;
+        rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &size);
+        assert_return_code(rc, errno);
+
+        rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
         assert_ssh_return_code(session, rc);
         assert_non_null(key);
 
@@ -576,7 +585,11 @@ static void *thread_pki_rsa_generate_key(void *threadid)
         SSH_KEY_FREE(pubkey);
     }
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 2048, &key);
+    size = 2048;
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &size);
+    assert_return_code(rc, errno);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
     assert_ssh_return_code(session, rc);
     assert_non_null(key);
 
@@ -594,8 +607,12 @@ static void *thread_pki_rsa_generate_key(void *threadid)
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
 
-    rc = ssh_pki_generate(SSH_KEYTYPE_RSA, 4096, &key);
-    assert_true(rc == SSH_OK);
+    size = 4096;
+    rc = ssh_pki_ctx_options_set(ctx, SSH_PKI_OPTION_RSA_KEY_SIZE, &size);
+    assert_return_code(rc, errno);
+
+    rc = ssh_pki_generate_key(SSH_KEYTYPE_RSA, ctx, &key);
+    assert_ssh_return_code(session, rc);
     assert_non_null(key);
 
     rc = ssh_pki_export_privkey_to_pubkey(key, &pubkey);
@@ -612,6 +629,7 @@ static void *thread_pki_rsa_generate_key(void *threadid)
     SSH_KEY_FREE(key);
     SSH_KEY_FREE(pubkey);
 
+    SSH_PKI_CTX_FREE(ctx);
     ssh_free(session);
 
     return NULL;

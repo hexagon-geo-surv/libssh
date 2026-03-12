@@ -35,7 +35,7 @@
 
 struct arguments_st {
     enum ssh_keytypes_e type;
-    unsigned long bits;
+    int bits;
     char *file;
     char *passphrase;
     char *format;
@@ -321,6 +321,7 @@ list_fingerprint(char *file)
 
 int main(int argc, char *argv[])
 {
+    ssh_pki_ctx ctx = NULL;
     ssh_key key = NULL;
     int ret = EXIT_FAILURE, rc, fd;
     char overwrite[1024] = "";
@@ -394,10 +395,27 @@ int main(int argc, char *argv[])
         close(fd);
     }
 
+    /* Create a new PKI Context if needed -- for other types using NULL is ok */
+    if (arguments.type == SSH_KEYTYPE_RSA && arguments.bits != 0) {
+        ctx = ssh_pki_ctx_new();
+        if (ctx == NULL) {
+            fprintf(stderr, "Error: Failed to allocate PKI context\n");
+            goto end;
+        }
+
+        rc = ssh_pki_ctx_options_set(ctx,
+                                     SSH_PKI_OPTION_RSA_KEY_SIZE,
+                                     &arguments.bits);
+        if (rc != SSH_OK) {
+            fprintf(stderr, "Error: Failed to set RSA bit size\n");
+            goto end;
+        }
+    }
+
     /* Generate a new private key */
-    rc = ssh_pki_generate(arguments.type, arguments.bits, &key);
+    rc = ssh_pki_generate_key(arguments.type, ctx, &key);
     if (rc != SSH_OK) {
-        fprintf(stderr, "Error: Failed to generate keys");
+        fprintf(stderr, "Error: Failed to generate keys\n");
         goto end;
     }
 
@@ -503,13 +521,9 @@ int main(int argc, char *argv[])
     ret = EXIT_SUCCESS;
 
 end:
-    if (key != NULL) {
-        ssh_key_free(key);
-    }
-
-    if (arguments.file != NULL) {
-        free(arguments.file);
-    }
+    ssh_pki_ctx_free(ctx);
+    ssh_key_free(key);
+    free(arguments.file);
 
     if (arguments.passphrase != NULL) {
 #ifdef HAVE_EXPLICIT_BZERO
@@ -520,8 +534,6 @@ end:
         free(arguments.passphrase);
     }
 
-    if (pubkey_file != NULL) {
-        free(pubkey_file);
-    }
+    free(pubkey_file);
     return ret;
 }

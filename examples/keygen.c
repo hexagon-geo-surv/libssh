@@ -24,7 +24,7 @@ int main(void)
     int rv;
 
     /* Generate a new ED25519 private key file */
-    rv = ssh_pki_generate(SSH_KEYTYPE_ED25519, 0, &key);
+    rv = ssh_pki_generate_key(SSH_KEYTYPE_ED25519, NULL, &key);
     if (rv != SSH_OK) {
         fprintf(stderr, "Failed to generate private key");
         return -1;

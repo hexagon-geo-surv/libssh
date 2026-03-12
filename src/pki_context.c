@@ -191,7 +191,7 @@ int ssh_pki_ctx_options_set(ssh_pki_ctx context,
         if (value == NULL) {
             SSH_LOG(SSH_LOG_WARN, "RSA key size pointer must not be NULL");
             return SSH_ERROR;
-        } else if (*(int *)value != 0 && *(int *)value <= RSA_MIN_KEY_SIZE) {
+        } else if (*(int *)value != 0 && *(int *)value < RSA_MIN_KEY_SIZE) {
             SSH_LOG(
                 SSH_LOG_WARN,
                 "RSA key size must be greater than %d bits or 0 for default",

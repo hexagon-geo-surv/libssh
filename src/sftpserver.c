@@ -955,10 +955,17 @@ void *sftp_handle(sftp_session sftp, ssh_string handle)
 }
 
 /**
- * @brief Remove an SFTP file or directory handle from the session.
+ * @brief Remove an internal SFTP object-handle mapping.
+ *
+ * This function removes an entry from the session's internal handle table,
+ * where a server-side object pointer (for example a file or directory context)
+ * is associated with an SFTP handle value returned to the client.
+ *
+ * Call this when the backing object referenced by @p handle is no longer
+ * valid.
  *
  * @param sftp    The SFTP session.
- * @param handle  The handle to remove.
+ * @param handle  Pointer to the internal object/context to unmap.
  *
  * @see sftp_handle_alloc()
  */
@@ -1065,11 +1072,20 @@ enum sftp_handle_type
     SFTP_FILE_HANDLE
 };
 
+/**
+ * @brief Internal SFTP handle structure.
+ *
+ * Represents an open file or directory handle on the server side.
+ */
 struct sftp_handle
 {
+    /** Type of the handle: file or directory */
     enum sftp_handle_type type;
+    /** File descriptor for file handles */
     int fd;
+    /** Directory pointer for directory handles */
     DIR *dirp;
+    /** Name of the file or directory */
     char *name;
 };
 

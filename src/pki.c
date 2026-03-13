@@ -449,40 +449,137 @@ const char *ssh_key_type_to_char(enum ssh_keytypes_e type) {
   /* We should never reach this */
   return NULL;
 }
-
-enum ssh_digest_e ssh_key_hash_from_name(const char *name)
+/**
+ * @brief Convert a signature algorithm name to a key type and hash type.
+ *
+ * Looks up the given signature algorithm name and returns both the
+ * corresponding key type and digest algorithm in a single call,
+ * avoiding double string comparisons on the same input.
+ *
+ * @param[in]  name      The signature algorithm name to convert (e.g.
+ *                       "ssh-rsa", "rsa-sha2-256", "ecdsa-sha2-nistp256").
+ *
+ * @param[out] type      A pointer to store the resulting key type.
+ *
+ * @param[out] hash_type A pointer to store the resulting hash/digest type.
+ *
+ * @return               SSH_OK on success, SSH_ERROR if name is NULL or
+ *                       unknown.
+ */
+int ssh_key_type_and_hash_from_signature_name(const char *name,
+                                              enum ssh_keytypes_e *type,
+                                              enum ssh_digest_e *hash_type)
 {
-    if (name == NULL) {
-        /* TODO we should rather fail */
-        return SSH_DIGEST_AUTO;
+    size_t len;
+
+    if (name == NULL || type == NULL || hash_type == NULL) {
+        return SSH_ERROR;
     }
 
-    if (strcmp(name, "ssh-rsa") == 0) {
-        return SSH_DIGEST_SHA1;
-    } else if (strcmp(name, "rsa-sha2-256") == 0) {
-        return SSH_DIGEST_SHA256;
-    } else if (strcmp(name, "rsa-sha2-512") == 0) {
-        return SSH_DIGEST_SHA512;
-    } else if (strcmp(name, "ecdsa-sha2-nistp256") == 0) {
-        return SSH_DIGEST_SHA256;
-    } else if (strcmp(name, "ecdsa-sha2-nistp384") == 0) {
-        return SSH_DIGEST_SHA384;
-    } else if (strcmp(name, "ecdsa-sha2-nistp521") == 0) {
-        return SSH_DIGEST_SHA512;
-    } else if (strcmp(name, "ssh-ed25519") == 0) {
-        return SSH_DIGEST_AUTO;
-    } else if (strcmp(name, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
-        return SSH_DIGEST_SHA256;
-    } else if (strcmp(name, "sk-ssh-ed25519@openssh.com") == 0) {
-        return SSH_DIGEST_AUTO;
+    len = strlen(name);
+
+    if (len == 7 && strcmp(name, "ssh-rsa") == 0) {
+        *type = SSH_KEYTYPE_RSA;
+        *hash_type = SSH_DIGEST_SHA1;
+        return SSH_OK;
+    }
+
+    if (len == 11 && strcmp(name, "ssh-ed25519") == 0) {
+        *type = SSH_KEYTYPE_ED25519;
+        *hash_type = SSH_DIGEST_AUTO;
+        return SSH_OK;
+    }
+
+    if (len == 12) {
+        if (strcmp(name, "rsa-sha2-256") == 0) {
+            *type = SSH_KEYTYPE_RSA;
+            *hash_type = SSH_DIGEST_SHA256;
+            return SSH_OK;
+        }
+        if (strcmp(name, "rsa-sha2-512") == 0) {
+            *type = SSH_KEYTYPE_RSA;
+            *hash_type = SSH_DIGEST_SHA512;
+            return SSH_OK;
+        }
+    }
+
+    if (len == 19) {
+        if (strcmp(name, "ecdsa-sha2-nistp256") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P256;
+            *hash_type = SSH_DIGEST_SHA256;
+            return SSH_OK;
+        }
+        if (strcmp(name, "ecdsa-sha2-nistp384") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P384;
+            *hash_type = SSH_DIGEST_SHA384;
+            return SSH_OK;
+        }
+
+        if (strcmp(name, "ecdsa-sha2-nistp521") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P521;
+            *hash_type = SSH_DIGEST_SHA512;
+            return SSH_OK;
+        }
+    }
+
+    if (len == 26 && strcmp(name, "sk-ssh-ed25519@openssh.com") == 0) {
+        *type = SSH_KEYTYPE_SK_ED25519;
+        *hash_type = SSH_DIGEST_AUTO;
+        return SSH_OK;
+    }
+
+    if (len == 28 && strcmp(name, "ssh-rsa-cert-v01@openssh.com") == 0) {
+        *type = SSH_KEYTYPE_RSA_CERT01;
+        *hash_type = SSH_DIGEST_SHA1;
+        return SSH_OK;
+    }
+
+    if (len == 32 && strcmp(name, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+        *type = SSH_KEYTYPE_ED25519_CERT01;
+        *hash_type = SSH_DIGEST_AUTO;
+        return SSH_OK;
+    }
+
+    if (len == 33) {
+        if (strcmp(name, "rsa-sha2-256-cert-v01@openssh.com") == 0) {
+            *type = SSH_KEYTYPE_RSA_CERT01;
+            *hash_type = SSH_DIGEST_SHA256;
+            return SSH_OK;
+        }
+        if (strcmp(name, "rsa-sha2-512-cert-v01@openssh.com") == 0) {
+            *type = SSH_KEYTYPE_RSA_CERT01;
+            *hash_type = SSH_DIGEST_SHA512;
+            return SSH_OK;
+        }
+    }
+
+    if (len == 34 && strcmp(name, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
+        *type = SSH_KEYTYPE_SK_ECDSA;
+        *hash_type = SSH_DIGEST_SHA256;
+        return SSH_OK;
+    }
+
+    if (len == 40) {
+        if (strcmp(name, "ecdsa-sha2-nistp256-cert-v01@openssh.com") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P256_CERT01;
+            *hash_type = SSH_DIGEST_SHA256;
+            return SSH_OK;
+        }
+        if (strcmp(name, "ecdsa-sha2-nistp384-cert-v01@openssh.com") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P384_CERT01;
+            *hash_type = SSH_DIGEST_SHA384;
+            return SSH_OK;
+        }
+        if (strcmp(name, "ecdsa-sha2-nistp521-cert-v01@openssh.com") == 0) {
+            *type = SSH_KEYTYPE_ECDSA_P521_CERT01;
+            *hash_type = SSH_DIGEST_SHA512;
+            return SSH_OK;
+        }
     }
 
     SSH_LOG(SSH_LOG_TRACE, "Unknown signature name %s", name);
-
-    /* TODO we should rather fail */
-    return SSH_DIGEST_AUTO;
+    return SSH_ERROR;
 }
-
 /**
  * @brief Checks the given key against the configured allowed
  * public key algorithm types
@@ -698,27 +795,6 @@ ssh_key_get_signature_algorithm(ssh_session session,
     hash_type = ssh_key_type_to_hash(session, type);
 
     return ssh_key_signature_to_char(type, hash_type);
-}
-
-/**
- * @brief Convert a ssh key algorithm name to a ssh key algorithm type.
- *
- * @param[in] name      The name to convert.
- *
- * @return              The enum ssh key algorithm type.
- */
-enum ssh_keytypes_e ssh_key_type_from_signature_name(const char *name) {
-    if (name == NULL) {
-        return SSH_KEYTYPE_UNKNOWN;
-    }
-
-    if ((strcmp(name, "rsa-sha2-256") == 0) ||
-        (strcmp(name, "rsa-sha2-512") == 0)) {
-        return SSH_KEYTYPE_RSA;
-    }
-
-    /* Otherwise the key type matches the signature type */
-    return ssh_key_type_from_name(name);
 }
 
 /**
@@ -2899,8 +2975,12 @@ int ssh_pki_import_signature_blob(const ssh_string sig_blob,
     }
 
     alg = ssh_string_get_char(algorithm);
-    type = ssh_key_type_from_signature_name(alg);
-    hash_type = ssh_key_hash_from_name(alg);
+    rc = ssh_key_type_and_hash_from_signature_name(alg, &type, &hash_type);
+    if (rc != SSH_OK) {
+        SSH_BUFFER_FREE(buf);
+        SSH_STRING_FREE(algorithm);
+        return SSH_ERROR;
+    }
     SSH_STRING_FREE(algorithm);
 
     blob = ssh_buffer_get_ssh_string(buf);

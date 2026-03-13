@@ -437,6 +437,7 @@ int crypt_set_algorithms_server(ssh_session session){
     struct ssh_cipher_struct *ssh_ciphertab=ssh_get_ciphertab();
     struct ssh_hmac_struct   *ssh_hmactab=ssh_get_hmactab();
     int cmp;
+    int rc;
 
     if (session == NULL) {
         return SSH_ERROR;
@@ -580,8 +581,24 @@ int crypt_set_algorithms_server(ssh_session session){
     }
 
     method = session->next_crypto->kex_methods[SSH_HOSTKEYS];
-    session->srv.hostkey = ssh_key_type_from_signature_name(method);
-    session->srv.hostkey_digest = ssh_key_hash_from_name(method);
+
+    /* For GSSAPI key exchange, hostkey algorithm may be "null" */
+    if (strcmp(method, "null") == 0) {
+        session->srv.hostkey = SSH_KEYTYPE_UNKNOWN;
+        session->srv.hostkey_digest = SSH_DIGEST_AUTO;
+    } else {
+        rc = ssh_key_type_and_hash_from_signature_name(
+            method,
+            &session->srv.hostkey,
+            &session->srv.hostkey_digest);
+        if (rc != SSH_OK) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "unknown hostkey algorithm %s",
+                          method);
+            return SSH_ERROR;
+        }
+    }
 
     /* setup DH key exchange type */
     switch (session->next_crypto->kex_type) {

@@ -107,6 +107,76 @@ static void torture_pki_signature(void **state)
     ssh_signature_free(sig);
 }
 
+static void torture_pki_type_and_hash_from_signature_name(void **state)
+{
+    enum ssh_keytypes_e type;
+    enum ssh_digest_e hash_type;
+    int rc;
+
+    (void)state; /* unused */
+
+    /* Test NULL input */
+    rc = ssh_key_type_and_hash_from_signature_name(NULL, &type, &hash_type);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Test NULL output pointers */
+    rc = ssh_key_type_and_hash_from_signature_name("ssh-rsa", NULL, &hash_type);
+    assert_int_equal(rc, SSH_ERROR);
+
+    rc = ssh_key_type_and_hash_from_signature_name("ssh-rsa", &type, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Test unknown name */
+    rc = ssh_key_type_and_hash_from_signature_name("unknown-algo",
+                                                   &type,
+                                                   &hash_type);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Test valid RSA signatures */
+    rc =
+        ssh_key_type_and_hash_from_signature_name("ssh-rsa", &type, &hash_type);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(type, SSH_KEYTYPE_RSA);
+    assert_int_equal(hash_type, SSH_DIGEST_SHA1);
+
+    rc = ssh_key_type_and_hash_from_signature_name("rsa-sha2-256",
+                                                   &type,
+                                                   &hash_type);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(type, SSH_KEYTYPE_RSA);
+    assert_int_equal(hash_type, SSH_DIGEST_SHA256);
+
+    rc = ssh_key_type_and_hash_from_signature_name("rsa-sha2-512",
+                                                   &type,
+                                                   &hash_type);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(type, SSH_KEYTYPE_RSA);
+    assert_int_equal(hash_type, SSH_DIGEST_SHA512);
+
+    /* Test valid ECDSA signatures */
+    rc = ssh_key_type_and_hash_from_signature_name("ecdsa-sha2-nistp256",
+                                                   &type,
+                                                   &hash_type);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(type, SSH_KEYTYPE_ECDSA_P256);
+    assert_int_equal(hash_type, SSH_DIGEST_SHA256);
+
+    /* Test valid ED25519 signature */
+    rc = ssh_key_type_and_hash_from_signature_name("ssh-ed25519",
+                                                   &type,
+                                                   &hash_type);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(type, SSH_KEYTYPE_ED25519);
+    assert_int_equal(hash_type, SSH_DIGEST_AUTO);
+
+    /* Test that loose key names are rejected */
+    rc = ssh_key_type_and_hash_from_signature_name("ecdsa", &type, &hash_type);
+    assert_int_equal(rc, SSH_ERROR);
+
+    rc = ssh_key_type_and_hash_from_signature_name("rsa", &type, &hash_type);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
 struct key_attrs {
     int sign;
     int verify;
@@ -415,6 +485,7 @@ int torture_run_tests(void) {
     struct CMUnitTest tests[] = {
         cmocka_unit_test(torture_pki_keytype),
         cmocka_unit_test(torture_pki_signature),
+        cmocka_unit_test(torture_pki_type_and_hash_from_signature_name),
         cmocka_unit_test_setup_teardown(torture_pki_verify_mismatch,
                                         setup_cert_dir,
                                         teardown_cert_dir),

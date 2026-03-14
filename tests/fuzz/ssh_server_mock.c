@@ -16,6 +16,7 @@
 
 #include "ssh_server_mock.h"
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,16 +99,34 @@ static int mock_channel_subsystem(ssh_session session,
     return SSH_OK;
 }
 
+/* Consolidated cleanup for the server thread */
+struct server_resources {
+    ssh_bind sshbind;
+    ssh_session session;
+    ssh_event event;
+};
+
+static void cleanup_server_resources(void *arg)
+{
+    struct server_resources *res = (struct server_resources *)arg;
+    ssh_event_free(res->event);
+    if (res->session) {
+        ssh_disconnect(res->session);
+        ssh_free(res->session);
+    }
+    ssh_bind_free(res->sshbind);
+}
+
 /* Server thread implementation */
 static void *server_thread_func(void *arg)
 {
     struct ssh_mock_server_config *config =
         (struct ssh_mock_server_config *)arg;
-    ssh_bind sshbind = NULL;
-    ssh_session session = NULL;
-    ssh_event event = NULL;
     struct mock_session_data sdata = {0};
     sdata.config = config;
+    int rc;
+
+    struct server_resources res = {NULL, NULL, NULL};
 
     struct ssh_server_callbacks_struct server_cb = {
         .userdata = &sdata,
@@ -123,57 +142,57 @@ static void *server_thread_func(void *arg)
 
     bool no = false;
 
-    sshbind = ssh_bind_new();
-    if (sshbind == NULL) {
+    res.sshbind = ssh_bind_new();
+    if (res.sshbind == NULL) {
         config->server_error = true;
-        return NULL;
+        goto cleanup;
     }
 
-    session = ssh_new();
-    if (session == NULL) {
-        ssh_bind_free(sshbind);
+    res.session = ssh_new();
+    if (res.session == NULL) {
         config->server_error = true;
-        return NULL;
+        goto cleanup;
     }
 
     const char *cipher = config->cipher ? config->cipher : "aes128-ctr";
     const char *hmac = config->hmac ? config->hmac : "hmac-sha1";
 
-    ssh_bind_options_set(sshbind,
+    ssh_bind_options_set(res.sshbind,
                          SSH_BIND_OPTIONS_HOSTKEY,
                          SSH_MOCK_HOSTKEY_PATH);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_CIPHERS_C_S, cipher);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_CIPHERS_S_C, cipher);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HMAC_C_S, hmac);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HMAC_S_C, hmac);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_PROCESS_CONFIG, &no);
+    ssh_bind_options_set(res.sshbind, SSH_BIND_OPTIONS_CIPHERS_C_S, cipher);
+    ssh_bind_options_set(res.sshbind, SSH_BIND_OPTIONS_CIPHERS_S_C, cipher);
+    ssh_bind_options_set(res.sshbind, SSH_BIND_OPTIONS_HMAC_C_S, hmac);
+    ssh_bind_options_set(res.sshbind, SSH_BIND_OPTIONS_HMAC_S_C, hmac);
+    ssh_bind_options_set(res.sshbind, SSH_BIND_OPTIONS_PROCESS_CONFIG, &no);
 
-    ssh_set_auth_methods(session, SSH_AUTH_METHOD_NONE);
+    ssh_set_auth_methods(res.session, SSH_AUTH_METHOD_NONE);
     ssh_callbacks_init(&server_cb);
-    ssh_set_server_callbacks(session, &server_cb);
+    ssh_set_server_callbacks(res.session, &server_cb);
 
-    if (ssh_bind_accept_fd(sshbind, session, config->server_socket) != SSH_OK) {
-        ssh_free(session);
-        ssh_bind_free(sshbind);
+    /* Bound libssh's internal poll in ssh_handle_key_exchange */
+    long server_timeout = 1;
+    ssh_options_set(res.session, SSH_OPTIONS_TIMEOUT, &server_timeout);
+
+    rc = ssh_bind_accept_fd(res.sshbind, res.session, config->server_socket);
+    if (rc != SSH_OK) {
         config->server_error = true;
-        return NULL;
+        goto cleanup;
     }
 
     config->server_ready = true;
 
-    event = ssh_event_new();
-    if (event == NULL) {
-        ssh_disconnect(session);
-        ssh_free(session);
-        ssh_bind_free(sshbind);
-        return NULL;
+    res.event = ssh_event_new();
+    if (res.event == NULL) {
+        goto cleanup;
     }
 
-    if (ssh_handle_key_exchange(session) == SSH_OK) {
-        ssh_event_add_session(event, session);
+    if (ssh_handle_key_exchange(res.session) == SSH_OK) {
+        ssh_event_add_session(res.event, res.session);
 
-        for (int i = 0; i < 50 && !sdata.channel; i++) {
-            ssh_event_dopoll(event, 1);
+        for (int i = 0; i < 50 && !sdata.channel && !config->shutdown_requested;
+             i++) {
+            ssh_event_dopoll(res.event, 1);
         }
 
         if (sdata.channel) {
@@ -183,23 +202,18 @@ static void *server_thread_func(void *arg)
             int max_iterations = 30;
             for (int iter = 0; iter < max_iterations &&
                                !ssh_channel_is_closed(sdata.channel) &&
-                               !ssh_channel_is_eof(sdata.channel);
+                               !ssh_channel_is_eof(sdata.channel) &&
+                               !config->shutdown_requested;
                  iter++) {
-                if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
+                if (ssh_event_dopoll(res.event, 100) == SSH_ERROR) {
                     break;
                 }
             }
         }
     }
 
-    if (event)
-        ssh_event_free(event);
-    if (session) {
-        ssh_disconnect(session);
-        ssh_free(session);
-    }
-    if (sshbind)
-        ssh_bind_free(sshbind);
+cleanup:
+    cleanup_server_resources(&res);
 
     return NULL;
 }
@@ -223,10 +237,15 @@ int ssh_mock_server_start(struct ssh_mock_server_config *config,
         usleep(100);
     }
 
-    return config->server_error ? -1 : 0;
+    if (config->server_error) {
+        pthread_join(*thread, NULL);
+        return -1;
+    }
+
+    return 0;
 }
 
-/* Generic protocol callback - sends raw fuzzer data for any protocol */
+/* Generic protocol callback */
 int ssh_mock_send_raw_data(void *channel,
                            const void *data,
                            size_t size,
@@ -236,7 +255,7 @@ int ssh_mock_send_raw_data(void *channel,
 
     ssh_channel target_channel = (ssh_channel)channel;
 
-    /* Send raw fuzzer data - let protocol parser interpret it */
+    /* Send raw fuzzer data */
     if (size > 0) {
         ssh_channel_write(target_channel, data, size);
     }

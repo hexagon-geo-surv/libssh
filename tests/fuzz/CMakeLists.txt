@@ -3,6 +3,9 @@ project(fuzzing CXX)
 # Build SSH server mock helper as object library
 add_library(ssh_server_mock_obj OBJECT ssh_server_mock.c)
 target_link_libraries(ssh_server_mock_obj PRIVATE ${TORTURE_LINK_LIBRARIES})
+if (WITH_COVERAGE)
+    append_coverage_compiler_flags_to_target(ssh_server_mock_obj)
+endif (WITH_COVERAGE)
 
 macro(fuzzer name)
     add_executable(${name} ${name}.c)
@@ -22,10 +25,16 @@ macro(fuzzer name)
                               PROPERTIES
                                   COMPILE_FLAGS "-fsanitize=fuzzer"
                                   LINK_FLAGS "-fsanitize=fuzzer")
+        # Pick up <name>.dict if present
+        if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}.dict")
+            set(_DICT_ARG "-dict=${CMAKE_CURRENT_SOURCE_DIR}/${name}.dict")
+        else()
+            set(_DICT_ARG "")
+        endif()
         # Run the fuzzer to make sure it works
-        add_test(${name} ${CMAKE_CURRENT_BINARY_DIR}/${name} -runs=1)
+        add_test(${name} ${CMAKE_CURRENT_BINARY_DIR}/${name} ${_DICT_ARG} -runs=1)
         # Run the fuzzer with nalloc to make sure it works
-        add_test(${name}_nalloc ${CMAKE_CURRENT_BINARY_DIR}/${name} -runs=1)
+        add_test(${name}_nalloc ${CMAKE_CURRENT_BINARY_DIR}/${name} ${_DICT_ARG} -runs=1)
         set_property(TEST ${name}_nalloc PROPERTY ENVIRONMENT NALLOC_FREQ 32)
     else()
         target_sources(${name} PRIVATE fuzzer.c)

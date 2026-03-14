@@ -16,11 +16,13 @@
 
 #include <assert.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #define LIBSSH_STATIC 1
@@ -45,12 +47,104 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
     return 0;
 }
 
-/* Helper function to test one cipher/HMAC combination */
+static const char *const k_ciphers[] = {
+    "none",
+    "aes128-ctr",
+    "aes256-ctr",
+    "aes128-cbc",
+};
+
+static const char *const k_hmacs[] = {
+    "none",
+    "hmac-sha1",
+    "hmac-sha2-256",
+};
+
+/*
+ * Wrap fuzzer bytes as a valid SCP server record stream so the client
+ * survives ssh_scp_init's initial-ACK gate and reaches the deeper SCP
+ * code paths (record parsing, accept/deny, transfer flow, recursive
+ * push). Without this wrapping the fuzzer almost never satisfies the
+ * "\x00C<mode> <size> <name>\n" prefix the SCP layer expects, and
+ * coverage stalls in the early-protocol record-parser rejection paths.
+ *
+ * The 4 envelope bytes consumed here are still fuzzer-controlled, so
+ * libFuzzer mutations explore C/D/T/E variants, mismatched sizes, and
+ * unusual modes from inside the wrap:
+ *
+ *   data[0..1]  SCP mode (12 bits)
+ *   data[2]     bit 0-1: variant select (0=C, 1=D, 2=T, 3=E)
+ *               bit 2:   optional trailing server-ACK after payload
+ *   data[3]     declared transfer size in the C-record header
+ *   data[4..]   raw payload bytes appended after the SCP header
+ *
+ * Coverage of invalid SCP record parsing is NOT given up by this
+ * shaping: ssh_server_fuzzer and ssh_client_fuzzer pump unstructured
+ * bytes through the SSH transport and reach the SCP record parser's
+ * rejection paths from that direction.
+ */
+static size_t
+scp_wrap(const uint8_t *data, size_t size, uint8_t *out, size_t out_cap)
+{
+    uint16_t mode;
+    uint8_t variant;
+    uint8_t declared_size;
+    size_t payload_sz;
+    size_t cap_left;
+    size_t total;
+    int n;
+
+    if (size < 4 || out_cap == 0) {
+        return 0;
+    }
+    mode = ((uint16_t)data[0] << 8 | data[1]) & 07777;
+    variant = data[2] & 0x03;
+    declared_size = data[3];
+
+    switch (variant) {
+    case 0:
+        n = snprintf((char *)out,
+                     out_cap,
+                     "%cC%04o %u f\n",
+                     0,
+                     mode,
+                     declared_size);
+        break;
+    case 1:
+        n = snprintf((char *)out, out_cap, "%cD%04o 0 d\n", 0, mode);
+        break;
+    case 2:
+        n = snprintf((char *)out, out_cap, "%cT0 0 0 0\n", 0);
+        break;
+    default:
+        n = snprintf((char *)out, out_cap, "%cE\n", 0);
+        break;
+    }
+    if (n < 0 || (size_t)n >= out_cap) {
+        return 0;
+    }
+
+    payload_sz = size - 4;
+    cap_left = out_cap - (size_t)n;
+    if (payload_sz > cap_left) {
+        payload_sz = cap_left;
+    }
+    memcpy(out + n, data + 4, payload_sz);
+    total = (size_t)n + payload_sz;
+    /* Optional server final ACK; bit chosen by fuzzer to cover both paths */
+    if (variant == 0 && (data[2] & 0x04) && total < out_cap) {
+        out[total++] = '\x00';
+    }
+    return total;
+}
+
+/* Run one SCP fuzzing iteration against the mock server */
 static int test_scp_with_cipher(const uint8_t *data,
                                 size_t size,
                                 const char *cipher,
                                 const char *hmac)
 {
+    bool thread_started = false;
     int socket_fds[2] = {-1, -1};
     ssh_session client_session = NULL;
     ssh_scp scp = NULL, scp_recursive = NULL;
@@ -70,11 +164,19 @@ static int test_scp_with_cipher(const uint8_t *data,
         .client_socket = -1,
         .server_ready = false,
         .server_error = false,
+        .shutdown_requested = false,
     };
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket_fds) != 0) {
         goto cleanup;
     }
+
+    /* Set socket timeouts to prevent indefinite blocking */
+    struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
+    setsockopt(socket_fds[0], SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(socket_fds[0], SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    setsockopt(socket_fds[1], SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(socket_fds[1], SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 
     server_config.server_socket = socket_fds[0];
     server_config.client_socket = socket_fds[1];
@@ -82,10 +184,11 @@ static int test_scp_with_cipher(const uint8_t *data,
     if (ssh_mock_server_start(&server_config, &srv_thread) != 0) {
         goto cleanup;
     }
+    thread_started = true;
 
     client_session = ssh_new();
     if (client_session == NULL) {
-        goto cleanup_thread;
+        goto cleanup;
     }
 
     /* Configure client with specified cipher/HMAC */
@@ -102,20 +205,20 @@ static int test_scp_with_cipher(const uint8_t *data,
     ssh_options_set(client_session, SSH_OPTIONS_TIMEOUT, &timeout);
 
     if (ssh_connect(client_session) != SSH_OK) {
-        goto cleanup_thread;
+        goto cleanup;
     }
 
     if (ssh_userauth_none(client_session, NULL) != SSH_AUTH_SUCCESS) {
-        goto cleanup_thread;
+        goto cleanup;
     }
 
     scp = ssh_scp_new(client_session, SSH_SCP_READ, "/tmp/fuzz");
     if (scp == NULL) {
-        goto cleanup_thread;
+        goto cleanup;
     }
 
     if (ssh_scp_init(scp) != SSH_OK) {
-        goto cleanup_thread;
+        goto cleanup;
     }
 
     if (size > 0) {
@@ -150,10 +253,17 @@ static int test_scp_with_cipher(const uint8_t *data,
         }
     }
 
-cleanup_thread:
-    pthread_join(srv_thread, NULL);
-
 cleanup:
+    /* Signal server thread to exit */
+    server_config.shutdown_requested = true;
+
+    /* Close sockets */
+    if (socket_fds[0] >= 0)
+        close(socket_fds[0]);
+    if (socket_fds[1] >= 0)
+        close(socket_fds[1]);
+
+    /* Cleanup client objects */
     if (scp_recursive != NULL) {
         ssh_scp_close(scp_recursive);
         ssh_scp_free(scp_recursive);
@@ -166,39 +276,47 @@ cleanup:
         ssh_disconnect(client_session);
         ssh_free(client_session);
     }
-    if (socket_fds[0] >= 0)
-        close(socket_fds[0]);
-    if (socket_fds[1] >= 0)
-        close(socket_fds[1]);
+
+    /* Server thread exits via shutdown_requested + 2s socket timeout */
+    if (thread_started) {
+        pthread_join(srv_thread, NULL);
+    }
 
     return 0;
 }
 
+/*
+ * Fuzzer input layout (not passed directly to the SSH transport; it is
+ * decoded here, then fed through scp_wrap):
+ *
+ *   data[0]   cipher index, taken modulo length of k_ciphers
+ *   data[1]   HMAC index,   taken modulo length of k_hmacs
+ *   data[2..] handed to scp_wrap, which uses the first 4 bytes as the
+ *             SCP envelope (mode, variant, declared size, optional ACK
+ *             toggle) and the rest as the file-content payload.
+ *
+ * Inputs shorter than 6 bytes are rejected so every iteration has at
+ * least the two selector bytes plus one full envelope for scp_wrap.
+ */
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
+    uint8_t wrapped[4096];
+    size_t wrapped_size = 0;
+    const char *cipher = NULL;
+    const char *hmac = NULL;
+
+    if (size < 6) {
+        return 0;
+    }
+
     assert(nalloc_start(data, size) > 0);
 
-    /* Test all cipher/HMAC combinations exhaustively */
-    const char *ciphers[] = {
-        "none",
-        "aes128-ctr",
-        "aes256-ctr",
-        "aes128-cbc",
-    };
+    cipher = k_ciphers[data[0] % (sizeof(k_ciphers) / sizeof(k_ciphers[0]))];
+    hmac = k_hmacs[data[1] % (sizeof(k_hmacs) / sizeof(k_hmacs[0]))];
 
-    const char *hmacs[] = {
-        "none",
-        "hmac-sha1",
-        "hmac-sha2-256",
-    };
-
-    int num_ciphers = sizeof(ciphers) / sizeof(ciphers[0]);
-    int num_hmacs = sizeof(hmacs) / sizeof(hmacs[0]);
-
-    for (int i = 0; i < num_ciphers; i++) {
-        for (int j = 0; j < num_hmacs; j++) {
-            test_scp_with_cipher(data, size, ciphers[i], hmacs[j]);
-        }
+    wrapped_size = scp_wrap(data + 2, size - 2, wrapped, sizeof(wrapped));
+    if (wrapped_size > 0) {
+        test_scp_with_cipher(wrapped, wrapped_size, cipher, hmac);
     }
 
     nalloc_end();

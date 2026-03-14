@@ -38,8 +38,9 @@ struct ssh_mock_server_config {
     const char *hmac;
     int server_socket;
     int client_socket;
-    bool server_ready;
-    bool server_error;
+    volatile bool server_ready;
+    volatile bool server_error;
+    volatile bool shutdown_requested;
 };
 
 /* Public API functions */

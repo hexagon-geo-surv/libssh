@@ -322,7 +322,7 @@ list_fingerprint(char *file)
 int main(int argc, char *argv[])
 {
     ssh_key key = NULL;
-    int rc = 0, fd;
+    int ret = EXIT_FAILURE, rc, fd;
     char overwrite[1024] = "";
 
     char *pubkey_file = NULL;
@@ -500,6 +500,8 @@ int main(int argc, char *argv[])
         goto end;
     }
 
+    ret = EXIT_SUCCESS;
+
 end:
     if (key != NULL) {
         ssh_key_free(key);
@@ -521,5 +523,5 @@ end:
     if (pubkey_file != NULL) {
         free(pubkey_file);
     }
-    return rc;
+    return ret;
 }

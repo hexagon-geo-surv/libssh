@@ -322,7 +322,7 @@ list_fingerprint(char *file)
 int main(int argc, char *argv[])
 {
     ssh_key key = NULL;
-    int rc = 0;
+    int rc = 0, fd;
     char overwrite[1024] = "";
 
     char *pubkey_file = NULL;
@@ -361,15 +361,15 @@ int main(int argc, char *argv[])
     }
 
     errno = 0;
-    rc = open(arguments.file, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
-    if (rc < 0) {
+    fd = open(arguments.file, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
+    if (fd < 0) {
         if (errno == EEXIST) {
             printf("File \"%s\" exists. Overwrite it? (y|n) ", arguments.file);
             rc = scanf("%1023s", overwrite);
             if (rc > 0 && tolower(overwrite[0]) == 'y') {
-                rc = open(arguments.file, O_WRONLY);
-                if (rc > 0) {
-                    close(rc);
+                fd = open(arguments.file, O_WRONLY);
+                if (fd > 0) {
+                    close(fd);
                     errno = 0;
                     rc = chmod(arguments.file, S_IRUSR | S_IWUSR);
                     if (rc != 0) {
@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
             goto end;
         }
     } else {
-        close(rc);
+        close(fd);
     }
 
     /* Generate a new private key */
@@ -451,24 +451,23 @@ int main(int argc, char *argv[])
 
     pubkey_file = (char *)malloc(strlen(arguments.file) + 5);
     if (pubkey_file == NULL) {
-        rc = ENOMEM;
         goto end;
     }
 
     sprintf(pubkey_file, "%s.pub", arguments.file);
 
     errno = 0;
-    rc = open(pubkey_file,
+    fd = open(pubkey_file,
               O_CREAT | O_EXCL | O_WRONLY,
               S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (rc < 0) {
+    if (fd < 0) {
         if (errno == EEXIST) {
             printf("File \"%s\" exists. Overwrite it? (y|n) ", pubkey_file);
             rc = scanf("%1023s", overwrite);
             if (rc > 0 && tolower(overwrite[0]) == 'y') {
-                rc = open(pubkey_file, O_WRONLY);
-                if (rc > 0) {
-                    close(rc);
+                fd = open(pubkey_file, O_WRONLY);
+                if (fd > 0) {
+                    close(fd);
                     errno = 0;
                     rc = chmod(pubkey_file,
                                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -491,7 +490,7 @@ int main(int argc, char *argv[])
             goto end;
         }
     } else {
-        close(rc);
+        close(fd);
     }
 
     /* Write the public key */

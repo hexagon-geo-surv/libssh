@@ -110,7 +110,7 @@ void ssh_pki_ctx_free(ssh_pki_ctx context)
  *                  Set the RSA key size in bits for key generation.
  *                  Typically 2048, 3072, or 4096 bits. Must be greater
  *                  than or equal to 1024, as anything below is considered
- *                  insecure.
+ *                  insecure. Use 0 (default) to use default key size (3072).
  *
  *                - SSH_PKI_OPTION_SK_APPLICATION (const char *):
  *                  The Relying Party identifier (application string) that

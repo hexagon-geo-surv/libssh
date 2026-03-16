@@ -69,13 +69,53 @@ struct server_state_st {
                            struct server_state_st *state);
 };
 
-/*TODO: Add documentation */
+/**
+ * @brief Free a server state struct.
+ *
+ * Frees all memory inside server_state_st using SAFE_FREE.
+ *
+ * @param[in] state       The server_state_st struct to free.
+ */
 void free_server_state(struct server_state_st *state);
 
-/*TODO: Add documentation */
+/**
+ * @brief Run a SSH server based on a server state struct.
+ *
+ * Takes a server_state_st struct, validates required fields, and starts
+ * listening for connections. For each client, it forks a child process
+ * that calls handle_session. Blocks until SIGTERM is received.
+ *
+ * @param[in] state       The server configuration struct.
+ *
+ * @return SSH_OK on success, SSH_ERROR if an error occurred.
+ *
+ * @note This function blocks until SIGTERM is received.
+ * @note The state is freed internally; do not use after calling.
+ * @note If state->log_file is set, stdout/stderr are redirected to it.
+ *
+ * @see fork_run_server()
+ * @see free_server_state()
+ */
 int run_server(struct server_state_st *state);
 
-/*TODO: Add documentation */
+/**
+ * @brief Fork and run an SSH server in non-blocking mode.
+ *
+ * Forks a child process that calls run_server(). The parent returns
+ * immediately with the child's PID. Designed for tests that need
+ * a server running in the background.
+ *
+ * @param[in] state           The server_state_st struct passed to run_server().
+ * @param[in] free_state      Callback to free parent's test data in the child.
+ * @param[in] userdata        Pointer passed to free_state.
+ *
+ * @return Child PID on success, -1 on error.
+ *
+ * @note The parent should send SIGTERM to the child PID when done.
+ * @note The state is freed by the child process via run_server().
+ *
+ * @see run_server()
+ */
 pid_t
 fork_run_server(struct server_state_st *state,
                 void (*free_state) (void **userdata),

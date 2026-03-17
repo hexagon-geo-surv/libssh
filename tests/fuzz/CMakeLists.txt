@@ -13,6 +13,9 @@ macro(fuzzer name)
         target_sources(${name} PRIVATE $<TARGET_OBJECTS:ssh_server_mock_obj>)
         target_link_libraries(${name} PRIVATE pthread)
     endif()
+    if (WITH_COVERAGE)
+        append_coverage_compiler_flags_to_target(${name})
+    endif (WITH_COVERAGE)
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set_target_properties(${name}

@@ -72,7 +72,6 @@ int ssh_gcry_rand_range(bignum rnd, bignum max);
         (num)=NULL; \
     } \
     } while (0)
-#define bignum_free(num) gcry_mpi_release(num)
 #define bignum_ctx_new() NULL
 #define bignum_ctx_free(ctx) do {(ctx) = NULL;} while(0)
 #define bignum_ctx_invalid(ctx) (ctx != NULL)

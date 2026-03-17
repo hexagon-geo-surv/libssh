@@ -106,7 +106,6 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_group)
     int rc;
     int blen;
     bignum pmin1 = NULL, one = NULL;
-    bignum_CTX ctx = bignum_ctx_new();
     bignum modulus = NULL, generator = NULL;
 #if !defined(HAVE_LIBCRYPTO) || OPENSSL_VERSION_NUMBER < 0x30000000L
     const_bignum pubkey;
@@ -117,10 +116,6 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_group)
     (void) user;
 
     SSH_LOG(SSH_LOG_DEBUG, "SSH_MSG_KEX_DH_GEX_GROUP received");
-
-    if (bignum_ctx_invalid(ctx)) {
-        goto error;
-    }
 
     if (session->dh_handshake_state != DH_STATE_REQUEST_SENT) {
         ssh_set_error(session,
@@ -180,8 +175,6 @@ SSH_PACKET_CALLBACK(ssh_packet_client_dhgex_group)
         ssh_set_error(session, SSH_FATAL, "Invalid dh group parameter g");
         goto error;
     }
-    bignum_ctx_free(ctx);
-    ctx = NULL;
 
     /* all checks passed, set parameters (the BNs are copied in openssl backend) */
     rc = ssh_dh_set_parameters(session->next_crypto->dh_ctx,
@@ -239,9 +232,6 @@ error:
 #if defined(HAVE_LIBCRYPTO) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     bignum_safe_free(pubkey);
 #endif /* OPENSSL_VERSION_NUMBER */
-    if(!bignum_ctx_invalid(ctx)) {
-        bignum_ctx_free(ctx);
-    }
     ssh_dh_cleanup(session->next_crypto);
     session->session_state = SSH_SESSION_STATE_ERROR;
 

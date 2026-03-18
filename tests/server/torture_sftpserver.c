@@ -75,9 +75,9 @@ static void free_test_server_state(void **state)
 
 static int setup_default_server(void **state)
 {
-    struct torture_state *s;
-    struct server_state_st *ss;
-    struct test_server_st *tss;
+    struct torture_state *s = NULL;
+    struct server_state_st *ss = NULL;
+    struct test_server_st *tss = NULL;
 
     char ed25519_hostkey[1024] = {0};
     char rsa_hostkey[1024];
@@ -211,9 +211,9 @@ static int setup_default_server(void **state)
 
 static int teardown_default_server(void **state)
 {
-    struct torture_state *s;
-    struct server_state_st *ss;
-    struct test_server_st *tss;
+    struct torture_state *s = NULL;
+    struct server_state_st *ss = NULL;
+    struct test_server_st *tss = NULL;
 
     tss = *state;
     assert_non_null(tss);
@@ -237,7 +237,7 @@ static int teardown_default_server(void **state)
 static int session_setup(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
+    struct torture_state *s = NULL;
     int verbosity = torture_libssh_verbosity();
     char template2[] = "/tmp/ssh_torture_XXXXXX";
     char *cwd = NULL;
@@ -339,7 +339,7 @@ static int session_setup_sftp(void **state)
 static int session_teardown(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
+    struct torture_state *s = NULL;
     int rc = 0;
 
     assert_non_null(tss);
@@ -369,10 +369,10 @@ static int session_teardown(void **state)
 static void torture_server_establish_sftp(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    ssh_session session;
-    sftp_session sftp;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    ssh_session session = NULL;
+    sftp_session sftp = NULL;
     int rc;
 
     assert_non_null(tss);
@@ -422,17 +422,17 @@ static void torture_server_establish_sftp(void **state)
 static void torture_server_test_sftp_function(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    ssh_session session;
-    sftp_session sftp;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    ssh_session session = NULL;
+    sftp_session sftp = NULL;
     int rc;
-    char *rv_str;
-    sftp_dir dir;
+    char *rv_str = NULL;
+    sftp_dir dir = NULL;
 
     char data[65535] = {0};
-    sftp_file source;
-    sftp_file to;
+    sftp_file source = NULL;
+    sftp_file to = NULL;
     int read_len;
     int write_len;
 
@@ -679,10 +679,10 @@ static void torture_server_sftp_open_read_write(void **state)
 static void torture_server_sftp_mkdir(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    sftp_session sftp;
-    ssh_session session;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_session sftp = NULL;
+    ssh_session session = NULL;
     sftp_file new_file = NULL;
     char tmp_dir[PATH_MAX] = {0};
     char tmp_file[PATH_MAX] = {0};
@@ -754,10 +754,10 @@ static void torture_server_sftp_mkdir(void **state)
 static void torture_server_sftp_realpath(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    sftp_session sftp;
-    ssh_session session;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_session sftp = NULL;
+    ssh_session session = NULL;
     char path[PATH_MAX] = {0};
     char exp_path[PATH_MAX] = {0};
     char *new_path = NULL;
@@ -803,10 +803,10 @@ static void torture_server_sftp_realpath(void **state)
 static void torture_server_sftp_symlink(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    sftp_session sftp;
-    ssh_session session;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_session sftp = NULL;
+    ssh_session session = NULL;
     sftp_file new_file = NULL;
     char tmp_dir[PATH_MAX] = {0};
     char tmp_file[PATH_MAX] = {0};
@@ -815,7 +815,7 @@ static void torture_server_sftp_symlink(void **state)
     char data[42] = "012345678901234567890123456789012345678901";
     char *new_path = NULL;
     sftp_attributes a = NULL;
-    sftp_dir dir;
+    sftp_dir dir = NULL;
     int write_len, num_files = 0;
     int rc;
 
@@ -950,10 +950,10 @@ static void torture_server_sftp_symlink(void **state)
 static void torture_server_sftp_extended(void **state)
 {
     struct test_server_st *tss = *state;
-    struct torture_state *s;
-    struct torture_sftp *tsftp;
-    sftp_session sftp;
-    ssh_session session;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_session sftp = NULL;
+    ssh_session session = NULL;
     sftp_file new_file = NULL;
     char tmp_dir[PATH_MAX] = {0};
     char tmp_file[PATH_MAX] = {0};
@@ -1099,7 +1099,7 @@ static void torture_server_sftp_handles_exhaustion(void **state)
     struct torture_state *s = NULL;
     struct torture_sftp *tsftp = NULL;
     char name[128] = {0};
-    sftp_file handle, handles[SFTP_HANDLES] = {0};
+    sftp_file handle = NULL, handles[SFTP_HANDLES] = {0};
     sftp_session sftp = NULL;
     int rc;
 

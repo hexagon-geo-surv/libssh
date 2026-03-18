@@ -26,10 +26,11 @@
 
 #define LIBSSH_STATIC
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <errno.h>
+#include <grp.h>
 #include <pwd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #ifdef HAVE_VALGRIND_VALGRIND_H
 #include <valgrind/valgrind.h>
@@ -47,6 +48,9 @@
 #include "default_cb.h"
 
 #define TORTURE_KNOWN_HOSTS_FILE "libssh_torture_knownhosts"
+
+#define TEST_INVALID_ID_1 99999
+#define TEST_INVALID_ID_2 88888
 
 const char template[] = "temp_dir_XXXXXX";
 
@@ -1300,6 +1304,274 @@ static void torture_server_sftp_payload_overrun(void **state)
     free(handle);
 }
 
+static void torture_sftp_users_groups_by_id_basic(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_name_id_map users_map = NULL;
+    sftp_name_id_map groups_map = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    users_map = sftp_name_id_map_new(2);
+    assert_non_null(users_map);
+
+    groups_map = sftp_name_id_map_new(2);
+    assert_non_null(groups_map);
+
+    users_map->ids[0] = TORTURE_SSH_USER_ID_BOB;
+    users_map->ids[1] = TORTURE_SSH_USER_ID_ALICE;
+
+    groups_map->ids[0] = TORTURE_SSH_GROUP_ID_ROOT;
+    groups_map->ids[1] = TORTURE_SSH_GROUP_ID_COMMON;
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, users_map, groups_map);
+    assert_int_equal(rc, 0);
+
+    assert_non_null(users_map->names[0]);
+    assert_string_equal(users_map->names[0], TORTURE_SSH_USER_BOB);
+
+    assert_non_null(users_map->names[1]);
+    assert_string_equal(users_map->names[1], TORTURE_SSH_USER_ALICE);
+
+    assert_non_null(groups_map->names[0]);
+    assert_string_equal(groups_map->names[0], TORTURE_SSH_GROUP_ROOT);
+
+    assert_non_null(groups_map->names[1]);
+    assert_string_equal(groups_map->names[1], TORTURE_SSH_GROUP_COMMON);
+
+    sftp_name_id_map_free(users_map);
+    sftp_name_id_map_free(groups_map);
+}
+
+static void torture_sftp_users_groups_by_id_unknown(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_name_id_map users_map = NULL;
+    sftp_name_id_map groups_map = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    users_map = sftp_name_id_map_new(1);
+    assert_non_null(users_map);
+
+    groups_map = sftp_name_id_map_new(1);
+    assert_non_null(groups_map);
+
+    /* Set User ID and Group ID that do not exist */
+    users_map->ids[0] = TEST_INVALID_ID_1;
+    groups_map->ids[0] = TEST_INVALID_ID_1;
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, users_map, groups_map);
+    assert_int_equal(rc, 0);
+
+    assert_non_null(users_map->names[0]);
+    assert_string_equal(users_map->names[0], "");
+
+    assert_non_null(groups_map->names[0]);
+    assert_string_equal(groups_map->names[0], "");
+
+    sftp_name_id_map_free(users_map);
+    sftp_name_id_map_free(groups_map);
+}
+
+static void torture_sftp_users_groups_by_id_users_only(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_name_id_map users_map = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    users_map = sftp_name_id_map_new(1);
+    assert_non_null(users_map);
+
+    users_map->ids[0] = TORTURE_SSH_USER_ID_ALICE;
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, users_map, NULL);
+    assert_int_equal(rc, 0);
+    assert_non_null(users_map->names[0]);
+    assert_string_equal(users_map->names[0], TORTURE_SSH_USER_ALICE);
+
+    sftp_name_id_map_free(users_map);
+}
+
+static void torture_sftp_users_groups_by_id_groups_only(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_name_id_map groups_map = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    groups_map = sftp_name_id_map_new(1);
+    assert_non_null(groups_map);
+
+    groups_map->ids[0] = TORTURE_SSH_GROUP_ID_ROOT;
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, NULL, groups_map);
+    assert_int_equal(rc, 0);
+    assert_non_null(groups_map->names[0]);
+    assert_string_equal(groups_map->names[0], TORTURE_SSH_GROUP_ROOT);
+
+    sftp_name_id_map_free(groups_map);
+}
+
+static void torture_sftp_users_groups_by_id_multiple(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    sftp_name_id_map users_map = NULL;
+    sftp_name_id_map groups_map = NULL;
+    uint32_t i = 0;
+    int rc;
+
+    struct {
+        uid_t id;
+        const char *name;
+    } expected_users[] = {
+        {TORTURE_SSH_USER_ID_BOB, TORTURE_SSH_USER_BOB},
+        {TEST_INVALID_ID_1, ""},
+        {TORTURE_SSH_USER_ID_ALICE, TORTURE_SSH_USER_ALICE},
+        {TEST_INVALID_ID_2, ""},
+        {TORTURE_SSH_USER_ID_CHARLIE, TORTURE_SSH_USER_CHARLIE}};
+    size_t num_expected_users = ARRAY_SIZE(expected_users);
+
+    struct {
+        gid_t id;
+        const char *name;
+    } expected_groups[] = {
+        {TORTURE_SSH_GROUP_ID_ROOT, TORTURE_SSH_GROUP_ROOT},
+        {TEST_INVALID_ID_1, ""},
+        {TORTURE_SSH_GROUP_ID_COMMON, TORTURE_SSH_GROUP_COMMON},
+        {TEST_INVALID_ID_2, ""},
+        {TORTURE_SSH_GROUP_ID_SSHD, TORTURE_SSH_GROUP_SSHD}};
+    size_t num_expected_groups = ARRAY_SIZE(expected_groups);
+
+    assert_non_null(tss);
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    users_map = sftp_name_id_map_new(num_expected_users);
+    assert_non_null(users_map);
+
+    groups_map = sftp_name_id_map_new(num_expected_groups);
+    assert_non_null(groups_map);
+
+    for (i = 0; i < num_expected_users; i++) {
+        users_map->ids[i] = expected_users[i].id;
+    }
+
+    for (i = 0; i < num_expected_groups; i++) {
+        groups_map->ids[i] = expected_groups[i].id;
+    }
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, users_map, groups_map);
+    assert_int_equal(rc, 0);
+
+    for (i = 0; i < num_expected_users; i++) {
+        assert_non_null(users_map->names[i]);
+        assert_string_equal(users_map->names[i], expected_users[i].name);
+    }
+
+    for (i = 0; i < num_expected_groups; i++) {
+        assert_non_null(groups_map->names[i]);
+        assert_string_equal(groups_map->names[i], expected_groups[i].name);
+    }
+
+    sftp_name_id_map_free(users_map);
+    sftp_name_id_map_free(groups_map);
+}
+
+static void torture_sftp_users_groups_by_id_negative(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    tsftp = s->ssh.tsftp;
+    assert_non_null(tsftp);
+
+    rc = sftp_extension_supported(tsftp->sftp,
+                                  "users-groups-by-id@openssh.com",
+                                  "1");
+    assert_int_equal(rc, 1);
+
+    rc = sftp_get_users_groups_by_id(NULL, NULL, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+
+    rc = sftp_get_users_groups_by_id(tsftp->sftp, NULL, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -1330,15 +1602,38 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_server_sftp_handles_exhaustion,
                                         session_setup_sftp,
                                         session_teardown),
-        cmocka_unit_test_setup_teardown(torture_server_sftp_opendir_handles_exhaustion,
-                                        session_setup_sftp,
-                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_server_sftp_opendir_handles_exhaustion,
+            session_setup_sftp,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_handle_overrun,
                                         session_setup_sftp,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_payload_overrun,
                                         session_setup_sftp,
                                         session_teardown),
+        cmocka_unit_test_setup_teardown(torture_sftp_users_groups_by_id_basic,
+                                        session_setup_sftp,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_sftp_users_groups_by_id_unknown,
+                                        session_setup_sftp,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_sftp_users_groups_by_id_users_only,
+            session_setup_sftp,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_sftp_users_groups_by_id_groups_only,
+            session_setup_sftp,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_sftp_users_groups_by_id_multiple,
+            session_setup_sftp,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_sftp_users_groups_by_id_negative,
+            session_setup_sftp,
+            session_teardown),
     };
 
     ssh_init();

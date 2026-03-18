@@ -53,6 +53,18 @@
 #define TORTURE_SSH_USER_CHARLIE "charlie"
 #define TORTURE_SSH_USER_NONEUSER "noneuser"
 
+#define TORTURE_SSH_GROUP_ROOT   "root"
+#define TORTURE_SSH_GROUP_COMMON "users"
+#define TORTURE_SSH_GROUP_SSHD   "sshd"
+
+#define TORTURE_SSH_USER_ID_BOB     5000
+#define TORTURE_SSH_USER_ID_ALICE   5001
+#define TORTURE_SSH_USER_ID_CHARLIE 5002
+
+#define TORTURE_SSH_GROUP_ID_ROOT   0
+#define TORTURE_SSH_GROUP_ID_COMMON 9000
+#define TORTURE_SSH_GROUP_ID_SSHD   65531
+
 /* Used by main to communicate with parse_opt. */
 struct argument_s {
     const char *pattern;

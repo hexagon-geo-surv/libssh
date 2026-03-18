@@ -24,11 +24,12 @@
 
 #include "config.h"
 
-
 #ifndef _WIN32
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <dirent.h>
+#include <grp.h>
+#include <netinet/in.h>
+#include <pwd.h>
 #include <sys/statvfs.h>
 #endif
 
@@ -239,9 +240,7 @@ sftp_make_client_message(sftp_session sftp, sftp_packet packet)
             }
             break;
         case SSH_FXP_EXTENDED:
-            rc = ssh_buffer_unpack(payload,
-                                   "s",
-                                   &msg->submessage);
+            rc = ssh_buffer_unpack(payload, "s", &msg->submessage);
             if (rc != SSH_OK) {
                 goto error;
             }
@@ -256,9 +255,13 @@ sftp_make_client_message(sftp_session sftp, sftp_packet packet)
                     goto error;
                 }
             } else if (strcmp(msg->submessage, "statvfs@openssh.com") == 0 ){
-                rc = ssh_buffer_unpack(payload,
-                                       "s",
-                                       &msg->filename);
+                rc = ssh_buffer_unpack(payload, "s", &msg->filename);
+                if (rc != SSH_OK) {
+                    goto error;
+                }
+            } else if (strcmp(msg->submessage,
+                              "users-groups-by-id@openssh.com") == 0) {
+                rc = ssh_buffer_unpack(payload, "SS", &msg->data, &msg->handle);
                 if (rc != SSH_OK) {
                     goto error;
                 }
@@ -834,14 +837,17 @@ int sftp_reply_version(sftp_client_message client_msg)
         return -1;
     }
 
-    rc = ssh_buffer_pack(reply, "dssssss",
+    rc = ssh_buffer_pack(reply,
+                         "dssssssss",
                          LIBSFTP_VERSION,
                          "posix-rename@openssh.com",
                          "1",
                          "hardlink@openssh.com",
                          "1",
                          "statvfs@openssh.com",
-                         "2");
+                         "2",
+                         "users-groups-by-id@openssh.com",
+                         "1");
     if (rc != SSH_OK) {
         ssh_set_error_oom(session);
         SSH_BUFFER_FREE(reply);
@@ -1067,6 +1073,352 @@ struct sftp_handle
     char *name;
 };
 
+/**
+ * @internal
+ *
+ * @brief Parse a blob of IDs into a sftp_name_id_map.
+ *
+ * This function extracts numeric IDs from the binary blob and populates
+ * the 'ids' array of the map. Note that each element of the 'names'
+ * array in the map is initialized to NULL by this function.
+ *
+ * @param[in] ids_blob The binary string blob containing uint32_t IDs.
+ *
+ * @return A newly allocated sftp_name_id_map on success, or NULL on error.
+ */
+static sftp_name_id_map sftp_name_id_map_from_ids_blob(ssh_string ids_blob)
+{
+    sftp_name_id_map map = NULL;
+    ssh_buffer buf = NULL;
+    size_t len;
+    uint32_t count, i;
+    int rc;
+
+    if (ids_blob == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "IDs blob is NULL");
+        return NULL;
+    }
+
+    len = ssh_string_len(ids_blob);
+
+    if (len % sizeof(uint32_t) != 0) {
+        SSH_LOG(SSH_LOG_WARNING,
+                "IDs blob length is not a multiple of 4 bytes");
+        return NULL;
+    }
+
+    count = len / sizeof(uint32_t);
+    map = sftp_name_id_map_new(count);
+    if (map == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to allocate sftp_name_id_map");
+        return NULL;
+    }
+
+    buf = ssh_buffer_new();
+    if (buf == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to allocate ssh_buffer");
+        sftp_name_id_map_free(map);
+        return NULL;
+    }
+
+    rc = ssh_buffer_add_data(buf, ssh_string_data(ids_blob), len);
+    if (rc < 0) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to copy blob data to buffer");
+        SSH_BUFFER_FREE(buf);
+        sftp_name_id_map_free(map);
+        return NULL;
+    }
+
+    for (i = 0; i < count; i++) {
+        uint32_t val;
+        rc = ssh_buffer_unpack(buf, "d", &val);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_WARNING, "Failed to unpack ID from buffer");
+            SSH_BUFFER_FREE(buf);
+            sftp_name_id_map_free(map);
+            return NULL;
+        }
+        map->ids[i] = val;
+    }
+
+    SSH_BUFFER_FREE(buf);
+    return map;
+}
+
+/**
+ * @internal
+ *
+ * @brief Fill the names array using UIDs in the map.
+ */
+static int sftp_fill_names_using_uids(sftp_name_id_map users_map)
+{
+    struct passwd pwd_struct;
+    struct passwd *pwd_res = NULL;
+    long pwd_buf_size = -1;
+    char *pwd_lookup_buf = NULL;
+    uint32_t i;
+    int rc = SSH_OK;
+
+    if (users_map == NULL) {
+        return SSH_ERROR;
+    }
+
+#ifdef _SC_GETPW_R_SIZE_MAX
+    pwd_buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+#endif
+    if (pwd_buf_size <= 0) {
+        pwd_buf_size = 16384;
+    }
+    pwd_lookup_buf = calloc(1, pwd_buf_size);
+    if (pwd_lookup_buf == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to allocate pwd lookup buffer");
+        return SSH_ERROR;
+    }
+
+    for (i = 0; i < users_map->count; i++) {
+        int ret = getpwuid_r(users_map->ids[i],
+                             &pwd_struct,
+                             pwd_lookup_buf,
+                             pwd_buf_size,
+                             &pwd_res);
+
+        SAFE_FREE(users_map->names[i]);
+
+        if (ret == 0 && pwd_res != NULL) {
+            users_map->names[i] = strdup(pwd_res->pw_name);
+        } else {
+            users_map->names[i] = strdup("");
+        }
+
+        if (users_map->names[i] == NULL) {
+            SSH_LOG(SSH_LOG_WARNING,
+                    "Failed to allocate memory for username string");
+            rc = SSH_ERROR;
+            break;
+        }
+    }
+
+    SAFE_FREE(pwd_lookup_buf);
+    return rc;
+}
+
+/**
+ * @internal
+ *
+ * @brief Fill the names array using GIDs in the map.
+ */
+static int sftp_fill_names_using_gids(sftp_name_id_map groups_map)
+{
+    struct group grp_struct;
+    struct group *grp_res = NULL;
+    long grp_buf_size = -1;
+    char *grp_lookup_buf = NULL;
+    uint32_t i;
+    int rc = SSH_OK;
+
+    if (groups_map == NULL) {
+        return SSH_ERROR;
+    }
+
+#ifdef _SC_GETGR_R_SIZE_MAX
+    grp_buf_size = sysconf(_SC_GETGR_R_SIZE_MAX);
+#endif
+    if (grp_buf_size <= 0) {
+        grp_buf_size = 16384;
+    }
+    grp_lookup_buf = calloc(1, grp_buf_size);
+    if (grp_lookup_buf == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to allocate grp lookup buffer");
+        return SSH_ERROR;
+    }
+
+    for (i = 0; i < groups_map->count; i++) {
+        int ret = getgrgid_r(groups_map->ids[i],
+                             &grp_struct,
+                             grp_lookup_buf,
+                             grp_buf_size,
+                             &grp_res);
+
+        SAFE_FREE(groups_map->names[i]);
+
+        if (ret == 0 && grp_res != NULL) {
+            groups_map->names[i] = strdup(grp_res->gr_name);
+        } else {
+            groups_map->names[i] = strdup("");
+        }
+
+        if (groups_map->names[i] == NULL) {
+            SSH_LOG(SSH_LOG_WARNING,
+                    "Failed to allocate memory for group name string");
+            rc = SSH_ERROR;
+            break;
+        }
+    }
+
+    SAFE_FREE(grp_lookup_buf);
+    return rc;
+}
+
+/**
+ * @internal
+ *
+ * @brief Pack the resolved names from a map into the output buffer.
+ *
+ * This function formats the multiple names according to the
+ * users-groups-by-id@openssh.com extension specification. Each name in
+ * the map is individually encoded as an SSH string. The entire concatenated
+ * sequence of these encoded names is then wrapped and appended to the
+ * output buffer as one single, large SSH string.
+ *
+ * @param[out] out_buffer The destination buffer for the final packed string.
+ * @param[in]  map        The map containing the resolved names.
+ *
+ * @return SSH_OK on success, or SSH_ERROR on memory allocation failure.
+ */
+static int sftp_buffer_add_names(ssh_buffer out_buffer, sftp_name_id_map map)
+{
+    ssh_buffer temp_buffer = NULL;
+    uint32_t i;
+    int rc;
+
+    if (out_buffer == NULL || map == NULL) {
+        return SSH_ERROR;
+    }
+
+    temp_buffer = ssh_buffer_new();
+    if (temp_buffer == NULL) {
+        SSH_LOG(SSH_LOG_WARNING,
+                "Failed to allocate temporary buffer for names");
+        return SSH_ERROR;
+    }
+
+    for (i = 0; i < map->count; i++) {
+        const char *name = map->names[i] != NULL ? map->names[i] : "";
+        rc = ssh_buffer_pack(temp_buffer, "s", name);
+        if (rc != SSH_OK) {
+            SSH_LOG(SSH_LOG_WARNING, "Failed to pack name into buffer");
+            SSH_BUFFER_FREE(temp_buffer);
+            return SSH_ERROR;
+        }
+    }
+
+    rc = ssh_buffer_pack(out_buffer,
+                         "dP",
+                         (uint32_t)ssh_buffer_get_len(temp_buffer),
+                         (size_t)ssh_buffer_get_len(temp_buffer),
+                         ssh_buffer_get(temp_buffer));
+
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_WARNING,
+                "Failed to add names string blob to output buffer");
+    }
+
+    SSH_BUFFER_FREE(temp_buffer);
+    return (rc != SSH_OK) ? SSH_ERROR : SSH_OK;
+}
+
+/**
+ * @internal
+ *
+ * @brief Handle users-groups-by-id@openssh.com extension request.
+ *
+ * Resolves numeric user IDs (UIDs) and group IDs (GIDs) to their
+ * corresponding username and group name strings. Returns empty strings
+ * for IDs that cannot be resolved.
+ *
+ * @param[in] client_msg  The SFTP client message containing the request.
+ * client_msg->data contains the UIDs blob.
+ * client_msg->handle contains the GIDs blob.
+ *
+ * @return SSH_OK on success (reply sent to client). On error, an error
+ * status is sent to the client and SSH_ERROR is returned.
+ */
+static int process_users_groups_by_id(sftp_client_message client_msg)
+{
+    ssh_buffer out = NULL;
+    sftp_name_id_map users_map = NULL;
+    sftp_name_id_map groups_map = NULL;
+    int rc;
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Processing users-groups-by-id extension");
+
+    if (client_msg->data == NULL || client_msg->handle == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Missing UIDs or GIDs blob");
+        goto error;
+    }
+
+    users_map = sftp_name_id_map_from_ids_blob(client_msg->data);
+    if (users_map == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to parse UIDs blob");
+        goto error;
+    }
+
+    groups_map = sftp_name_id_map_from_ids_blob(client_msg->handle);
+    if (groups_map == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to parse GIDs blob");
+        goto error;
+    }
+
+    rc = sftp_fill_names_using_uids(users_map);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to resolve UIDs");
+        goto error;
+    }
+
+    rc = sftp_fill_names_using_gids(groups_map);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to resolve GIDs");
+        goto error;
+    }
+
+    out = ssh_buffer_new();
+    if (out == NULL) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to allocate output buffer");
+        goto error;
+    }
+
+    rc = ssh_buffer_add_u32(out, client_msg->id);
+    if (rc < 0) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to add request ID to buffer");
+        goto error;
+    }
+
+    rc = sftp_buffer_add_names(out, users_map);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to add users to buffer");
+        goto error;
+    }
+
+    rc = sftp_buffer_add_names(out, groups_map);
+    if (rc != SSH_OK) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to add groups to buffer");
+        goto error;
+    }
+
+    rc = sftp_packet_write(client_msg->sftp, SSH_FXP_EXTENDED_REPLY, out);
+    if (rc < 0) {
+        SSH_LOG(SSH_LOG_WARNING, "Failed to send extended reply");
+        goto error;
+    }
+
+    sftp_name_id_map_free(users_map);
+    sftp_name_id_map_free(groups_map);
+    SSH_BUFFER_FREE(out);
+
+    SSH_LOG(SSH_LOG_PROTOCOL, "Successfully processed request");
+    return SSH_OK;
+
+error:
+    sftp_name_id_map_free(users_map);
+    sftp_name_id_map_free(groups_map);
+    SSH_BUFFER_FREE(out);
+    SSH_LOG(SSH_LOG_WARNING, "Sending error response");
+
+    sftp_reply_status(client_msg, SSH_FX_FAILURE, "Internal processing error");
+
+    return SSH_ERROR;
+}
+
 SSH_SFTP_CALLBACK(process_unsupported);
 SSH_SFTP_CALLBACK(process_open);
 SSH_SFTP_CALLBACK(process_read);
@@ -1111,6 +1463,10 @@ const struct sftp_message_handler message_handlers[] = {
 const struct sftp_message_handler extended_handlers[] = {
     /* here are some extended type handlers */
     {"statvfs", "statvfs@openssh.com", 0, process_extended_statvfs},
+    {"users-groups-by-id",
+     "users-groups-by-id@openssh.com",
+     0,
+     process_users_groups_by_id},
     {NULL, NULL, 0, NULL},
 };
 

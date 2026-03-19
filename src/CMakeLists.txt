@@ -140,6 +140,13 @@ set(libssh_SRCS
   pki_ed25519_common.c
 )
 
+if (NOT HAVE_GETOPT)
+    set(libssh_SRCS
+        ${libssh_SRCS}
+        external/getopt.c
+    )
+endif (NOT HAVE_GETOPT)
+
 if (DEFAULT_C_NO_DEPRECATION_FLAGS)
     set_source_files_properties(known_hosts.c
                                 PROPERTIES

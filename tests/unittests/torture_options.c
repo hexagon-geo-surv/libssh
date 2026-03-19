@@ -1673,12 +1673,6 @@ static void torture_options_getopt(void **state)
 
     /* Test with all the supported options */
     rc = ssh_options_getopt(session, &argc, (char **)argv);
-#ifdef _MSC_VER
-    UNUSED_VAR(new_level);
-
-    /* Not supported in windows */
-    assert_ssh_return_code_equal(session, rc, -1);
-#else
     assert_ssh_return_code(session, rc);
 
     /* Restore the log level to previous value first */
@@ -1812,12 +1806,10 @@ static void torture_options_getopt(void **state)
     assert_int_equal(argc, 1);
     assert_string_equal(argv[0], EXECUTABLE_NAME);
 
-#endif /* _NSC_VER */
 }
 
 static void torture_options_getopt_o_option(void **state)
 {
-#ifndef _MSC_VER
     ssh_session session = *state;
     int rc;
     enum ssh_config_opcode_e opcode =
@@ -1914,7 +1906,6 @@ static void torture_options_getopt_o_option(void **state)
 
     opcode = ssh_config_get_opcode((char *)"rekeylimit");
     assert_int_equal(session->opts.options_seen[opcode], 1);
-#endif /* _MSC_VER */
 }
 
 static void torture_options_plus_sign(void **state)

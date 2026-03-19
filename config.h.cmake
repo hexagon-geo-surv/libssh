@@ -67,6 +67,12 @@
 /* Define to 1 if you have the <ifaddrs.h> header file. */
 #cmakedefine HAVE_IFADDRS_H 1
 
+/* Define to 1 if you have the <getopt.h> header file. */
+#cmakedefine HAVE_GETOPT_H 1
+
+/* Define to 1 if you have the `getopt' function. */
+#cmakedefine HAVE_GETOPT 1
+
 /* Define to 1 if you have the <openssl/aes.h> header file. */
 #cmakedefine HAVE_OPENSSL_AES_H 1
 

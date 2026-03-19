@@ -46,6 +46,7 @@
 #include "libssh/options.h"
 #include "libssh/config_parser.h"
 #include "libssh/gssapi.h"
+#include "libssh/getopt.h"
 #include "libssh/token.h"
 #ifdef WITH_SERVER
 #include "libssh/server.h"
@@ -1838,13 +1839,6 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
  */
 int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
 {
-#ifdef _MSC_VER
-    (void)session;
-    (void)argcptr;
-    (void)argv;
-    /* Not supported with a Microsoft compiler */
-    return -1;
-#else
     char *user = NULL;
     char *cipher = NULL;
     char *identity = NULL;
@@ -2008,7 +2002,6 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     }
 
     return SSH_OK;
-#endif
 }
 
 /**

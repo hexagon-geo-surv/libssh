@@ -13,14 +13,6 @@ if (ARGP_INCLUDE_DIR)
 endif()
 
 if (UNIX AND NOT WIN32)
-    add_executable(libssh_scp libssh_scp.c ${examples_SRCS})
-    target_compile_options(libssh_scp PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
-    target_link_libraries(libssh_scp ssh::ssh)
-
-    add_executable(scp_download scp_download.c ${examples_SRCS})
-    target_compile_options(scp_download PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
-    target_link_libraries(scp_download ssh::ssh)
-
     add_executable(sshnetcat sshnetcat.c ${examples_SRCS})
     target_compile_options(sshnetcat PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
     target_link_libraries(sshnetcat ssh::ssh)
@@ -76,6 +68,18 @@ if (UNIX AND NOT WIN32)
 
     endif()
 endif (UNIX AND NOT WIN32)
+
+if (NOT HAVE_GETOPT)
+    set(examples_SRCS ${examples_SRCS} ${libssh_SOURCE_DIR}/src/external/getopt.c)
+endif()
+
+add_executable(libssh_scp libssh_scp.c ${examples_SRCS})
+target_compile_options(libssh_scp PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
+target_link_libraries(libssh_scp ssh::ssh)
+
+add_executable(scp_download scp_download.c ${examples_SRCS})
+target_compile_options(scp_download PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
+target_link_libraries(scp_download ssh::ssh)
 
 if (WITH_SERVER)
     add_executable(samplesshd-cb samplesshd-cb.c)

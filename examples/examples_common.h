@@ -15,6 +15,13 @@ clients must be made or how a client should react.
 
 #include <libssh/libssh.h>
 
+/* On platforms without getopt (e.g. MSVC), the bundled compatibility layer
+ * from libssh is used. When building outside of the libssh source tree,
+ * a getopt implementation must be provided separately. */
+#ifndef HAVE_GETOPT_H
+#include "libssh/getopt.h"
+#endif
+
 /** Zero a structure */
 #define ZERO_STRUCT(x) memset(&(x), 0, sizeof(x))
 

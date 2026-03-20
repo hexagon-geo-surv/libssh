@@ -6,6 +6,7 @@ set(LIBSSH_UNIT_TESTS
     torture_bytearray
     torture_callbacks
     torture_crypto
+    torture_getopt
     torture_init
     torture_list
     torture_misc

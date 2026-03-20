@@ -1738,7 +1738,7 @@ int ssh_channel_write(ssh_channel channel, const void *data, uint32_t len)
  */
 int ssh_channel_is_open(ssh_channel channel)
 {
-    if (channel == NULL) {
+    if (channel == NULL || channel->session == NULL) {
         return 0;
     }
     return (channel->state == SSH_CHANNEL_STATE_OPEN && channel->session->alive != 0);

@@ -22,6 +22,8 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
+#include <time.h>
+
 #ifdef HAVE_TERMIOS_H
 #include <termios.h>
 #endif
@@ -48,6 +50,8 @@ static char *user = NULL;
 static char *cmds[MAXCMD];
 static char *config_file = NULL;
 static struct termios terminal;
+static char *log_file_path = NULL;
+static FILE *log_fp = NULL;
 
 static char *pcap_file = NULL;
 
@@ -87,6 +91,81 @@ add_cmd(char *cmd)
     cmds[n] = cmd;
 }
 
+/**
+ * @brief Logging callback function that writes logs.
+ *
+ * Log messages are formatted with timestamps. It writes outputs
+ * to the file stream specified in the userdata parameter.
+ *
+ * @param priority      Priority of the log, the smaller being
+ * the more important.
+ *
+ * @param function      The function name calling the logging functions.
+ *
+ * @param buffer        The actual message
+ *
+ * @param userdata      Userdata to be passed to the callback function;
+ * if not NULL, treated as a FILE* stream for output;
+ * if NULL, output is directed to stderr
+ *
+ * @return void
+ *
+ * @note The function is thread-safe. If the current time cannot be retrieved,
+ * a fallback format without timestamp is used.
+ * The output stream is flushed after each message.
+ */
+static void
+logging_callback(int priority,
+                 const char *function,
+                 const char *buffer,
+                 void *userdata)
+{
+    FILE *fp = NULL;
+    struct timeval tv;
+    struct tm tm;
+    struct tm *tm_ptr = NULL;
+    char time_buffer[64];
+    time_t t;
+
+    (void)function;
+
+    if (userdata != NULL) {
+        fp = (FILE *)userdata;
+    } else {
+        fp = stderr;
+    }
+
+    gettimeofday(&tv, NULL);
+    t = (time_t)tv.tv_sec;
+
+#ifdef _WIN32
+    if (localtime_s(&tm, &t) != 0) {
+        tm_ptr = NULL;
+    } else {
+        tm_ptr = &tm;
+    }
+#else
+    tm_ptr = localtime_r(&t, &tm);
+#endif
+
+    if (tm_ptr == NULL) {
+        fprintf(fp,
+                "[Priority level %d]:  %s\n",
+                priority,
+                buffer);
+    } else {
+        strftime(time_buffer, sizeof(time_buffer), "%Y/%m/%d %H:%M:%S", &tm);
+
+        fprintf(fp,
+                "[%s, %d]:  %s\n",
+                time_buffer,
+                priority,
+                buffer);
+    }
+
+    fflush(fp);
+}
+
 static void
 usage(void)
 {
@@ -100,6 +179,7 @@ usage(void)
         "  -o option : set configuration option (e.g., -o Compression=yes)\n"
         "  -r : use RSA to verify host public key\n"
         "  -F file : parse configuration file instead of default one\n"
+        "  -E file : append debug logs to a log file instead of stderr\n"
 #ifdef WITH_PCAP
         "  -P file : create a pcap debugging file\n"
 #endif
@@ -117,13 +197,16 @@ opts(int argc, char **argv)
 {
     int i;
 
-    while ((i = getopt(argc, argv, "T:P:F:")) != -1) {
+    while ((i = getopt(argc, argv, "E:T:P:F:")) != -1) {
         switch (i) {
         case 'P':
             pcap_file = optarg;
             break;
         case 'F':
             config_file = optarg;
+            break;
+        case 'E':
+            log_file_path = optarg;
             break;
 #ifndef _WIN32
         case 'T':
@@ -360,6 +443,19 @@ client(ssh_session session)
     char *banner = NULL;
     int state;
 
+    if (log_file_path != NULL) {
+        log_fp = fopen(log_file_path, "a");
+        if (log_fp == NULL) {
+            fprintf(stderr,
+                    "Error: Cannot open %s for logging\n",
+                    log_file_path);
+            return -1;
+        }
+
+        ssh_set_log_callback(logging_callback);
+        ssh_set_log_userdata(log_fp);
+    }
+
     if (user) {
         if (ssh_options_set(session, SSH_OPTIONS_USER, user) < 0) {
             return -1;
@@ -451,6 +547,20 @@ cleanup_pcap(void)
     pcap = NULL;
 }
 
+static void
+close_logfp(void)
+{
+    void *userdata = NULL;
+    userdata = ssh_get_log_userdata();
+
+    if (userdata != NULL) {
+        FILE *logfp = (FILE *)userdata;
+
+        ssh_set_log_userdata(NULL);
+        fclose(logfp);
+    }
+}
+
 int
 main(int argc, char **argv)
 {
@@ -477,7 +587,9 @@ main(int argc, char **argv)
 
     ssh_disconnect(session);
     ssh_free(session);
+
     cleanup_pcap();
+    close_logfp();
 
     ssh_finalize();
 

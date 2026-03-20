@@ -5,19 +5,19 @@
  *
  * This file is part of the SSH Library
  *
- * You are free to copy this file, modify it in any way, consider it being public
- * domain. This does not apply to the rest of the library though, but it is
- * allowed to cut-and-paste working code from this file to any license of
+ * You are free to copy this file, modify it in any way, consider it being
+ * public domain. This does not apply to the rest of the library though, but it
+ * is allowed to cut-and-paste working code from this file to any license of
  * program.
  * The goal is to show the API in action. It's not a reference on how terminal
  * clients must be made or how a client should react.
  */
 
 #include "config.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 
 #include <sys/select.h>
 #include <sys/time.h>
@@ -32,10 +32,10 @@
 #include <pty.h>
 #endif
 
-#include <sys/ioctl.h>
-#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/ioctl.h>
 
 #include <libssh/callbacks.h>
 #include <libssh/libssh.h>
@@ -53,15 +53,16 @@ static char *pcap_file = NULL;
 
 static char *proxycommand = NULL;
 
-static int auth_callback(const char *prompt,
-                         char *buf,
-                         size_t len,
-                         int echo,
-                         int verify,
-                         void *userdata)
+static int
+auth_callback(const char *prompt,
+              char *buf,
+              size_t len,
+              int echo,
+              int verify,
+              void *userdata)
 {
-    (void) verify;
-    (void) userdata;
+    (void)verify;
+    (void)userdata;
 
     return ssh_getpass(prompt, buf, len, echo, verify);
 }
@@ -71,11 +72,13 @@ struct ssh_callbacks_struct cb = {
     .userdata = NULL,
 };
 
-static void add_cmd(char *cmd)
+static void
+add_cmd(char *cmd)
 {
     int n;
 
-    for (n = 0; (n < MAXCMD) && cmds[n] != NULL; n++);
+    for (n = 0; (n < MAXCMD) && cmds[n] != NULL; n++)
+        ;
 
     if (n == MAXCMD) {
         return;
@@ -84,7 +87,8 @@ static void add_cmd(char *cmd)
     cmds[n] = cmd;
 }
 
-static void usage(void)
+static void
+usage(void)
 {
     fprintf(
         stderr,
@@ -108,7 +112,8 @@ static void usage(void)
     exit(0);
 }
 
-static int opts(int argc, char **argv)
+static int
+opts(int argc, char **argv)
 {
     int i;
 
@@ -134,7 +139,7 @@ static int opts(int argc, char **argv)
         host = argv[optind++];
     }
 
-    while(optind < argc) {
+    while (optind < argc) {
         add_cmd(argv[optind++]);
     }
 
@@ -146,25 +151,28 @@ static int opts(int argc, char **argv)
 }
 
 #ifndef HAVE_CFMAKERAW
-static void cfmakeraw(struct termios *termios_p)
+static void
+cfmakeraw(struct termios *termios_p)
 {
-    termios_p->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
+    termios_p->c_iflag &=
+        ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
     termios_p->c_oflag &= ~OPOST;
-    termios_p->c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
-    termios_p->c_cflag &= ~(CSIZE|PARENB);
+    termios_p->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    termios_p->c_cflag &= ~(CSIZE | PARENB);
     termios_p->c_cflag |= CS8;
 }
 #endif
 
-
-static void do_cleanup(int i)
+static void
+do_cleanup(int i)
 {
     (void)i;
 
     tcsetattr(0, TCSANOW, &terminal);
 }
 
-static void do_exit(int i)
+static void
+do_exit(int i)
 {
     (void)i;
 
@@ -175,14 +183,16 @@ static void do_exit(int i)
 static int signal_delayed = 0;
 
 #ifdef SIGWINCH
-static void sigwindowchanged(int i)
+static void
+sigwindowchanged(int i)
 {
     (void)i;
     signal_delayed = 1;
 }
 #endif
 
-static void setsignal(void)
+static void
+setsignal(void)
 {
 #ifdef SIGWINCH
     signal(SIGWINCH, sigwindowchanged);
@@ -190,18 +200,20 @@ static void setsignal(void)
     signal_delayed = 0;
 }
 
-static void sizechanged(ssh_channel chan)
+static void
+sizechanged(ssh_channel chan)
 {
     struct winsize win = {
         .ws_row = 0,
     };
 
     ioctl(1, TIOCGWINSZ, &win);
-    ssh_channel_change_pty_size(chan,win.ws_col, win.ws_row);
+    ssh_channel_change_pty_size(chan, win.ws_col, win.ws_row);
     setsignal();
 }
 
-static void select_loop(ssh_session session,ssh_channel channel)
+static void
+select_loop(ssh_session session, ssh_channel channel)
 {
     ssh_connector connector_in, connector_out, connector_err;
     int rc;
@@ -210,14 +222,18 @@ static void select_loop(ssh_session session,ssh_channel channel)
 
     /* stdin */
     connector_in = ssh_connector_new(session);
-    ssh_connector_set_out_channel(connector_in, channel, SSH_CONNECTOR_STDINOUT);
+    ssh_connector_set_out_channel(connector_in,
+                                  channel,
+                                  SSH_CONNECTOR_STDINOUT);
     ssh_connector_set_in_fd(connector_in, STDIN_FILENO);
     ssh_event_add_connector(event, connector_in);
 
     /* stdout */
     connector_out = ssh_connector_new(session);
     ssh_connector_set_out_fd(connector_out, STDOUT_FILENO);
-    ssh_connector_set_in_channel(connector_out, channel, SSH_CONNECTOR_STDINOUT);
+    ssh_connector_set_in_channel(connector_out,
+                                 channel,
+                                 SSH_CONNECTOR_STDINOUT);
     ssh_event_add_connector(event, connector_out);
 
     /* stderr */
@@ -247,7 +263,8 @@ static void select_loop(ssh_session session,ssh_channel channel)
     ssh_event_free(event);
 }
 
-static void shell(ssh_session session)
+static void
+shell(ssh_session session)
 {
     ssh_channel channel = NULL;
     struct termios terminal_local;
@@ -292,7 +309,8 @@ static void shell(ssh_session session)
     ssh_channel_free(channel);
 }
 
-static void batch_shell(ssh_session session)
+static void
+batch_shell(ssh_session session)
 {
     ssh_channel channel;
     char *buffer = NULL;
@@ -334,7 +352,8 @@ static void batch_shell(ssh_session session)
     ssh_channel_free(channel);
 }
 
-static int client(ssh_session session)
+static int
+client(ssh_session session)
 {
     int auth = 0;
     int authenticated = 0;
@@ -402,7 +421,8 @@ static int client(ssh_session session)
 }
 
 static ssh_pcap_file pcap;
-static void set_pcap(ssh_session session)
+static void
+set_pcap(ssh_session session)
 {
     if (pcap_file == NULL) {
         return;
@@ -422,7 +442,8 @@ static void set_pcap(ssh_session session)
     ssh_set_pcap_file(session, pcap);
 }
 
-static void cleanup_pcap(void)
+static void
+cleanup_pcap(void)
 {
     if (pcap != NULL) {
         ssh_pcap_file_free(pcap);
@@ -430,7 +451,8 @@ static void cleanup_pcap(void)
     pcap = NULL;
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     ssh_session session = NULL;
 
@@ -438,7 +460,7 @@ int main(int argc, char **argv)
     session = ssh_new();
 
     ssh_callbacks_init(&cb);
-    ssh_set_callbacks(session,&cb);
+    ssh_set_callbacks(session, &cb);
 
     if (ssh_options_getopt(session, &argc, argv) || opts(argc, argv)) {
         fprintf(stderr,

@@ -3528,6 +3528,40 @@ static void torture_config_hostname(void **state)
     assert_string_equal(session->opts.host, "localhost");
 }
 
+static void torture_config_boolean_aliases(void **state)
+{
+    ssh_session session = *state;
+
+    /* Verify true/false/yes/no are accepted and case-insensitive */
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking yes\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 1);
+
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking no\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 0);
+
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking true\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 1);
+
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking false\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 0);
+
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking TRUE\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 1);
+
+    /* Invalid suffix should be ignored and not applied to session */
+    torture_reset_config(session);
+    _parse_config(session, NULL, "StrictHostKeyChecking yes\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 1);
+
+    _parse_config(session, NULL, "StrictHostKeyChecking no_please\n", SSH_OK);
+    assert_int_equal(session->opts.StrictHostKeyChecking, 1);
+}
+
 /* Invalid configuration files
  */
 static void torture_config_invalid(void **state)
@@ -3710,6 +3744,9 @@ int torture_run_tests(void)
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_jump, setup, teardown),
         cmocka_unit_test_setup_teardown(torture_config_hostname,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_boolean_aliases,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_invalid,

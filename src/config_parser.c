@@ -221,10 +221,19 @@ int ssh_config_get_yesno(char **str, int notfound)
         return notfound;
     }
 
-    if (strncasecmp(p, "yes", 3) == 0) {
-        return 1;
-    } else if (strncasecmp(p, "no", 2) == 0) {
-        return 0;
+    {
+        int is_yes = (strcasecmp(p, "yes") == 0);
+        int is_true = (strcasecmp(p, "true") == 0);
+        if (is_yes || is_true) {
+            return 1;
+        } else {
+            int is_no = (strcasecmp(p, "no") == 0);
+            int is_false = (strcasecmp(p, "false") == 0);
+            if (is_no || is_false) {
+                return 0;
+            }
+        }
+
     }
 
     return notfound;

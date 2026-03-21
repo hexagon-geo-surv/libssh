@@ -477,6 +477,7 @@ int sftp_init(sftp_session sftp)
         ssh_set_error(sftp->session, SSH_FATAL,
                       "Received a %d messages instead of SSH_FXP_VERSION",
                       packet->type);
+        sftp_set_error(sftp, SSH_FX_FAILURE);
         return -1;
     }
 

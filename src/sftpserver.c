@@ -1579,7 +1579,7 @@ process_read(sftp_client_message client_msg)
                     (const unsigned char *)ssh_string_get_char(handle),
                     ssh_string_len(handle));
     SSH_LOG(SSH_LOG_PROTOCOL,
-            "Offset %" PRIu64", length %" PRIu32,
+            "Offset %" PRIu64 ", length %" PRIu32,
             client_msg->offset,
             client_msg->len);
 
@@ -1641,7 +1641,7 @@ process_write(sftp_client_message client_msg)
                     (const unsigned char *)ssh_string_get_char(handle),
                     ssh_string_len(handle));
     SSH_LOG(SSH_LOG_PROTOCOL,
-            "Offset %" PRIu64", length %" PRIu32,
+            "Offset %" PRIu64 ", length %" PRIu32,
             client_msg->offset,
             client_msg->len);
 

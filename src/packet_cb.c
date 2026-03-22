@@ -1,5 +1,5 @@
 /*
- * packet.c - packet building functions
+ * packet_cb.c - packet building functions
  *
  * This file is part of the SSH Library
  *

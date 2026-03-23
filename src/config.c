@@ -1560,6 +1560,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 break;
             }
             switch (*endp) {
+            case 'g':
             case 'G':
                 if (ll > LLONG_MAX / 1024) {
                     SSH_LOG(SSH_LOG_TRACE, "Possible overflow of rekey limit");
@@ -1568,6 +1569,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 }
                 ll = ll * 1024;
                 FALL_THROUGH;
+            case 'm':
             case 'M':
                 if (ll > LLONG_MAX / 1024) {
                     SSH_LOG(SSH_LOG_TRACE, "Possible overflow of rekey limit");
@@ -1576,6 +1578,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 }
                 ll = ll * 1024;
                 FALL_THROUGH;
+            case 'k':
             case 'K':
                 if (ll > LLONG_MAX / 1024) {
                     SSH_LOG(SSH_LOG_TRACE, "Possible overflow of rekey limit");
@@ -1589,12 +1592,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 /* just the number */
                 break;
             default:
-                /* Invalid suffix */
-                ll = -1;
-                break;
-            }
-            if (*endp != ' ' && *endp != '\0') {
-                CHECK_COND_OR_FAIL(1, "Invalid trailing characters");
+                /* Ignore invalid suffix and trailing garbage */
+                SSH_LOG(SSH_LOG_TRACE, "Ignoring invalid suffix");
                 break;
             }
         }
@@ -1663,12 +1662,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 /* just the number */
                 break;
             default:
-                /* Invalid suffix */
-                ll = -1;
-                break;
-            }
-            if (*endp != '\0') {
-                CHECK_COND_OR_FAIL(1, "Invalid trailing characters");
+                /* Ignore invalid suffix and trailing garbage */
+                SSH_LOG(SSH_LOG_TRACE, "Ignoring invalid suffix");
                 break;
             }
         }

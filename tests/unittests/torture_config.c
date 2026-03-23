@@ -183,6 +183,8 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tRekeyLimit 31M\n" \
     "Host data3\n" \
     "\tRekeyLimit 521K\n" \
+    "Host data4\n" \
+    "\tRekeyLimit 5k*n\n" \
     "Host time1\n" \
     "\tRekeyLimit default 3D\n" \
     "Host time2\n" \
@@ -2104,6 +2106,13 @@ static void torture_config_rekey(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "data3");
     _parse_config(session, file, string, SSH_OK);
     assert_int_equal(session->opts.rekey_data, 521 * 1024);
+    assert_int_equal(session->opts.rekey_time, 0);
+
+    /* 5k*n -> 5120 (Invalid suffix is ignored) */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "data4");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.rekey_data, 5 * 1024);
     assert_int_equal(session->opts.rekey_time, 0);
 
     /* default 3D */

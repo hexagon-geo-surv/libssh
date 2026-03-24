@@ -41,6 +41,7 @@ clients must be made or how a client should react.
 
 char *host = NULL;
 const char *desthost = "localhost";
+static int port_num = 22;
 const char *port = "22";
 
 #ifdef WITH_PCAP
@@ -74,8 +75,23 @@ static int opts(int argc, char **argv)
         host = argv[optind++];
     if (optind < argc)
         desthost = argv[optind++];
-    if (optind < argc)
-        port = argv[optind++];
+    if (optind < argc) {
+        char *endptr = NULL;
+        long tmp;
+
+        errno = 0;
+        tmp = strtol(argv[optind], &endptr, 10);
+
+        if (errno != 0 || endptr == argv[optind] || *endptr != '\0' ||
+            tmp < 0 || tmp > 65535) {
+            fprintf(stderr, "Invalid port: %s\n", argv[optind]);
+            usage();
+        }
+
+        port = argv[optind];
+        port_num = (int)tmp;
+        optind++;
+    }
     if (host == NULL)
         usage();
     return 0;
@@ -192,12 +208,19 @@ static void forwarding(ssh_session session)
 {
     ssh_channel channel;
     int r;
+
     channel = ssh_channel_new(session);
-    r = ssh_channel_open_forward(channel, desthost, atoi(port), "localhost", 22);
+
+    r = ssh_channel_open_forward(channel,
+                                 desthost,
+                                 port_num,
+                                 "localhost",
+                                 22);
     if (r < 0) {
         printf("error forwarding port : %s\n", ssh_get_error(session));
         return;
     }
+
     select_loop(session, channel);
 }
 

@@ -40,7 +40,7 @@ clients must be made or how a client should react.
 #endif
 #endif
 
-static int port = 22;
+static const char* port = "22";
 static bool authenticated = false;
 
 #ifdef WITH_PCAP
@@ -139,10 +139,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
   ssh_bind sshbind = state->input;
 
   switch (key) {
-    case 'p':
-      ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDPORT_STR, arg);
-      port = atoi(arg);
-      break;
+    case 'p': 
+        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDPORT_STR, arg);
+        port = arg;
+        break;
     case 'r':
     case 'k':
       ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HOSTKEY, arg);
@@ -315,7 +315,7 @@ int main(int argc, char **argv)
         printf("Error listening to socket: %s\n", ssh_get_error(sshbind));
         return 1;
     }
-    printf("Started sample libssh sshd on port %d\n", port);
+    printf("Started sample libssh sshd on port %s\n", port);
     printf("You can login as the user %s with the password %s\n", SSHD_USER,
                                                             SSHD_PASSWORD);
     r = ssh_bind_accept(sshbind, session);

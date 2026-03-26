@@ -271,6 +271,14 @@ void ssh_log_function(int verbosity,
                       const char *buffer);
 #define SSH_LOG(priority, ...) \
     _ssh_log(priority, __func__, __VA_ARGS__)
+#define SSH_LOG_STRERROR(priority, errnum, ...)                     \
+    do {                                                            \
+        char err_msg[SSH_ERRNO_MSG_MAX] = {0};                      \
+        _ssh_log(priority,                                          \
+                 __func__,                                          \
+                 __VA_ARGS__,                                       \
+                 ssh_strerror(errnum, err_msg, SSH_ERRNO_MSG_MAX)); \
+    } while (0)
 
 /* LEGACY */
 void ssh_log_common(struct ssh_common_struct *common,

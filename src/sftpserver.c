@@ -983,8 +983,7 @@ void sftp_handle_remove(sftp_session sftp, void *handle)
 
 /* Default SFTP handlers */
 
-static const char *
-ssh_str_error(int u_errno)
+static const char *sftp_strerror(int u_errno)
 {
     switch (u_errno) {
     case SSH_FX_NO_SUCH_FILE:
@@ -2013,10 +2012,10 @@ process_realpath(sftp_client_message client_msg)
     if (path == NULL) {
         int saved_errno = errno;
         int status = unix_errno_to_ssh_stat(saved_errno);
-        const char *err_msg = ssh_str_error(status);
+        const char *sftp_err_msg = sftp_strerror(status);
 
         SSH_LOG(SSH_LOG_PROTOCOL, "realpath failed: %s", strerror(saved_errno));
-        sftp_reply_status(client_msg, status, err_msg);
+        sftp_reply_status(client_msg, status, sftp_err_msg);
         return SSH_ERROR;
     }
     sftp_reply_name(client_msg, path, NULL);
@@ -2192,7 +2191,7 @@ process_readlink(sftp_client_message client_msg)
     const char *filename = sftp_client_message_get_filename(client_msg);
     char buf[PATH_MAX];
     int len = -1;
-    const char *err_msg = NULL;
+    const char *sftp_err_msg = NULL;
     int status = SSH_FX_OK;
 
     SSH_LOG(SSH_LOG_PROTOCOL, "Processing readlink %s", filename);
@@ -2207,8 +2206,8 @@ process_readlink(sftp_client_message client_msg)
         int saved_errno = errno;
         SSH_LOG(SSH_LOG_PROTOCOL, "readlink failed: %s", strerror(saved_errno));
         status = unix_errno_to_ssh_stat(saved_errno);
-        err_msg = ssh_str_error(status);
-        sftp_reply_status(client_msg, status, err_msg);
+        sftp_err_msg = sftp_strerror(status);
+        sftp_reply_status(client_msg, status, sftp_err_msg);
         ret = SSH_ERROR;
     } else {
         buf[len] = '\0';

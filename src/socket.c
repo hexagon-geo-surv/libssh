@@ -571,9 +571,7 @@ void ssh_socket_close(ssh_socket s)
         kill(pid, SIGTERM);
         while (waitpid(pid, &status, 0) == -1) {
             if (errno != EINTR) {
-                char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-                SSH_LOG(SSH_LOG_TRACE, "waitpid failed: %s",
-                        ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+                SSH_LOG_STRERROR(SSH_LOG_TRACE, errno, "waitpid failed: %s");
                 return;
             }
         }
@@ -1199,10 +1197,10 @@ ssh_execute_command(const char *command, socket_t in, socket_t out)
     close(out);
     rc = execv(args[0], (char * const *)args);
     if (rc < 0) {
-        char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-
-        SSH_LOG(SSH_LOG_WARN, "Failed to execute command %s: %s",
-                command, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_WARN,
+                         errno,
+                         "Failed to execute command %s: %s",
+                         command);
     }
     exit(1);
 }

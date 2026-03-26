@@ -245,9 +245,10 @@ static int ssh_known_hosts_read_entries(const char *match,
 
     fp = ssh_strict_fopen(filename, SSH_MAX_CONFIG_FILE_SIZE);
     if (fp == NULL) {
-        char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-        SSH_LOG(SSH_LOG_TRACE, "Failed to open the known_hosts file '%s': %s",
-                filename, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Failed to open the known_hosts file '%s': %s",
+                         filename);
         /* The missing file is not an error here */
         return SSH_OK;
     }
@@ -1068,9 +1069,11 @@ int ssh_session_update_known_hosts(ssh_session session)
                 return SSH_ERROR;
             }
         } else {
-            ssh_set_error(session, SSH_FATAL,
+            ssh_set_error(session,
+                          SSH_FATAL,
                           "Couldn't open known_hosts file %s for appending: %s",
-                          session->opts.knownhosts, strerror(errno));
+                          session->opts.knownhosts,
+                          ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
             return SSH_ERROR;
         }
     }

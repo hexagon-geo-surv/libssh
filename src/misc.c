@@ -2591,26 +2591,25 @@ FILE *ssh_strict_fopen(const char *filename, size_t max_file_size)
 {
     FILE *f = NULL;
     struct stat sb;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
     int r, fd;
 
     /* open first to avoid TOCTOU */
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Failed to open a file %s for reading: %s",
-                filename,
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Failed to open a file %s for reading: %s",
+                         filename);
         return NULL;
     }
 
     /* Check the file is sensible for a configuration file */
     r = fstat(fd, &sb);
     if (r != 0) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Failed to stat %s: %s",
-                filename,
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Failed to stat %s: %s",
+                         filename);
         close(fd);
         return NULL;
     }
@@ -2634,10 +2633,10 @@ FILE *ssh_strict_fopen(const char *filename, size_t max_file_size)
 
     f = fdopen(fd, "r");
     if (f == NULL) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Failed to open a file %s for reading: %s",
-                filename,
-                ssh_strerror(r, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Failed to open a file %s for reading: %s",
+                         filename);
         close(fd);
         return NULL;
     }

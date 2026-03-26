@@ -422,7 +422,6 @@ int ssh_server_gss_kex_process_init(ssh_session session, ssh_buffer packet)
     OM_uint32 ret_flags = 0;
     gss_buffer_desc mic = GSS_C_EMPTY_BUFFER, msg = GSS_C_EMPTY_BUFFER;
     char *hostname = NULL;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
     rc = ssh_buffer_unpack(packet, "S", &otoken);
     if (rc == SSH_ERROR) {
@@ -540,9 +539,7 @@ int ssh_server_gss_kex_process_init(ssh_session session, ssh_buffer packet)
 
     hostname = ssh_get_local_hostname();
     if (hostname == NULL) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Error getting hostname: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE, errno, "Error getting hostname: %s");
         goto error;
     }
 

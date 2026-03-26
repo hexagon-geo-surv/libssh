@@ -350,7 +350,6 @@ ssh_exec_shell(char *cmd)
     char *shell = NULL;
     pid_t pid;
     int status, devnull, rc;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
     shell = getenv("SHELL");
     if (shell == NULL || shell[0] == '\0') {
@@ -366,8 +365,7 @@ ssh_exec_shell(char *cmd)
     /* Need this to redirect subprocess stdin/out */
     devnull = open("/dev/null", O_RDWR);
     if (devnull == -1) {
-        SSH_LOG(SSH_LOG_WARN, "Failed to open(/dev/null): %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_WARN, errno, "Failed to open(/dev/null): %s");
         return -1;
     }
 
@@ -379,14 +377,12 @@ ssh_exec_shell(char *cmd)
         /* Redirect child stdin and stdout. Leave stderr */
         rc = dup2(devnull, STDIN_FILENO);
         if (rc == -1) {
-            SSH_LOG(SSH_LOG_WARN, "dup2: %s",
-                    ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            SSH_LOG_STRERROR(SSH_LOG_WARN, errno, "dup2: %s");
             exit(1);
         }
         rc = dup2(devnull, STDOUT_FILENO);
         if (rc == -1) {
-            SSH_LOG(SSH_LOG_WARN, "dup2: %s",
-                    ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            SSH_LOG_STRERROR(SSH_LOG_WARN, errno, "dup2: %s");
             exit(1);
         }
         if (devnull > STDERR_FILENO) {
@@ -400,8 +396,10 @@ ssh_exec_shell(char *cmd)
 
         rc = execv(argv[0], argv);
         if (rc == -1) {
-            SSH_LOG(SSH_LOG_WARN, "Failed to execute command '%s': %s", cmd,
-                    ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            SSH_LOG_STRERROR(SSH_LOG_WARN,
+                             errno,
+                             "Failed to execute command '%s': %s",
+                             cmd);
             /* Die with signal to make this error apparent to parent. */
             signal(SIGTERM, SIG_DFL);
             kill(getpid(), SIGTERM);
@@ -412,16 +410,14 @@ ssh_exec_shell(char *cmd)
     /* Parent */
     close(devnull);
     if (pid == -1) { /* Error */
-        SSH_LOG(SSH_LOG_WARN, "Failed to fork child: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_WARN, errno, "Failed to fork child: %s");
         return -1;
 
     }
 
     while (waitpid(pid, &status, 0) == -1) {
         if (errno != EINTR) {
-            SSH_LOG(SSH_LOG_WARN, "waitpid failed: %s",
-                    ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            SSH_LOG_STRERROR(SSH_LOG_WARN, errno, "waitpid failed: %s");
             return -1;
         }
     }
@@ -720,14 +716,14 @@ ssh_match_localnetwork(const char *addrlist, bool negate)
 {
     struct ifaddrs *ifa = NULL, *ifaddrs = NULL;
     int r, found = 0;
-    char address[NI_MAXHOST], err_msg[SSH_ERRNO_MSG_MAX] = {0};
+    char address[NI_MAXHOST] = {0};
     socklen_t sa_len;
 
     r = getifaddrs(&ifaddrs);
     if (r != 0) {
-        SSH_LOG(SSH_LOG_WARN,
-                "Match localnetwork: getifaddrs() failed: %s",
-                ssh_strerror(r, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_WARN,
+                         errno,
+                         "Match localnetwork: getifaddrs() failed: %s");
         return -1;
     }
 
@@ -1703,7 +1699,7 @@ int ssh_config_parse_line_cli(ssh_session session, const char *line)
                                           true);
 }
 
-/** 
+/**
  * @brief Parse configuration from a file pointer
  *
  * @param[in] session   The ssh session
@@ -1730,7 +1726,7 @@ int ssh_config_parse(ssh_session session, FILE *fp, bool global)
     return 0;
 }
 
-/** 
+/**
  * @brief Parse configuration file and set the options to the given session
  *
  * @param[in] session   The ssh session
@@ -1769,7 +1765,7 @@ int ssh_config_parse_file(ssh_session session, const char *filename)
     return rv;
 }
 
-/** 
+/**
  * @brief Parse configuration string and set the options to the given session
  *
  * @param[in] session   The ssh session

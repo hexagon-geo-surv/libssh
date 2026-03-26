@@ -1271,7 +1271,6 @@ int ssh_pki_import_privkey_file(const char *filename,
     FILE *file = NULL;
     off_t size;
     int rc;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
     if (pkey == NULL || filename == NULL || *filename == '\0') {
         return SSH_ERROR;
@@ -1286,20 +1285,20 @@ int ssh_pki_import_privkey_file(const char *filename,
 
     file = fopen(filename, "rb");
     if (file == NULL) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Error opening %s: %s",
-                filename,
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Error opening %s: %s",
+                         filename);
         return SSH_EOF;
     }
 
     rc = fstat(fileno(file), &sb);
     if (rc < 0) {
         fclose(file);
-        SSH_LOG(SSH_LOG_TRACE,
-                "Error getting stat of %s: %s",
-                filename,
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Error getting fstat of %s: %s",
+                         filename);
         switch (errno) {
             case ENOENT:
             case EACCES:
@@ -1328,10 +1327,10 @@ int ssh_pki_import_privkey_file(const char *filename,
 
     if (size != sb.st_size) {
         SAFE_FREE(key_buf);
-        SSH_LOG(SSH_LOG_TRACE,
-                "Error reading %s: %s",
-                filename,
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Error reading %s: %s",
+                         filename);
         return SSH_ERROR;
     }
     key_buf[size] = 0;
@@ -1383,9 +1382,10 @@ ssh_pki_export_privkey_file_format(const ssh_key privkey,
 
     fp = fopen(filename, "wb");
     if (fp == NULL) {
-        char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-        SSH_LOG(SSH_LOG_FUNCTIONS, "Error opening %s: %s",
-                filename, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_FUNCTIONS,
+                         errno,
+                         "Error opening %s: %s",
+                         filename);
         return SSH_EOF;
     }
 
@@ -2149,7 +2149,6 @@ int ssh_pki_import_pubkey_file(const char *filename, ssh_key *pkey)
     FILE *file = NULL;
     off_t size;
     int rc, cmp;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
     ssh_key priv_key = NULL;
 
     if (pkey == NULL || filename == NULL || *filename == '\0') {
@@ -2165,20 +2164,25 @@ int ssh_pki_import_pubkey_file(const char *filename, ssh_key *pkey)
 
     file = fopen(filename, "rb");
     if (file == NULL) {
-        SSH_LOG(SSH_LOG_TRACE, "Error opening %s: %s",
-                    filename, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Error opening %s: %s",
+                         filename);
         return SSH_EOF;
     }
 
     rc = fstat(fileno(file), &sb);
     if (rc < 0) {
+        int saved_errno = errno;
         fclose(file);
-        SSH_LOG(SSH_LOG_TRACE, "Error gettint stat of %s: %s",
-                    filename, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
-        switch (errno) {
-            case ENOENT:
-            case EACCES:
-                return SSH_EOF;
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         saved_errno,
+                         "Error gettint stat of %s: %s",
+                         filename);
+        switch (saved_errno) {
+        case ENOENT:
+        case EACCES:
+            return SSH_EOF;
         }
         return SSH_ERROR;
     }
@@ -2200,8 +2204,10 @@ int ssh_pki_import_pubkey_file(const char *filename, ssh_key *pkey)
 
     if (size != sb.st_size) {
         SAFE_FREE(key_buf);
-        SSH_LOG(SSH_LOG_TRACE, "Error reading %s: %s",
-                filename, ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "Error reading %s: %s",
+                         filename);
         return SSH_ERROR;
     }
     key_buf[size] = '\0';

@@ -292,7 +292,6 @@ static int agent_talk(struct ssh_session_struct *session,
     uint32_t len = 0;
     uint8_t tmpbuf[4];
     uint8_t *payload = tmpbuf;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
     len = ssh_buffer_get_len(request);
     SSH_LOG(SSH_LOG_TRACE, "Request length: %" PRIu32, len);
@@ -301,23 +300,23 @@ static int agent_talk(struct ssh_session_struct *session,
     /* send length and then the request packet */
     if (atomicio(session->agent, payload, 4, 0) == 4) {
         if (atomicio(session->agent, ssh_buffer_get(request), len, 0) != len) {
-            SSH_LOG(SSH_LOG_TRACE,
-                    "atomicio sending request failed: %s",
-                    ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+            SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                             errno,
+                             "atomicio sending request failed: %s");
             return -1;
         }
     } else {
-        SSH_LOG(SSH_LOG_TRACE,
-                "atomicio sending request length failed: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "atomicio sending request length failed: %s");
         return -1;
     }
 
     /* wait for response, read the length of the response packet */
     if (atomicio(session->agent, payload, 4, 1) != 4) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "atomicio read response length failed: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE,
+                         errno,
+                         "atomicio read response length failed: %s");
         return -1;
     }
 

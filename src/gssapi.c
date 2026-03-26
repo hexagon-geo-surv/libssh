@@ -208,7 +208,6 @@ ssh_gssapi_handle_userauth(ssh_session session, const char *user,
     size_t oid_count=0;
     struct gss_OID_desc_struct oid;
     int rc;
-    char err_msg[SSH_ERRNO_MSG_MAX] = {0};
 
     /* Destroy earlier GSSAPI context if any */
     ssh_gssapi_free(session);
@@ -279,9 +278,7 @@ ssh_gssapi_handle_userauth(ssh_session session, const char *user,
 
     hostname = ssh_get_local_hostname();
     if (hostname == NULL) {
-        SSH_LOG(SSH_LOG_TRACE,
-                "Error getting hostname: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
+        SSH_LOG_STRERROR(SSH_LOG_TRACE, errno, "Error getting hostname: %s");
         return SSH_ERROR;
     }
 

@@ -521,11 +521,10 @@ static int ssh_retrieve_dhgroup(char *moduli_file,
         moduli = ssh_strict_fopen(MODULI_FILE, SSH_MAX_CONFIG_FILE_SIZE);
 
     if (moduli == NULL) {
-        char err_msg[SSH_ERRNO_MSG_MAX] = {0};
-        SSH_LOG(SSH_LOG_DEBUG,
-                "Unable to open moduli file: %s",
-                ssh_strerror(errno, err_msg, SSH_ERRNO_MSG_MAX));
-                return ssh_fallback_group(pmax, p, g);
+        SSH_LOG_STRERROR(SSH_LOG_DEBUG,
+                         errno,
+                         "Unable to open moduli file: %s");
+        return ssh_fallback_group(pmax, p, g);
     }
 
     *size = 0;

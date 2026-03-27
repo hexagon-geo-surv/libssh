@@ -1847,21 +1847,23 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     char **tmp = NULL;
     size_t i = 0;
     int argc = *argcptr;
-    int debuglevel = 0;
     int compress = 0;
     size_t current = 0;
     int opt_rc = 0;
     int saveoptind = optind; /* need to save 'em */
     int saveopterr = opterr;
     int opt;
+    int rv;
 
-    /* Nothing to do here */
+    /* Keep preconfigured global log level and let -v flags raise it further. */
+    int verbosity = ssh_get_log_level();
+    int verbosity_set = 0;
     if (argc <= 1) {
         return SSH_OK;
     }
 
     opterr = 0; /* shut up getopt */
-    while ((opt = getopt(argc, argv, "c:i:o:Cl:p:vb:r12")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:o:Cl:p:qvb:r12")) != -1) {
         switch(opt) {
         case 'l':
             user = optarg;
@@ -1870,8 +1872,12 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
             port = optarg;
             break;
         case 'v':
-            debuglevel++;
-            ssh_set_log_level(debuglevel);
+            verbosity++;
+            verbosity_set = 1;
+            break;
+        case 'q':
+            verbosity = SSH_LOG_NOLOG;
+            verbosity_set = 1;
             break;
         case 'r':
             break;
@@ -1957,6 +1963,14 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     argv[current + 1] = NULL;
     *argcptr = current + 1;
     SAFE_FREE(save);
+
+    if (verbosity_set) {
+        verbosity = MIN(verbosity, SSH_LOG_FUNCTIONS);
+        rv = ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
+        if (rv < 0) {
+            return SSH_ERROR;
+        }
+    }
 
     if (compress) {
         if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION, "yes") < 0) {

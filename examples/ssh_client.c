@@ -178,6 +178,7 @@ usage(void)
         "  -p port : connect to port\n"
         "  -o option : set configuration option (e.g., -o Compression=yes)\n"
         "  -r : use RSA to verify host public key\n"
+        "  -q : quiet mode\n"
         "  -F file : parse configuration file instead of default one\n"
         "  -E file : append debug logs to a log file instead of stderr\n"
 #ifdef WITH_PCAP

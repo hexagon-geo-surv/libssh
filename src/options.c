@@ -1849,7 +1849,6 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     int argc = *argcptr;
     int debuglevel = 0;
     int compress = 0;
-    int cont = 1;
     size_t current = 0;
     int opt_rc = 0;
     int saveoptind = optind; /* need to save 'em */
@@ -1889,7 +1888,6 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
             opt_rc = ssh_config_parse_line_cli(session, optarg);
             break;
         case '2':
-            break;
         case '1':
             break;
         default:
@@ -1951,11 +1949,6 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
         return SSH_ERROR;
     }
 
-    if(!cont) {
-        SAFE_FREE(save);
-        return -1;
-    }
-
     /* first recopy the save vector into the original's */
     for (i = 0; i < current; i++) {
         /* don't erase argv[0] */
@@ -1965,40 +1958,34 @@ int ssh_options_getopt(ssh_session session, int *argcptr, char **argv)
     *argcptr = current + 1;
     SAFE_FREE(save);
 
-    /* set a new option struct */
     if (compress) {
         if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION, "yes") < 0) {
-            cont = 0;
+            return SSH_ERROR;
         }
     }
 
-    if (cont && cipher) {
-        if (ssh_options_set(session, SSH_OPTIONS_CIPHERS_C_S, cipher) < 0) {
-            cont = 0;
-        }
-        if (cont && ssh_options_set(session, SSH_OPTIONS_CIPHERS_S_C, cipher) < 0) {
-            cont = 0;
+    if (cipher) {
+        int rc_c_s = ssh_options_set(session, SSH_OPTIONS_CIPHERS_C_S, cipher);
+        int rc_s_c = ssh_options_set(session, SSH_OPTIONS_CIPHERS_S_C, cipher);
+        if (rc_c_s < 0 || rc_s_c < 0) {
+            return SSH_ERROR;
         }
     }
 
-    if (cont && user) {
+    if (user) {
         if (ssh_options_set(session, SSH_OPTIONS_USER, user) < 0) {
-            cont = 0;
+            return SSH_ERROR;
         }
     }
 
-    if (cont && identity) {
+    if (identity) {
         if (ssh_options_set(session, SSH_OPTIONS_IDENTITY, identity) < 0) {
-            cont = 0;
+            return SSH_ERROR;
         }
     }
 
     if (port != NULL) {
         ssh_options_set(session, SSH_OPTIONS_PORT_STR, port);
-    }
-
-    if (!cont) {
-        return SSH_ERROR;
     }
 
     return SSH_OK;

@@ -1715,7 +1715,7 @@ static void torture_options_getopt(void **state)
 {
     ssh_session session = *state;
     int rc;
-    int previous_level, new_level;
+    int previous_level, new_level, expected_level;
     const char *argv[] = {EXECUTABLE_NAME, "-l", "username", "-p", "222",
                     "-vv", "-v", "-r", "-c", "aes128-ctr",
                     "-i", "id_rsa", "-C", "-2", "-1", NULL};
@@ -1725,10 +1725,16 @@ static void torture_options_getopt(void **state)
     /* Test with all the supported options */
     rc = ssh_options_getopt(session, &argc, (char **)argv);
     assert_ssh_return_code(session, rc);
+    assert_int_equal(argc, 1);
+    assert_string_equal(argv[0], EXECUTABLE_NAME);
 
     /* Restore the log level to previous value first */
     new_level = ssh_get_log_level();
-    assert_int_equal(new_level, 3); /* 2 + 1 -v's */
+    expected_level = previous_level + 3; /* 2 + 1 -v's */
+    if (expected_level > SSH_LOG_FUNCTIONS) {
+        expected_level = SSH_LOG_FUNCTIONS;
+    }
+    assert_int_equal(new_level, expected_level);
     rc = ssh_set_log_level(previous_level);
     assert_int_equal(rc, SSH_OK);
 
@@ -1957,6 +1963,68 @@ static void torture_options_getopt_o_option(void **state)
 
     opcode = ssh_config_get_opcode((char *)"rekeylimit");
     assert_int_equal(session->opts.options_seen[opcode], 1);
+}
+
+static void torture_options_getopt_quiet(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+    const char *argv[] = {EXECUTABLE_NAME, "-q", NULL};
+    int argc = 2;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(argc, 1);
+    assert_string_equal(argv[0], EXECUTABLE_NAME);
+
+    assert_int_equal(ssh_get_log_level(), SSH_LOG_NOLOG);
+}
+
+static void torture_options_getopt_vq(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+    const char *argv[] = {EXECUTABLE_NAME, "-v", "-q", NULL};
+    int argc = 3;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(argc, 1);
+    assert_string_equal(argv[0], EXECUTABLE_NAME);
+
+    assert_int_equal(ssh_get_log_level(), SSH_LOG_NOLOG);
+}
+
+static void torture_options_getopt_qv(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+    const char *argv[] = {EXECUTABLE_NAME, "-q", "-v", NULL};
+    int argc = 3;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(argc, 1);
+    assert_string_equal(argv[0], EXECUTABLE_NAME);
+
+    assert_int_equal(ssh_get_log_level(), SSH_LOG_WARNING);
+}
+
+static void torture_options_getopt_nochange(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+    int before = ssh_get_log_level();
+    const char *argv[] = {EXECUTABLE_NAME, "host", NULL};
+    int argc = 2;
+
+    rc = ssh_options_getopt(session, &argc, (char **)argv);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(argc, 2);
+    assert_string_equal(argv[0], EXECUTABLE_NAME);
+    assert_string_equal(argv[1], "host");
+
+    assert_int_equal(ssh_get_log_level(), before);
 }
 
 static void torture_options_plus_sign(void **state)
@@ -3371,6 +3439,18 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_getopt_o_option,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_getopt_quiet,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_getopt_vq,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_getopt_qv,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_getopt_nochange,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_plus_sign,

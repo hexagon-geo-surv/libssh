@@ -1331,6 +1331,13 @@ static void torture_options_config_match(void **state)
     rv = ssh_options_parse_config(session, "test_config");
     assert_ssh_return_code_equal(session, rv, SSH_ERROR);
 
+    /* The Match version keyword requires an argument */
+    torture_reset_config(session);
+    torture_write_file("test_config", "Match version\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code_equal(session, rv, SSH_ERROR);
+
     /* The Match canonical keyword is the same as match all */
     torture_reset_config(session);
     config = fopen("test_config", "w");
@@ -1380,6 +1387,50 @@ static void torture_options_config_match(void **state)
           "\tPort 34\n",
           config);
     fclose(config);
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+
+    session->opts.port = 0;
+
+    /* The Match version keyword */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Match version libssh_*\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+
+    session->opts.port = 0;
+
+    /* A non-matching Match version keyword falls through */
+    torture_reset_config(session);
+    torture_write_file(
+        "test_config",
+        "Match version definitely-not-the-current-libssh-version\n"
+        "\tPort 33\n"
+        "Match all\n"
+        "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 34);
+
+    session->opts.port = 0;
+
+    /* The negated Match version keyword */
+    torture_reset_config(session);
+    torture_write_file(
+        "test_config",
+        "Match !version definitely-not-the-current-libssh-version\n"
+        "\tPort 33\n"
+        "Match all\n"
+        "\tPort 34\n");
 
     rv = ssh_options_parse_config(session, "test_config");
     assert_ssh_return_code(session, rv);

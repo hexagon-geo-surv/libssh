@@ -170,7 +170,8 @@ enum ssh_config_match_e {
     MATCH_ORIGINALHOST,
     MATCH_USER,
     MATCH_LOCALUSER,
-    MATCH_LOCALNETWORK
+    MATCH_LOCALNETWORK,
+    MATCH_VERSION,
 };
 
 struct ssh_config_match_keyword_table_s {
@@ -189,6 +190,7 @@ static struct ssh_config_match_keyword_table_s
         {"user", MATCH_USER},
         {"localuser", MATCH_LOCALUSER},
         {"localnetwork", MATCH_LOCALNETWORK},
+        {"version", MATCH_VERSION},
         {NULL, MATCH_UNKNOWN},
 };
 
@@ -324,8 +326,7 @@ ssh_config_get_match_opcode(const char *keyword)
     return MATCH_UNKNOWN;
 }
 
-static int
-ssh_config_match(char *value, const char *pattern, bool negate)
+static int ssh_config_match(const char *value, const char *pattern, bool negate)
 {
     int ok, result = 0;
 
@@ -954,6 +955,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
         size_t args = 0;
         enum ssh_config_match_e opt;
         char *localuser = NULL;
+        const char *version = NULL;
 
         *parsing = 0;
         do {
@@ -1140,6 +1142,23 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 SAFE_FREE(x);
                 return -1;
 #endif /* HAVE_IFADDRS_H */
+                args++;
+                break;
+
+            case MATCH_VERSION:
+                /* Here we match only one argument */
+                p = ssh_config_get_str_tok(&s, NULL);
+                if (p == NULL || p[0] == '\0') {
+                    ssh_set_error(session,
+                                  SSH_FATAL,
+                                  "line %d: ERROR - Match version keyword "
+                                  "requires argument",
+                                  count);
+                    SAFE_FREE(x);
+                    return -1;
+                }
+                version = "libssh_" SSH_STRINGIFY(LIBSSH_VERSION);
+                result &= ssh_config_match(version, p, negate);
                 args++;
                 break;
 

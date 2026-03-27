@@ -1005,6 +1005,28 @@ static void torture_config_match(void **state,
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "otherhost");
 
+    config = "Match version libssh_*\n"
+             "\tHostName versioned-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "versioned-host.com");
+
+    config = "Match !version definitely-not-the-current-libssh-version\n"
+             "\tHostName negated-versioned-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "negated-versioned-host.com");
+
     config = "Match exec true\n"
              "\tHostName execed-true.com\n";
     if (file != NULL) {
@@ -1013,6 +1035,7 @@ static void torture_config_match(void **state,
         string = config;
     }
     torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "otherhost");
     _parse_config(session, file, string, SSH_OK);
 #ifndef WITH_EXEC
     /* The match exec is not supported on windows at this moment */
@@ -1029,6 +1052,7 @@ static void torture_config_match(void **state,
         string = config;
     }
     torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "otherhost");
     _parse_config(session, file, string, SSH_OK);
 #ifndef WITH_EXEC
     /* The match exec is not supported on windows at this moment */
@@ -1045,6 +1069,7 @@ static void torture_config_match(void **state,
         string = config;
     }
     torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "otherhost");
     _parse_config(session, file, string, SSH_OK);
 #ifndef WITH_EXEC
     /* The match exec is not supported on windows at this moment */
@@ -1111,6 +1136,17 @@ static void torture_config_match(void **state,
     torture_reset_config(session);
     _parse_config(session, file, string, SSH_ERROR);
 
+    /* Missing argument to option version */
+    config = "Match version\n"
+             "\tUser version2\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_ERROR);
+
     /* Missing argument to option exec */
     config = "Match exec\n"
              "\tUser exec\n";
@@ -1169,6 +1205,35 @@ static void torture_config_match_file(void **state)
 static void torture_config_match_string(void **state)
 {
     torture_config_match(state, NULL, LIBSSH_TESTCONFIG_STRING10);
+}
+
+static void torture_config_match_version_negative(void **state)
+{
+    ssh_session session = *state;
+    char config[1024];
+
+    config[0] = '\0';
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "unmatched");
+    snprintf(config,
+             sizeof(config),
+             "Match version definitely-not-the-current-libssh-version\n"
+             "\tHostName unmatched-version-host.com\n"
+             "Match all\n"
+             "\tHostName nonmatching-version-fallback.com\n");
+    _parse_config(session, NULL, config, SSH_OK);
+    assert_string_equal(session->opts.host, "nonmatching-version-fallback.com");
+
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "unmatched");
+    snprintf(config,
+             sizeof(config),
+             "Match !version libssh_*\n"
+             "\tHostName not-applied-negated-version-host.com\n"
+             "Match all\n"
+             "\tHostName negated-version-fallback.com\n");
+    _parse_config(session, NULL, config, SSH_OK);
+    assert_string_equal(session->opts.host, "negated-version-fallback.com");
 }
 
 /**
@@ -3227,6 +3292,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_match_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_match_version_negative,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_proxyjump_file,

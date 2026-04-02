@@ -2474,6 +2474,58 @@ static void torture_options_set_rsa_min_size(void **state)
     assert_ssh_return_code(session, rc);
 }
 
+static void torture_options_set_auth_flags(void **state)
+{
+    ssh_session session = *state;
+    int on = 1;
+    int off = 0;
+    int rc;
+
+    /* All auth flags should be on by default */
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    /* NULL value should fail */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, NULL);
+    assert_int_equal(rc, -1);
+
+    /* Disable each flag and verify it is cleared */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    /* Re-enable each flag and verify it is set */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+}
+
 #ifdef WITH_SERVER
 const char template[] = "temp_dir_XXXXXX";
 
@@ -3467,6 +3519,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_rsa_min_size,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_set_auth_flags,
                                         setup,
                                         teardown),
     };

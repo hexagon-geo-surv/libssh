@@ -4,6 +4,7 @@
 
 #include "torture.h"
 #include <libssh/libssh.h>
+#include <libssh/session.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -247,6 +248,65 @@ torture_gssapi_auth_delegate_creds(void **state)
     torture_teardown_kdc_server(state);
 }
 
+static void torture_gssapi_auth_flags(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* Flag off: auth should be denied */
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    rc = ssh_userauth_gssapi(session);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Flag on, non-blocking: start GSSAPI exchange */
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    torture_setup_kdc_server(
+        state,
+        "kadmin.local addprinc -randkey host/server.libssh.site \n"
+        "kadmin.local ktadd -k $(dirname $0)/d/ssh.keytab "
+        "host/server.libssh.site \n"
+        "kadmin.local addprinc -pw bar alice \n"
+        "kadmin.local list_principals",
+
+        "echo bar | kinit alice");
+
+    ssh_set_blocking(session, 0);
+
+    /* Skip past service request before pending_call_state is set */
+    do {
+        rc = ssh_userauth_gssapi(session);
+    } while (rc == SSH_AUTH_AGAIN &&
+             session->pending_call_state == SSH_PENDING_CALL_NONE);
+
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+    assert_int_not_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* Flag off mid-exchange: should not disrupt in-progress auth */
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    do {
+        rc = ssh_userauth_gssapi(session);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    torture_teardown_kdc_server(state);
+}
+
 int
 torture_run_tests(void)
 {
@@ -262,6 +322,9 @@ torture_run_tests(void)
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_gssapi_auth_delegate_creds,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_gssapi_auth_flags,
                                         session_setup,
                                         session_teardown),
     };

@@ -1402,6 +1402,300 @@ static void torture_auth_pubkey_skip_none(void **state)
     SSH_KEY_FREE(privkey);
 }
 
+static void torture_auth_flags_kbdint(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_BOB);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    /* negative tests */
+    rc = ssh_userauth_kbdint(NULL, NULL, NULL);
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+
+    /* Gate check: no pending I/O, no kbdint state, flag off,
+     * auth should be denied */
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+    assert_null(session->kbdint);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    rc = ssh_userauth_kbdint(session, NULL, NULL);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Flag on, non-blocking: start kbdint exchange */
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    ssh_set_blocking(session, 0);
+
+    do {
+        rc = ssh_userauth_none(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+
+    rc = ssh_userauth_kbdint(session, NULL, NULL);
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+
+    /* Gate bypass: pending I/O, no kbdint state, flag off */
+    assert_int_not_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+    assert_null(session->kbdint);
+
+    /* Flag off mid-exchange: should not disrupt in-progress auth */
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    do {
+        rc = ssh_userauth_kbdint(session, NULL, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_INFO);
+    assert_int_equal(ssh_userauth_kbdint_getnprompts(session), 1);
+
+    /* Gate bypass: no pending I/O, kbdint state exists, flag still off */
+    assert_non_null(session->kbdint);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    rc = ssh_userauth_kbdint_setanswer(session,
+                                       0,
+                                       TORTURE_SSH_USER_BOB_PASSWORD);
+    assert_false(rc < 0);
+
+    do {
+        rc = ssh_userauth_kbdint(session, NULL, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+    /* Sometimes, SSH server send an empty query at the end of exchange */
+    if (rc == SSH_AUTH_INFO) {
+        assert_int_equal(ssh_userauth_kbdint_getnprompts(session), 0);
+        do {
+            rc = ssh_userauth_kbdint(session, NULL, NULL);
+        } while (rc == SSH_AUTH_AGAIN);
+    }
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+}
+
+static void torture_auth_flags_password(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_BOB);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* negative tests */
+    rc = ssh_userauth_password(NULL, NULL, "password");
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+
+    /* Flag off: auth should be denied */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+
+    rc = ssh_userauth_password(session, NULL, TORTURE_SSH_USER_BOB_PASSWORD);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Flag on, non-blocking: start password exchange */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+
+    ssh_set_blocking(session, 0);
+
+    do {
+        rc = ssh_userauth_none(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+
+    rc = ssh_userauth_password(session, NULL, TORTURE_SSH_USER_BOB_PASSWORD);
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+    assert_int_not_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* Flag off mid-exchange: should not disrupt in-progress auth */
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+
+    do {
+        rc =
+            ssh_userauth_password(session, NULL, TORTURE_SSH_USER_BOB_PASSWORD);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+}
+
+static void torture_auth_flags_pubkey(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    struct passwd *pwd = NULL;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key, sizeof(bob_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* negative tests */
+    rc = ssh_userauth_publickey_auto(NULL, NULL, NULL);
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+
+    /* Flag off: all pubkey auth functions should be denied */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_publickey(session, NULL, privkey);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    rc = ssh_userauth_try_publickey(session, NULL, privkey);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    rc = ssh_userauth_agent(session, NULL);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    rc = ssh_userauth_publickey_auto(session, NULL, NULL);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Flag on, non-blocking: start pubkey exchange */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    ssh_set_blocking(session, 0);
+
+    do {
+        rc = ssh_userauth_none(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+
+    rc = ssh_userauth_publickey(session, NULL, privkey);
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+    assert_int_not_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* Flag off mid-exchange: should not disrupt in-progress auth */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    do {
+        rc = ssh_userauth_publickey(session, NULL, privkey);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    SSH_KEY_FREE(privkey);
+}
+
+static void torture_auth_flags_agent(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    if (!ssh_agent_is_running(session)) {
+        print_message("*** Agent not running. Test ignored\n");
+        skip();
+    }
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+    assert_null(session->agent_state);
+
+    /* Flag off: auth should be denied */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_agent(session, NULL);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+    assert_null(session->agent_state);
+
+    /* Flag on, non-blocking: start agent exchange */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    ssh_set_blocking(session, 0);
+
+    do {
+        rc = ssh_userauth_none(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+
+    rc = ssh_userauth_agent(session, NULL);
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+    assert_non_null(session->agent_state);
+
+    /* Flag off mid-exchange: should not disrupt in-progress auth */
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    do {
+        rc = ssh_userauth_agent(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+}
+
+static void torture_auth_flags_gssapi(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    int rc;
+    int off = 0;
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_BOB);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /* negative tests */
+    rc = ssh_userauth_gssapi(NULL);
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+
+    /* Flag off: auth should be denied */
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+
+    rc = ssh_userauth_gssapi(session);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    /* Mid-exchange test in torture_gssapi_auth.c */
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -1415,6 +1709,21 @@ int torture_run_tests(void) {
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_none_max_tries,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_kbdint,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_password,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_pubkey,
+                                        pubkey_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_agent,
+                                        agent_setup,
+                                        agent_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_gssapi,
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_password_good,

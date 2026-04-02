@@ -620,6 +620,12 @@ int ssh_userauth_try_publickey(ssh_session session,
         return SSH_AUTH_ERROR;
     }
 
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
+        return SSH_AUTH_DENIED;
+    }
+
     if (pubkey == NULL || !ssh_key_is_public(pubkey)) {
         ssh_set_error(session, SSH_FATAL, "Invalid pubkey");
         return SSH_AUTH_ERROR;
@@ -749,6 +755,12 @@ int ssh_userauth_publickey(ssh_session session,
 
     if (session == NULL) {
         return SSH_AUTH_ERROR;
+    }
+
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
+        return SSH_AUTH_DENIED;
     }
 
     if (privkey == NULL || !ssh_key_is_private(privkey)) {
@@ -1034,6 +1046,12 @@ int ssh_userauth_agent(ssh_session session, const char *username)
 
     if (session == NULL) {
         return SSH_AUTH_ERROR;
+    }
+
+    if (session->agent_state == NULL &&
+        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
+        return SSH_AUTH_DENIED;
     }
 
     if (!ssh_agent_is_running(session)) {
@@ -1739,6 +1757,16 @@ int ssh_userauth_password(ssh_session session,
 {
     int rc;
 
+    if (session == NULL) {
+        return SSH_AUTH_ERROR;
+    }
+
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        !(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Password authentication is disabled");
+        return SSH_AUTH_DENIED;
+    }
+
     switch (session->pending_call_state) {
         case SSH_PENDING_CALL_NONE:
             break;
@@ -1804,6 +1832,15 @@ int ssh_userauth_agent_pubkey(ssh_session session,
 {
     ssh_key key = NULL;
     int rc;
+
+    if (session == NULL) {
+        return SSH_AUTH_ERROR;
+    }
+
+    if (!(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
+        return SSH_AUTH_DENIED;
+    }
 
     key = ssh_key_new();
     if (key == NULL) {
@@ -2192,6 +2229,14 @@ int ssh_userauth_kbdint(ssh_session session, const char *user,
         return SSH_AUTH_ERROR;
     }
 
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        session->kbdint == NULL &&
+        !(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG,
+                "Keyboard-interactive authentication is disabled");
+        return SSH_AUTH_DENIED;
+    }
+
     if ((session->pending_call_state == SSH_PENDING_CALL_NONE && session->kbdint == NULL) ||
             session->pending_call_state == SSH_PENDING_CALL_AUTH_KBDINT_INIT)
         rc = ssh_userauth_kbdint_init(session, user, submethods);
@@ -2441,6 +2486,17 @@ ssh_userauth_kbdint_setanswer(ssh_session session, unsigned int i,
 int ssh_userauth_gssapi(ssh_session session)
 {
     int rc = SSH_AUTH_DENIED;
+
+    if (session == NULL) {
+        return SSH_AUTH_ERROR;
+    }
+
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        !(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH)) {
+        SSH_LOG(SSH_LOG_DEBUG, "GSSAPI authentication is disabled");
+        return SSH_AUTH_DENIED;
+    }
+
 #ifdef WITH_GSSAPI
     switch(session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:

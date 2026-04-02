@@ -601,25 +601,22 @@ int ssh_options_set_algo(ssh_session session,
  *
  *              - SSH_OPTIONS_PASSWORD_AUTH
  *                Set it if password authentication should be used
- *                in ssh_userauth_auto_pubkey(). (int, 0=false).
- *                Currently without effect (ssh_userauth_auto_pubkey doesn't use
- *                password authentication).
+ *                in ssh_userauth_password(). (int, 0=false).
  *
  *              - SSH_OPTIONS_PUBKEY_AUTH
  *                Set it if pubkey authentication should be used
- *                in ssh_userauth_auto_pubkey(). (int, 0=false).
+ *                in ssh_userauth_publickey_auto(),
+ *                ssh_userauth_try_publickey(),
+ *                ssh_userauth_publickey(), and
+ *                ssh_userauth_agent(). (int, 0=false).
  *
  *              - SSH_OPTIONS_KBDINT_AUTH
- *                Set it if keyboard-interactive authentication should be used
- *                in ssh_userauth_auto_pubkey(). (int, 0=false).
- *                Currently without effect (ssh_userauth_auto_pubkey doesn't use
- *                keyboard-interactive authentication).
+ *                Set it if keyboard-interactive authentication should
+ *                be used in ssh_userauth_kbdint(). (int, 0=false).
  *
  *              - SSH_OPTIONS_GSSAPI_AUTH
  *                Set it if gssapi authentication should be used
- *                in ssh_userauth_auto_pubkey(). (int, 0=false).
- *                Currently without effect (ssh_userauth_auto_pubkey doesn't use
- *                gssapi authentication).
+ *                in ssh_userauth_gssapi(). (int, 0=false).
  *
  *              - SSH_OPTIONS_NODELAY
  *                Set it to disable Nagle's Algorithm (TCP_NODELAY) on the

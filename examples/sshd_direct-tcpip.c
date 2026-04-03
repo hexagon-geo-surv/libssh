@@ -30,6 +30,7 @@ clients must be made or how a client should react.
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdbool.h>

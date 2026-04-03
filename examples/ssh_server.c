@@ -53,6 +53,8 @@ after authentication using setuid().
 #ifdef HAVE_UTIL_H
 #include <util.h>
 #endif
+#include <ctype.h>
+#include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/stat.h>

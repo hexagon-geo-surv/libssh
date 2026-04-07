@@ -44,7 +44,7 @@ char *ssh_config_get_cmd(char **str)
 
     /* Ignore leading spaces */
     for (c = *str; *c; c++) {
-        if (! isblank(*c)) {
+        if (!isblank((unsigned char)*c)) {
             break;
         }
     }
@@ -143,10 +143,10 @@ char *ssh_config_get_token_info(char **str, struct ssh_config_token_info *info)
              * above only recognizes \", and this branch only recognizes
              * \<blank>.
              */
-            if (*c == '\\' && isblank(c[1])) {
+            if (*c == '\\' && isblank((unsigned char)c[1])) {
                 c++;
                 *dst++ = *c;
-            } else if (isblank(*c) || *c == '=' || *c == '\n') {
+            } else if (isblank((unsigned char)*c) || *c == '=' || *c == '\n') {
                 had_equal = (*c == '=');
                 *dst = '\0';
                 c++;
@@ -161,7 +161,7 @@ char *ssh_config_get_token_info(char **str, struct ssh_config_token_info *info)
     }
 
     /* Skip any other remaining whitespace */
-    while (isblank(*c) || *c == '\n' ||
+    while (isblank((unsigned char)*c) || *c == '\n' ||
            (!had_equal && *c == '=')) {
         if (*c == '=') {
             had_equal = true;

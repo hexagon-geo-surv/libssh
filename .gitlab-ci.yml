@@ -158,6 +158,24 @@ review:
   only:
     - merge_requests
 
+# Compile headers under include/libssh in isolation to detect include-order
+# dependencies.
+header-standalone:
+  extends: .build_options
+  stage: review
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  variables:
+    CMAKE_OPTIONS: $CMAKE_DEFAULT_OPTIONS $CMAKE_BUILD_OPTIONS
+  script:
+    - mkdir -p obj && cd obj
+    - cmake $CMAKE_OPTIONS ..
+    - cd ..
+    - ./.gitlab-ci/header-standalone-check.sh
+  tags:
+    - saas-linux-small-amd64
+  only:
+    - merge_requests
+
 ###############################################################################
 #                               CentOS builds                                 #
 ###############################################################################

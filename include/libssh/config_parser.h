@@ -35,8 +35,18 @@ extern "C" {
 
 char *ssh_config_get_cmd(char **str);
 
+struct ssh_config_token_info {
+    /* found is false only when no token was present at all. An explicit empty
+     * token such as "" still returns found=true with an empty string.
+     */
+    bool found;
+    bool had_equal;
+    bool invalid;
+};
+
 char *ssh_config_get_token(char **str);
 
+char *ssh_config_get_token_info(char **str, struct ssh_config_token_info *info);
 long ssh_config_get_long(char **str, long notfound);
 
 const char *ssh_config_get_str_tok(char **str, const char *def);

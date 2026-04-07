@@ -71,6 +71,7 @@ enum ssh_config_opcode_e {
     SOC_ADDRESSFAMILY,
     SOC_GSSAPIKEYEXCHANGE,
     SOC_GSSAPIKEXALGORITHMS,
+    SOC_TAG,
 
     SOC_MAX /* Keep this one last in the list */
 };

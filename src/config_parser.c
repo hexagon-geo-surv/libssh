@@ -65,11 +65,24 @@ out:
 /* Returns the next token delimited by whitespace or equal sign (=)
  * respecting the quotes creating separate token (including whitespaces).
  */
-char *ssh_config_get_token(char **str)
+char *ssh_config_get_token_info(char **str, struct ssh_config_token_info *info)
 {
     register char *c = NULL;
+    /* Write cursor for the normalized token. Quotes and selected escape
+     * characters are dropped while still returning a pointer into the original
+     * buffer.
+     */
+    char *dst = NULL;
     bool had_equal = false;
+    bool found = false;
+    bool invalid = false;
     char *r = NULL;
+
+    if (info != NULL) {
+        info->found = false;
+        info->had_equal = false;
+        info->invalid = false;
+    }
 
     /* Ignore leading spaces */
     for (c = *str; *c; c++) {
@@ -78,39 +91,78 @@ char *ssh_config_get_token(char **str)
         }
     }
 
+    /* End of string or a bare newline means there is no token here, not an
+     * explicit empty token (""). Keep found=false in both cases; the newline
+     * branch also consumes the line boundary.
+     */
+    if (*c == '\0') {
+        r = c;
+        goto out;
+    }
+    if (*c == '\n') {
+        r = c;
+        *c = '\0';
+        c++;
+        goto out;
+    }
+
+    found = true;
+
     /* If we start with quote, return the whole quoted block */
     if (*c == '\"') {
-        for (r = ++c; *c; c++) {
-            if (*c == '\"' || *c == '\n') {
-                if (*c == '\"' && r != c && *(c - 1) == '\\') {
-                    /* Escaped quote: Move the remaining one char left */
-                    int remaining_len = strlen(c);
-                    memmove(c - 1, c, remaining_len);
-                    c[remaining_len - 1] = '\0';
-                    continue;
-                }
-                *c = '\0';
+        bool closed_quote = false;
+
+        r = dst = ++c;
+        while (*c != '\0' && *c != '\n') {
+            if (*c == '\\' && c[1] == '\"') {
                 c++;
+            } else if (*c == '\"') {
+                *dst = '\0';
+                c++;
+                closed_quote = true;
                 break;
             }
-            /* XXX Unmatched quotes extend to the end of line */
+            *dst++ = *c++;
+        }
+        if (!closed_quote) {
+            invalid = true;
+            *dst = '\0';
+            if (*c == '\n') {
+                c++;
+            }
         }
     } else {
         /* Otherwise terminate on space, equal or newline */
-        for (r = c; *c; c++) {
-            if (*c == '\0') {
-                goto out;
+        r = dst = c;
+        for (; *c; c++) {
+            /* Treat escaped whitespace outside quotes as part of the current
+             * token, e.g. "tag\ name". The backslash is dropped as the token
+             * is compacted in place through dst.
+             *
+             * Note: there is no general backslash escape; the quoted branch
+             * above only recognizes \", and this branch only recognizes
+             * \<blank>.
+             */
+            if (*c == '\\' && isblank(c[1])) {
+                c++;
+                *dst++ = *c;
             } else if (isblank(*c) || *c == '=' || *c == '\n') {
                 had_equal = (*c == '=');
-                *c = '\0';
+                *dst = '\0';
                 c++;
                 break;
+            } else {
+                *dst++ = *c;
             }
+        }
+        if (*c == '\0') {
+            *dst = '\0';
         }
     }
 
     /* Skip any other remaining whitespace */
-    while (isblank(*c) || *c == '\n' || (!had_equal && *c == '=')) {
+    while (isblank(*c) || *c == '\n' ||
+           (!had_equal && *c == '=')) {
         if (*c == '=') {
             had_equal = true;
         }
@@ -118,7 +170,17 @@ char *ssh_config_get_token(char **str)
     }
 out:
     *str = c;
+    if (info != NULL) {
+        info->found = found;
+        info->had_equal = had_equal;
+        info->invalid = invalid;
+    }
     return r;
+}
+
+char *ssh_config_get_token(char **str)
+{
+    return ssh_config_get_token_info(str, NULL);
 }
 
 long ssh_config_get_long(char **str, long notfound)

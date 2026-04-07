@@ -289,6 +289,7 @@ struct ssh_session_struct {
         char *originalhost;        /* user-supplied host for config matching */
         bool config_hostname_only; /* config hostname path: update host only,
                                       not originalhost */
+        char *tag;                 /* configuration tag for Match tagged */
     } opts;
 
     /* server options */

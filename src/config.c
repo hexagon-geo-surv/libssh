@@ -157,6 +157,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"requiredrsasize", SOC_REQUIRED_RSA_SIZE, true},
     {"gssapikeyexchange", SOC_GSSAPIKEYEXCHANGE, true},
     {"gssapikexalgorithms", SOC_GSSAPIKEXALGORITHMS, true},
+    {"tag", SOC_TAG, true},
     {NULL, SOC_UNKNOWN, false},
 };
 
@@ -172,6 +173,7 @@ enum ssh_config_match_e {
     MATCH_LOCALUSER,
     MATCH_LOCALNETWORK,
     MATCH_VERSION,
+    MATCH_TAGGED,
 };
 
 struct ssh_config_match_keyword_table_s {
@@ -191,6 +193,7 @@ static struct ssh_config_match_keyword_table_s
         {"localuser", MATCH_LOCALUSER},
         {"localnetwork", MATCH_LOCALNETWORK},
         {"version", MATCH_VERSION},
+        {"tagged", MATCH_TAGGED},
         {NULL, MATCH_UNKNOWN},
 };
 
@@ -326,19 +329,83 @@ ssh_config_get_match_opcode(const char *keyword)
     return MATCH_UNKNOWN;
 }
 
+/**
+ * @brief Convert a raw Match predicate result to the final boolean outcome.
+ *
+ * @param ok      Raw predicate result where a positive value means a match and
+ *                zero or a negative value means no match.
+ * @param negate  Whether the Match predicate was prefixed with '!'.
+ *
+ * @return 1 if the predicate matches after applying negation, 0 otherwise.
+ */
+static inline int ssh_config_match_result(int ok, bool negate)
+{
+    if (ok <= 0 && negate == true) {
+        return 1;
+    }
+    if (ok > 0 && negate == false) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Evaluate a Match predicate against a value and pattern list.
+ *
+ * @param value    Value to match.
+ * @param pattern  Pattern list used for comparison.
+ * @param negate   Whether the Match predicate was prefixed with '!'.
+ *
+ * @return 1 if the predicate matches after applying negation, 0 otherwise.
+ */
 static int ssh_config_match(const char *value, const char *pattern, bool negate)
 {
     int ok, result = 0;
 
     ok = match_pattern_list(value, pattern, strlen(pattern), 0);
-    if (ok <= 0 && negate == true) {
-        result = 1;
-    } else if (ok > 0 && negate == false) {
-        result = 1;
-    }
+    result = ssh_config_match_result(ok, negate);
     SSH_LOG(SSH_LOG_TRACE, "%s '%s' against pattern '%s'%s (ok=%d)",
             result == 1 ? "Matched" : "Not matched", value, pattern,
             negate == true ? " (negated)" : "", ok);
+    return result;
+}
+
+/**
+ * @brief Evaluate a Match tagged predicate against the current session tag.
+ *
+ * @param value    Current session tag. NULL is treated as an unset tag.
+ * @param pattern  Pattern to compare against the current tag.
+ * @param negate   Whether the Match predicate was prefixed with '!'.
+ *
+ * @return 1 if the predicate matches after applying negation, 0 otherwise.
+ */
+static int
+ssh_config_match_tagged(const char *value, const char *pattern, bool negate)
+{
+    const char *tag = value != NULL ? value : "";
+    int ok, result = 0;
+    size_t pattern_len;
+
+    if (tag[0] == '\0') {
+        /* Match tagged treats an explicit empty pattern as "match unset tag".
+         * The generic match_pattern_list() should still treat empty patterns
+         * as no match for other predicates.
+         */
+        ok = (pattern[0] == '\0');
+    } else {
+        pattern_len = strlen(pattern);
+        ok = match_pattern_list(tag, pattern, pattern_len, 0) > 0;
+    }
+
+    result = ssh_config_match_result(ok, negate);
+    SSH_LOG(SSH_LOG_TRACE,
+            "%s tag '%s' against pattern '%s'%s (ok=%d)",
+            result == 1 ? "Matched" : "Not matched",
+            tag,
+            pattern,
+            negate == true ? " (negated)" : "",
+            ok);
     return result;
 }
 
@@ -947,16 +1014,19 @@ static int ssh_config_parse_line_internal(ssh_session session,
 
     case SOC_MATCH: {
         bool negate;
+        int match_error = 0;
         int result = 1;
         size_t args = 0;
         enum ssh_config_match_e opt;
+        struct ssh_config_token_info keyword_info;
+        struct ssh_config_token_info arg_info;
         char *localuser = NULL;
         const char *version = NULL;
 
         *parsing = 0;
         do {
-            p = p2 = ssh_config_get_str_tok(&s, NULL);
-            if (p == NULL || p[0] == '\0') {
+            p = p2 = ssh_config_get_token_info(&s, &keyword_info);
+            if (!keyword_info.found || p[0] == '\0') {
                 break;
             }
             args++;
@@ -987,8 +1057,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 ssh_set_error(session, SSH_FATAL,
                               "line %d: ERROR - Match all cannot be combined with "
                               "other Match attributes", count);
-                SAFE_FREE(x);
-                return -1;
+                match_error = -1;
+                goto out_match;
 
             case MATCH_FINAL:
             case MATCH_CANONICAL:
@@ -1006,8 +1076,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                 if (p == NULL || p[0] == '\0') {
                     SSH_LOG(SSH_LOG_TRACE, "line %d: Match keyword "
                             "'%s' requires argument", count, p2);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 if (result != 1) {
                     SSH_LOG(SSH_LOG_DEBUG, "line %d: Skipped match exec "
@@ -1028,15 +1098,15 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   "line %d: ERROR - Match localuser keyword "
                                   "requires argument",
                                   count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 localuser = ssh_get_local_username();
                 if (localuser == NULL) {
                     SSH_LOG(SSH_LOG_TRACE, "line %d: Can not get local username "
                             "for conditional matching.", count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 result &= ssh_config_match(localuser, p, negate);
                 SAFE_FREE(localuser);
@@ -1052,8 +1122,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   "line %d: ERROR - Match originalhost keyword "
                                   "requires argument",
                                   count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 result &=
                     ssh_config_match(session->opts.originalhost, p, negate);
@@ -1067,8 +1137,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                     ssh_set_error(session, SSH_FATAL,
                                   "line %d: ERROR - Match host keyword "
                                   "requires argument", count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 result &= ssh_config_match(session->opts.host
                                                ? session->opts.host
@@ -1085,8 +1155,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                     ssh_set_error(session, SSH_FATAL,
                                   "line %d: ERROR - Match user keyword "
                                   "requires argument", count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 result &= ssh_config_match(session->opts.username, p, negate);
                 args++;
@@ -1101,8 +1171,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   "line %d: ERROR - Match local network keyword"
                                   "requires argument",
                                   count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
 #ifdef HAVE_IFADDRS_H
                 rv = match_cidr_address_list(NULL, p, -1);
@@ -1112,8 +1182,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   "line %d: ERROR - List invalid entry: %s",
                                   count,
                                   p);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 rv = ssh_match_localnetwork(p, negate);
                 if (rv == -1) {
@@ -1124,8 +1194,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   " List entry: %s",
                                   count,
                                   p);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
 
                 result &= rv;
@@ -1135,8 +1205,8 @@ static int ssh_config_parse_line_internal(ssh_session session,
                               "line %d: ERROR - match localnetwork "
                               "not supported on this platform",
                               count);
-                SAFE_FREE(x);
-                return -1;
+                match_error = -1;
+                goto out_match;
 #endif /* HAVE_IFADDRS_H */
                 args++;
                 break;
@@ -1150,11 +1220,54 @@ static int ssh_config_parse_line_internal(ssh_session session,
                                   "line %d: ERROR - Match version keyword "
                                   "requires argument",
                                   count);
-                    SAFE_FREE(x);
-                    return -1;
+                    match_error = -1;
+                    goto out_match;
                 }
                 version = "libssh_" SSH_STRINGIFY(LIBSSH_VERSION);
                 result &= ssh_config_match(version, p, negate);
+                args++;
+                break;
+
+            case MATCH_TAGGED:
+                /* Here we match exactly one argument.
+                 * An explicit empty argument ('tagged=' or 'tagged ""') is
+                 * allowed, but a missing argument is an error.
+                 */
+                p = ssh_config_get_token_info(&s, &arg_info);
+                if (arg_info.invalid) {
+                    ssh_set_error(session,
+                                  SSH_FATAL,
+                                  "line %d: ERROR - Match tagged keyword "
+                                  "contains unterminated quotes",
+                                  count);
+                    match_error = -1;
+                    goto out_match;
+                }
+                /* found=false means there was no argument token at all. An
+                 * explicit empty token ("") still reports found=true.
+                 */
+                if (!arg_info.found) {
+                    if (keyword_info.had_equal) {
+                        p = "";
+                    } else {
+                        ssh_set_error(session,
+                                      SSH_FATAL,
+                                      "line %d: ERROR - Match tagged keyword "
+                                      "requires argument",
+                                      count);
+                        match_error = -1;
+                        goto out_match;
+                    }
+                }
+                result &= ssh_config_match_tagged(session->opts.tag, p, negate);
+                /* MATCH_TAGGED explicitly allows an empty pattern ('tagged='
+                 * or 'tagged ""') to mean "match when no tag is set". That
+                 * leaves p pointing at "", so the outer do-while loop would
+                 * terminate early and skip any remaining predicates on the
+                 * same Match line. Restore p to the keyword token before
+                 * iterating.
+                 */
+                p = p2;
                 args++;
                 break;
 
@@ -1171,6 +1284,12 @@ static int ssh_config_parse_line_internal(ssh_session session,
             SSH_LOG(SSH_LOG_WARN,
                     "ERROR - Match keyword requires an argument. Not matching");
             result = 0;
+        }
+    out_match:
+        SAFE_FREE(localuser);
+        if (match_error != 0) {
+            SAFE_FREE(x);
+            return -1;
         }
         *parsing = result;
         break;
@@ -1200,6 +1319,29 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     }
+    case SOC_TAG:
+        p = ssh_config_get_str_tok(&s, NULL);
+        if (p == NULL) {
+            ssh_set_error(session,
+                          SSH_FATAL,
+                          "line %d: ERROR - Tag keyword requires argument",
+                          count);
+            SAFE_FREE(x);
+            return SSH_ERROR;
+        }
+        if (*parsing) {
+            char *tag = NULL;
+
+            tag = strdup(p);
+            if (tag == NULL) {
+                ssh_set_error_oom(session);
+                SAFE_FREE(x);
+                return SSH_ERROR;
+            }
+            SAFE_FREE(session->opts.tag);
+            session->opts.tag = tag;
+        }
+        break;
     case SOC_HOSTNAME:
       p = ssh_config_get_str_tok(&s, NULL);
       CHECK_COND_OR_FAIL(p == NULL, "Missing argument");

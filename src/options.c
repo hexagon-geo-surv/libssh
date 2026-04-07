@@ -116,6 +116,14 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
         }
     }
 
+    if (src->opts.tag != NULL) {
+        new->opts.tag = strdup(src->opts.tag);
+        if (new->opts.tag == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+    }
+
     if (src->opts.bindaddr != NULL) {
         new->opts.bindaddr = strdup(src->opts.bindaddr);
         if (new->opts.bindaddr == NULL) {

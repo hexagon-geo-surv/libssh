@@ -1027,6 +1027,87 @@ static void torture_config_match(void **state,
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "negated-versioned-host.com");
 
+    config = "Tag tag_name\n"
+             "Match tagged tag*\n"
+             "\tHostName tagged-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "tagged-host.com");
+    assert_string_equal(session->opts.tag, "tag_name");
+
+    config = "Tag tag_name\n"
+             "Match tagged=tag*\n"
+             "\tHostName tagged-inline-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "tagged-inline-host.com");
+    assert_string_equal(session->opts.tag, "tag_name");
+
+    config = "Tag \"tag name\"\n"
+             "Match tagged=\"tag name\"\n"
+             "\tHostName quoted-tagged-inline-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "quoted-tagged-inline-host.com");
+    assert_string_equal(session->opts.tag, "tag name");
+
+    config = "Tag \"tag name\"\n"
+             "Match tagged=tag\\ name\n"
+             "\tHostName escaped-tagged-inline-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "escaped-tagged-inline-host.com");
+    assert_string_equal(session->opts.tag, "tag name");
+
+    config = "Tag config-tag\n"
+             "Match tagged config*\n"
+             "\tHostName overridden-tagged-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    session->opts.tag = strdup("preset-tag");
+    assert_non_null(session->opts.tag);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "overridden-tagged-host.com");
+    assert_string_equal(session->opts.tag, "config-tag");
+
+    config = "Tag first\n"
+             "Tag second\n"
+             "Match tagged first\n"
+             "\tHostName tagged-first-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "tagged-first-host.com");
+    assert_string_equal(session->opts.tag, "first");
+
     config = "Match exec true\n"
              "\tHostName execed-true.com\n";
     if (file != NULL) {
@@ -1147,6 +1228,28 @@ static void torture_config_match(void **state,
     torture_reset_config(session);
     _parse_config(session, file, string, SSH_ERROR);
 
+    /* Missing argument to option tagged */
+    config = "Match tagged\n"
+             "\tUser tagged2\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_ERROR);
+
+    /* Missing argument to Tag */
+    config = "Tag\n"
+             "\tUser tagged2\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_ERROR);
+
     /* Missing argument to option exec */
     config = "Match exec\n"
              "\tUser exec\n";
@@ -1158,7 +1261,7 @@ static void torture_config_match(void **state,
     torture_reset_config(session);
     _parse_config(session, file, string, SSH_ERROR);
 
-    /* Unknown argument to Match keyword */
+    /* Match tagged does not apply when no Tag was set */
     config = "Match tagged tag_name\n"
              "\tHostName never-matched.com\n"
              "Match all\n"
@@ -1172,6 +1275,72 @@ static void torture_config_match(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");
     _parse_config(session, file, string, SSH_OK);
     assert_string_equal(session->opts.host, "config-host.com");
+
+    /* An empty Match tagged= matches an unset tag */
+    config = "Match tagged=\n"
+             "\tHostName empty-tag-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "empty-tag-host.com");
+
+    /* An empty Match tagged "" matches an unset tag */
+    config = "Match tagged \"\"\n"
+             "\tHostName empty-separated-tag-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "empty-separated-tag-host.com");
+
+    /* An empty Match tagged= does not match after a Tag was set */
+    config = "Tag tag_name\n"
+             "Match tagged=\n"
+             "\tHostName never-matched.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "example.com");
+
+    /* An empty Match tagged "" does not match after a Tag was set */
+    config = "Tag tag_name\n"
+             "Match tagged \"\"\n"
+             "\tHostName never-matched.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");
+    _parse_config(session, file, string, SSH_OK);
+    assert_string_equal(session->opts.host, "example.com");
+
+    /* Unterminated quotes in Match tagged= are rejected */
+    config = "Tag \"tag name\"\n"
+             "Match tagged=\"unterminated\n"
+             "\tHostName invalid-tag-host.com\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+    torture_reset_config(session);
+    _parse_config(session, file, string, SSH_ERROR);
 
     /* Missing argument to Match keyword */
     config = "Match\n"
@@ -2474,7 +2643,7 @@ static void torture_config_parser_get_token(void **state)
     char *p = NULL, *tok = NULL;
     char data[256];
 
-    (void) state;
+    (void)state;
 
     /* Ignore leading whitespace (from get_cmd() already */
     strncpy(data, "  \t\t  string\n", sizeof(data));
@@ -2603,6 +2772,16 @@ static void torture_config_parser_get_token(void **state)
     assert_string_equal(tok, "value with spaces");
     assert_int_equal(*p, '\0');
 
+    /* Escaped whitespace outside quotes stays within the same token. */
+    strncpy(data, "tag\\ name something\n", sizeof(data));
+    p = data;
+    tok = ssh_config_get_token(&p);
+    assert_string_equal(tok, "tag name");
+    assert_int_equal(*p, 's');
+    tok = ssh_config_get_token(&p);
+    assert_string_equal(tok, "something");
+    assert_int_equal(*p, '\0');
+
     /* Only one equal sign is allowed */
     strncpy(data, "key==value\n", sizeof(data));
     p = data;
@@ -2662,6 +2841,63 @@ static void torture_config_parser_get_token(void **state)
     tok = ssh_config_get_token(&p);
     assert_string_equal(tok, "quotes\\\"");
     assert_int_equal(*p, '\0');
+}
+
+static void torture_config_parser_get_token_info(void **state)
+{
+    struct ssh_config_token_info info;
+    char *p = NULL, *tok = NULL;
+    char data[256];
+
+    (void)state;
+
+    strncpy(data, "key=tag\\ name\n", sizeof(data));
+    p = data;
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "key");
+    assert_true(info.found);
+    assert_true(info.had_equal);
+    assert_false(info.invalid);
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "tag name");
+    assert_true(info.found);
+    assert_false(info.had_equal);
+    assert_false(info.invalid);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "key=\n", sizeof(data));
+    p = data;
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "key");
+    assert_true(info.found);
+    assert_true(info.had_equal);
+    assert_false(info.invalid);
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "");
+    assert_false(info.found);
+    assert_false(info.had_equal);
+    assert_false(info.invalid);
+
+    strncpy(data, "key \"\"\n", sizeof(data));
+    p = data;
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "key");
+    assert_true(info.found);
+    assert_false(info.had_equal);
+    assert_false(info.invalid);
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "");
+    assert_true(info.found);
+    assert_false(info.had_equal);
+    assert_false(info.invalid);
+
+    strncpy(data, "\"unterminated\n", sizeof(data));
+    p = data;
+    tok = ssh_config_get_token_info(&p, &info);
+    assert_string_equal(tok, "unterminated");
+    assert_true(info.found);
+    assert_false(info.had_equal);
+    assert_true(info.invalid);
 }
 
 /* match_pattern() sanity tests
@@ -3373,6 +3609,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_parser_get_token,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_parser_get_token_info,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_match_pattern,

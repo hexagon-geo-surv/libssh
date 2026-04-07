@@ -1334,6 +1334,19 @@ static void torture_options_config_match(void **state)
     /* The Match version keyword requires an argument */
     torture_reset_config(session);
     torture_write_file("test_config", "Match version\n");
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code_equal(session, rv, SSH_ERROR);
+
+    /* The Match tagged keyword requires an argument */
+    torture_reset_config(session);
+    torture_write_file("test_config", "Match tagged\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code_equal(session, rv, SSH_ERROR);
+
+    /* The Tag keyword requires an argument */
+    torture_reset_config(session);
+    torture_write_file("test_config", "Tag\n");
 
     rv = ssh_options_parse_config(session, "test_config");
     assert_ssh_return_code_equal(session, rv, SSH_ERROR);
@@ -1435,6 +1448,194 @@ static void torture_options_config_match(void **state)
     rv = ssh_options_parse_config(session, "test_config");
     assert_ssh_return_code(session, rv);
     assert_int_equal(session->opts.port, 33);
+
+    session->opts.port = 0;
+
+    /* The Match tagged keyword */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag jumped\n"
+                       "Match tagged jump*\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "jumped");
+
+    session->opts.port = 0;
+
+    /* The Match tagged=pattern syntax */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag jumped\n"
+                       "Match tagged=jump*\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "jumped");
+
+    session->opts.port = 0;
+
+    /* The Match tagged=\"pattern with spaces\" syntax */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag \"tag name\"\n"
+                       "Match tagged=\"tag name\"\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "tag name");
+
+    session->opts.port = 0;
+
+    /* The Match tagged=pattern\\ with\\ spaces syntax */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag \"tag name\"\n"
+                       "Match tagged=tag\\ name\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "tag name");
+
+    session->opts.port = 0;
+
+    /* A config Tag overrides a preexisting session tag */
+    torture_reset_config(session);
+    session->opts.tag = strdup("preset-tag");
+    assert_non_null(session->opts.tag);
+    torture_write_file("test_config",
+                       "Tag config-tag\n"
+                       "Match tagged config*\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "config-tag");
+
+    session->opts.port = 0;
+
+    /* A non-matching Match tagged keyword falls through */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag jumped\n"
+                       "Match tagged other\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 34);
+    assert_string_equal(session->opts.tag, "jumped");
+
+    session->opts.port = 0;
+
+    /* The negated Match tagged keyword */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag jumped\n"
+                       "Match !tagged other\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "jumped");
+
+    session->opts.port = 0;
+
+    /* Match tagged does not match when no Tag was set */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Match tagged jumped\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 34);
+    assert_null(session->opts.tag);
+
+    session->opts.port = 0;
+
+    /* An empty Match tagged= matches an unset tag */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Match tagged=\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_null(session->opts.tag);
+
+    session->opts.port = 0;
+
+    /* An empty Match tagged "" matches an unset tag */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Match tagged \"\"\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_null(session->opts.tag);
+
+    session->opts.port = 0;
+
+    /* Unterminated quotes in Match tagged= are rejected */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag \"tag name\"\n"
+                       "Match tagged=\"unterminated\n"
+                       "\tPort 33\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code_equal(session, rv, SSH_ERROR);
+
+    session->opts.port = 0;
+
+    /* The first Tag directive wins */
+    torture_reset_config(session);
+    torture_write_file("test_config",
+                       "Tag first\n"
+                       "Tag second\n"
+                       "Match tagged first\n"
+                       "\tPort 33\n"
+                       "Match all\n"
+                       "\tPort 34\n");
+
+    rv = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rv);
+    assert_int_equal(session->opts.port, 33);
+    assert_string_equal(session->opts.tag, "first");
 
     session->opts.port = 0;
 
@@ -1598,8 +1799,9 @@ static void torture_options_copy(void **state)
           "GSSAPIClientIdentity home.sweet\n"
           "GSSAPIDelegateCredentials yes\n"
           "PubkeyAuthentication yes\n" /* sets flags */
-          "GSSAPIAuthentication no\n" /* sets flags */
+          "GSSAPIAuthentication no\n"  /* sets flags */
           "AddressFamily inet6\n"
+          "Tag copied-tag\n"
           "",
           config);
     fclose(config);
@@ -1640,6 +1842,7 @@ static void torture_options_copy(void **state)
     assert_string_equal(session->opts.username, new->opts.username);
     assert_string_equal(session->opts.host, new->opts.host);
     assert_string_equal(session->opts.originalhost, new->opts.originalhost);
+    assert_string_equal(session->opts.tag, new->opts.tag);
     assert_string_equal(session->opts.bindaddr, new->opts.bindaddr);
     assert_string_equal(session->opts.sshdir, new->opts.sshdir);
     assert_string_equal(session->opts.knownhosts, new->opts.knownhosts);
@@ -1716,9 +1919,22 @@ static void torture_options_getopt(void **state)
     ssh_session session = *state;
     int rc;
     int previous_level, new_level, expected_level;
-    const char *argv[] = {EXECUTABLE_NAME, "-l", "username", "-p", "222",
-                    "-vv", "-v", "-r", "-c", "aes128-ctr",
-                    "-i", "id_rsa", "-C", "-2", "-1", NULL};
+    const char *argv[] = {EXECUTABLE_NAME,
+                          "-l",
+                          "username",
+                          "-p",
+                          "222",
+                          "-vv",
+                          "-v",
+                          "-r",
+                          "-c",
+                          "aes128-ctr",
+                          "-i",
+                          "id_rsa",
+                          "-C",
+                          "-2",
+                          "-1",
+                          NULL};
     int argc = sizeof(argv)/sizeof(char *) - 1;
     previous_level = ssh_get_log_level();
 

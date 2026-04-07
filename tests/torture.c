@@ -2089,6 +2089,7 @@ void torture_reset_config(ssh_session session)
     if (ssh_libssh_proxy_jumps()) {
         ssh_proxyjumps_free(session->opts.proxy_jumps);
     }
+    SAFE_FREE(session->opts.tag);
 }
 
 void torture_unsetenv(const char *variable)

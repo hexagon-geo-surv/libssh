@@ -1182,6 +1182,10 @@ ssh_session_get_known_hosts_entry(ssh_session session,
 {
     enum ssh_known_hosts_e old_rv, rv = SSH_KNOWN_HOSTS_UNKNOWN;
 
+    if (pentry != NULL) {
+        *pentry = NULL;
+    }
+
     if (session->opts.knownhosts == NULL) {
         if (ssh_options_apply(session) < 0) {
             ssh_set_error(session,

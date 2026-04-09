@@ -1042,6 +1042,45 @@ static long ssh_config_convtime(const char *p, long notfound)
     return total;
 }
 
+struct ssh_config_token_value_map {
+    const char *token;
+    int value;
+};
+
+static int
+ssh_config_get_token_value(char **str,
+                           const struct ssh_config_token_value_map *map,
+                           int notfound)
+{
+    const char *p = NULL;
+    size_t i;
+
+    p = ssh_config_get_str_tok(str, NULL);
+    if (p == NULL) {
+        return notfound;
+    }
+
+    for (i = 0; map[i].token != NULL; i++) {
+        if (strcasecmp(p, map[i].token) == 0) {
+            return map[i].value;
+        }
+    }
+
+    return notfound;
+}
+
+/*
+ * OpenSSH keeps Compression on the narrower yes/no syntax, and accepts "yes"
+ * only when zlib support is available, so Compression does not use the
+ * broader true/false aliases handled by ssh_config_get_yesno().
+ */
+static const struct ssh_config_token_value_map compression_map[] = {
+#ifdef WITH_ZLIB
+    {"yes", 1},
+#endif /* WITH_ZLIB */
+    {"no", 0},
+    {NULL, 0},
+};
 #define CHECK_COND_OR_FAIL(cond, error_message)                \
     if ((cond)) {                                              \
         SSH_LOG(SSH_LOG_DEBUG,                                 \
@@ -1590,7 +1629,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
       }
       break;
     case SOC_COMPRESSION:
-      i = ssh_config_get_yesno(&s, -1);
+      i = ssh_config_get_token_value(&s, compression_map, -1);
       CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
       if (*parsing) {
           if (i) {
@@ -1873,7 +1912,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
     case SOC_PASSWORDAUTHENTICATION:
     case SOC_PUBKEYAUTHENTICATION: {
         enum ssh_options_e option = ssh_config_get_auth_option(opcode);
-        i = ssh_config_get_yesno(&s, 0);
+        i = ssh_config_get_yesno(&s, -1);
 
         CHECK_COND_OR_FAIL(i < 0, "Authentication option");
         if (*parsing) {

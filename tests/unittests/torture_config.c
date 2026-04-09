@@ -61,6 +61,8 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG_JUMP "libssh_test_jump.tmp"
 #define LIBSSH_TESTCONFIG_NUMERIC_INVALID  "libssh_test_numeric_invalid.tmp"
 #define LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX   "libssh_test_timeout_suffix.tmp"
+#define LIBSSH_TESTCONFIG_BOOLEAN_INVALID  "libssh_test_boolean_invalid.tmp"
+#define LIBSSH_TESTCONFIG_BOOLEAN_COMPAT   "libssh_test_boolean_compat.tmp"
 
 #define LIBSSH_TESTCONFIG_STRING1 \
     "User "USERNAME"\nInclude "LIBSSH_TESTCONFIG2"\n\n"
@@ -349,6 +351,8 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_JUMP);
     unlink(LIBSSH_TESTCONFIG_NUMERIC_INVALID);
     unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
+    unlink(LIBSSH_TESTCONFIG_BOOLEAN_INVALID);
+    unlink(LIBSSH_TESTCONFIG_BOOLEAN_COMPAT);
 
     torture_write_file(LIBSSH_TESTCONFIG1,
                        LIBSSH_TESTCONFIG_STRING1);
@@ -462,6 +466,8 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_JUMP);
     unlink(LIBSSH_TESTCONFIG_NUMERIC_INVALID);
     unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
+    unlink(LIBSSH_TESTCONFIG_BOOLEAN_INVALID);
+    unlink(LIBSSH_TESTCONFIG_BOOLEAN_COMPAT);
 
     return 0;
 }
@@ -924,6 +930,159 @@ static void torture_config_timeout_suffix_string(void **state)
 {
     torture_config_timeout_suffix(state, NULL);
 }
+
+static void torture_config_reset_boolean_state(ssh_session session)
+{
+    torture_reset_config(session);
+    session->opts.gss_delegate_creds = 0;
+    session->opts.flags = SSH_OPT_FLAG_PASSWORD_AUTH |
+                          SSH_OPT_FLAG_PUBKEY_AUTH | SSH_OPT_FLAG_KBDINT_AUTH |
+                          SSH_OPT_FLAG_GSSAPI_AUTH;
+    session->opts.identities_only = false;
+}
+
+static void torture_config_boolean_invalid(void **state, const char *file)
+{
+    ssh_session session = *state;
+    struct invalid_boolean_case {
+        const char *config;
+        enum {
+            INVALID_COMPRESSION,
+            INVALID_IDENTITIES_ONLY,
+            INVALID_GSSAPI_KEY_EXCHANGE,
+            INVALID_GSSAPI_AUTH,
+            INVALID_KBDINT_AUTH,
+            INVALID_PASSWORD_AUTH,
+        } kind;
+    } configs[] = {
+        {
+            "Host test\n"
+            "\tCompression yesplease\n",
+            INVALID_COMPRESSION,
+        },
+        {
+            "Host test\n"
+            "\tCompression true\n",
+            INVALID_COMPRESSION,
+        },
+#ifndef WITH_ZLIB
+        {
+            "Host test\n"
+            "\tCompression yes\n",
+            INVALID_COMPRESSION,
+        },
+#endif /* WITH_ZLIB */
+        {
+            "Host test\n"
+            "\tIdentitiesOnly nope\n",
+            INVALID_IDENTITIES_ONLY,
+        },
+        {
+            "Host test\n"
+            "\tGSSAPIKeyExchange yesplease\n",
+            INVALID_GSSAPI_KEY_EXCHANGE,
+        },
+        {
+            "Host test\n"
+            "\tGSSAPIAuthentication\n",
+            INVALID_GSSAPI_AUTH,
+        },
+        {
+            "Host test\n"
+            "\tKbdInteractiveAuthentication\n",
+            INVALID_KBDINT_AUTH,
+        },
+        {
+            "Host test\n"
+            "\tPasswordAuthentication\n",
+            INVALID_PASSWORD_AUTH,
+        },
+    };
+    size_t i;
+
+    for (i = 0; i < ARRAY_SIZE(configs); i++) {
+        const char *config = configs[i].config;
+
+        torture_config_reset_boolean_state(session);
+        SAFE_FREE(session->opts.wanted_methods[SSH_COMP_C_S]);
+        SAFE_FREE(session->opts.wanted_methods[SSH_COMP_S_C]);
+        session->opts.gssapi_key_exchange = false;
+        ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+
+        switch (configs[i].kind) {
+        case INVALID_COMPRESSION:
+            assert_null(session->opts.wanted_methods[SSH_COMP_C_S]);
+            assert_null(session->opts.wanted_methods[SSH_COMP_S_C]);
+            break;
+        case INVALID_IDENTITIES_ONLY:
+            assert_false(session->opts.identities_only);
+            break;
+        case INVALID_GSSAPI_KEY_EXCHANGE:
+            assert_false(session->opts.gssapi_key_exchange);
+            break;
+        case INVALID_GSSAPI_AUTH:
+            assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+            break;
+        case INVALID_KBDINT_AUTH:
+            assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+            break;
+        case INVALID_PASSWORD_AUTH:
+            assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+            break;
+        }
+    }
+}
+
+static void torture_config_boolean_invalid_file(void **state)
+{
+    torture_config_boolean_invalid(state, LIBSSH_TESTCONFIG_BOOLEAN_INVALID);
+}
+
+static void torture_config_boolean_invalid_string(void **state)
+{
+    torture_config_boolean_invalid(state, NULL);
+}
+
+static void torture_config_boolean_compat(void **state, const char *file)
+{
+    ssh_session session = *state;
+    char config[256];
+
+    torture_config_reset_boolean_state(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+    snprintf(config,
+             sizeof(config),
+             "Host test\n"
+             "\tPasswordAuthentication true\n"
+             "\tKbdInteractiveAuthentication false\n"
+             "\tGSSAPIAuthentication true\n"
+             "\tGSSAPIDelegateCredentials true\n"
+             "\tIdentitiesOnly false\n");
+    if (file != NULL) {
+        torture_write_file(file, config);
+    }
+    _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
+    assert_int_equal(session->opts.gss_delegate_creds, 1);
+    assert_false(session->opts.identities_only);
+}
+
+static void torture_config_boolean_compat_file(void **state)
+{
+    torture_config_boolean_compat(state, LIBSSH_TESTCONFIG_BOOLEAN_COMPAT);
+}
+
+static void torture_config_boolean_compat_string(void **state)
+{
+    torture_config_boolean_compat(state, NULL);
+}
+
 /**
  * @brief Helper for checking hostname, username and port of ssh_jump_info_struct
  */
@@ -3167,6 +3326,49 @@ static void torture_config_parser_get_token_info(void **state)
     assert_true(info.invalid);
 }
 
+static void torture_config_parser_get_yesno(void **state)
+{
+    char *p = NULL;
+    char data[256];
+
+    (void)state;
+
+    strncpy(data, "yes\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), 1);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "NO\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), 0);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "true\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), 1);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "FALSE\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), 0);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "yesplease\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), -1);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "nope\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), -1);
+    assert_int_equal(*p, '\0');
+
+    strncpy(data, "\n", sizeof(data));
+    p = data;
+    assert_int_equal(ssh_config_get_yesno(&p, -1), -1);
+    assert_int_equal(*p, '\0');
+}
+
 /* match_pattern() sanity tests
  */
 static void torture_config_match_pattern(void **state)
@@ -3970,6 +4172,18 @@ int torture_run_tests(void)
         cmocka_unit_test_setup_teardown(torture_config_timeout_suffix_string,
                                         setup,
                                         teardown),
+        cmocka_unit_test_setup_teardown(torture_config_boolean_invalid_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_boolean_invalid_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_boolean_compat_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_boolean_compat_string,
+                                        setup,
+                                        teardown),
         cmocka_unit_test_setup_teardown(torture_config_unknown_file,
                                         setup,
                                         teardown),
@@ -4070,6 +4284,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_parser_get_token_info,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_parser_get_yesno,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_match_pattern,

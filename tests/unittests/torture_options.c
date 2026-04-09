@@ -1834,7 +1834,7 @@ static void torture_options_copy(void **state)
           /* ops.custombanner */
           "ConnectTimeout 42\n"
           "Port 222\n"
-          "StrictHostKeyChecking no\n"
+          "StrictHostKeyChecking accept-new\n"
           "GSSAPIServerIdentity my.example.com\n"
           "GSSAPIClientIdentity home.sweet\n"
           "GSSAPIDelegateCredentials yes\n"
@@ -1915,6 +1915,10 @@ static void torture_options_copy(void **state)
                         new->opts.gss_client_identity);
     assert_int_equal(session->opts.gss_delegate_creds,
                      new->opts.gss_delegate_creds);
+    assert_int_equal(session->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_ACCEPT_NEW);
+    assert_int_equal(new->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_ACCEPT_NEW);
     assert_int_equal(session->opts.flags, new->opts.flags);
     assert_int_equal(session->opts.nodelay, new->opts.nodelay);
     assert_true(session->opts.config_processed == new->opts.config_processed);
@@ -1951,6 +1955,48 @@ static void torture_options_copy(void **state)
     assert_null(it2);
 
     ssh_free(new);
+}
+
+static void torture_options_legacy_integer_values(void **state)
+{
+    ssh_session session = *state;
+    int legacy_strict_value = 42;
+    int negative_strict_value = -1;
+    int zero_low_byte_strict_value = 256;
+    int negative_zero_low_byte_strict_value = -256;
+    int rc;
+
+    /*
+     * Legacy boolean-style integer inputs should continue to normalize to the
+     * compatible multistate values accepted by ssh_options_set().
+     */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &legacy_strict_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_YES);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &negative_strict_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_YES);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &zero_low_byte_strict_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_OFF);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &negative_zero_low_byte_strict_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.StrictHostKeyChecking,
+                     SSH_STRICT_HOSTKEY_OFF);
 }
 
 #define EXECUTABLE_NAME "test-exec"
@@ -2852,18 +2898,18 @@ static void torture_options_get_int(void **state)
     assert_int_equal(rc, SSH_OK);
     assert_int_equal(result, SSH_LOG_WARNING);
 
-    /* SSH_OPTIONS_STRICTHOSTKEYCHECK: default should be 1 */
+    /* SSH_OPTIONS_STRICTHOSTKEYCHECK: default should be ASK */
     rc = ssh_options_get_int(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &result);
     assert_int_equal(rc, SSH_OK);
-    assert_int_equal(result, 1);
+    assert_int_equal(result, SSH_STRICT_HOSTKEY_ASK);
 
-    /* After disabling, getter should return 0 */
+    /* After disabling, getter should return OFF */
     ival = 0;
     rc = ssh_options_set(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &ival);
     assert_ssh_return_code(session, rc);
     rc = ssh_options_get_int(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &result);
     assert_int_equal(rc, SSH_OK);
-    assert_int_equal(result, 0);
+    assert_int_equal(result, SSH_STRICT_HOSTKEY_OFF);
 
     /* SSH_OPTIONS_NODELAY: default should be 0 */
     rc = ssh_options_get_int(session, SSH_OPTIONS_NODELAY, &result);
@@ -4045,6 +4091,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_copy, setup, teardown),
+        cmocka_unit_test_setup_teardown(torture_options_legacy_integer_values,
+                                        setup,
+                                        teardown),
         cmocka_unit_test_setup_teardown(torture_options_config_host,
                                         setup,
                                         teardown),

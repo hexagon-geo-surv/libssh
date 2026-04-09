@@ -420,7 +420,9 @@ int ssh_is_server_known(ssh_session session)
     } while (1);
 
     if ((ret == SSH_SERVER_NOT_KNOWN) &&
-            (session->opts.StrictHostKeyChecking == 0)) {
+        (session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF ||
+         session->opts.StrictHostKeyChecking ==
+             SSH_STRICT_HOSTKEY_ACCEPT_NEW)) {
         int rv = ssh_session_update_known_hosts(session);
         if (rv != SSH_OK) {
             ret = SSH_SERVER_ERROR;

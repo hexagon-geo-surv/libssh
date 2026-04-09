@@ -27,6 +27,7 @@
 #include "torture_key.h"
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <pwd.h>
 
 #include "knownhosts.c"
@@ -373,6 +374,119 @@ static void torture_knownhosts_unknown(void **state)
     free(known_hosts_file);
 }
 
+static void torture_knownhosts_accept_new_persists(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    struct ssh_knownhosts_entry *entry = NULL;
+    struct stat sb;
+    char tmp_file[1024] = {0};
+    char *known_hosts_file = NULL;
+    enum ssh_known_hosts_e found;
+    int strict_host_key_checking = SSH_STRICT_HOSTKEY_ACCEPT_NEW;
+    int rc;
+
+    snprintf(tmp_file,
+             sizeof(tmp_file),
+             "%s/%s",
+             s->socket_dir,
+             TMP_FILE_TEMPLATE);
+
+    known_hosts_file = torture_create_temp_file(tmp_file);
+    assert_non_null(known_hosts_file);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, known_hosts_file);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "ecdsa-sha2-nistp521");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &strict_host_key_checking);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    found = ssh_session_is_known_server(session);
+    assert_int_equal(found, SSH_KNOWN_HOSTS_OK);
+
+    rc = stat(known_hosts_file, &sb);
+    assert_return_code(rc, errno);
+    assert_true(sb.st_size > 0);
+
+    found = ssh_session_get_known_hosts_entry(session, &entry);
+    assert_int_equal(found, SSH_KNOWN_HOSTS_OK);
+    assert_non_null(entry);
+
+    ssh_knownhosts_entry_free(entry);
+    free(known_hosts_file);
+}
+
+static void torture_knownhosts_accept_new_rejects_changed(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    struct ssh_knownhosts_entry *entry = NULL;
+    struct stat sb_before;
+    struct stat sb_after;
+    char tmp_file[1024] = {0};
+    char *known_hosts_file = NULL;
+    enum ssh_known_hosts_e found;
+    FILE *file = NULL;
+    int strict_host_key_checking = SSH_STRICT_HOSTKEY_NEW;
+    int rc;
+
+    snprintf(tmp_file,
+             sizeof(tmp_file),
+             "%s/%s",
+             s->socket_dir,
+             TMP_FILE_TEMPLATE);
+
+    known_hosts_file = torture_create_temp_file(tmp_file);
+    assert_non_null(known_hosts_file);
+
+    file = fopen(known_hosts_file, "w");
+    if (file == NULL) {
+        free(known_hosts_file);
+        fail();
+    }
+    /* BAD_RSA is a fixed fixture key that must not match the test server. */
+    fprintf(file, "127.0.0.10 %s %s\n", "ssh-rsa", BAD_RSA);
+    fclose(file);
+
+    rc = stat(known_hosts_file, &sb_before);
+    assert_return_code(rc, errno);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, known_hosts_file);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "rsa-sha2-256");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &strict_host_key_checking);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    found = ssh_session_is_known_server(session);
+    assert_int_equal(found, SSH_KNOWN_HOSTS_CHANGED);
+
+    found = ssh_session_get_known_hosts_entry(session, &entry);
+    assert_int_equal(found, SSH_KNOWN_HOSTS_CHANGED);
+    assert_null(entry);
+
+    rc = stat(known_hosts_file, &sb_after);
+    assert_return_code(rc, errno);
+    assert_int_equal(sb_after.st_size, sb_before.st_size);
+
+    free(known_hosts_file);
+}
+
 static void torture_knownhosts_conflict(void **state)
 {
     struct torture_state *s = *state;
@@ -498,6 +612,13 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_knownhosts_unknown,
                                         session_setup,
                                         session_teardown),
+        cmocka_unit_test_setup_teardown(torture_knownhosts_accept_new_persists,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_knownhosts_accept_new_rejects_changed,
+            session_setup,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_knownhosts_conflict,
                                         session_setup,
                                         session_teardown),

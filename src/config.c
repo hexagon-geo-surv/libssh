@@ -1081,6 +1081,22 @@ static const struct ssh_config_token_value_map compression_map[] = {
     {"no", 0},
     {NULL, 0},
 };
+
+static int ssh_config_get_strict_hostkey(char **str, int notfound)
+{
+    static const struct ssh_config_token_value_map strict_hostkey_map[] = {
+        {"yes", SSH_STRICT_HOSTKEY_YES},
+        {"true", SSH_STRICT_HOSTKEY_YES},
+        {"no", SSH_STRICT_HOSTKEY_OFF},
+        {"false", SSH_STRICT_HOSTKEY_OFF},
+        {"off", SSH_STRICT_HOSTKEY_OFF},
+        {"ask", SSH_STRICT_HOSTKEY_ASK},
+        {"accept-new", SSH_STRICT_HOSTKEY_ACCEPT_NEW},
+        {NULL, 0},
+    };
+
+    return ssh_config_get_token_value(str, strict_hostkey_map, notfound);
+}
 #define CHECK_COND_OR_FAIL(cond, error_message)                \
     if ((cond)) {                                              \
         SSH_LOG(SSH_LOG_DEBUG,                                 \
@@ -1657,7 +1673,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     case SOC_STRICTHOSTKEYCHECK:
-      i = ssh_config_get_yesno(&s, -1);
+      i = ssh_config_get_strict_hostkey(&s, -1);
       CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
       if (*parsing) {
           ssh_options_set(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &i);

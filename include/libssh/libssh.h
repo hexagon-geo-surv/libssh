@@ -378,6 +378,18 @@ enum ssh_address_family_options_e {
     SSH_ADDRESS_FAMILY_INET6
 };
 
+enum ssh_strict_hostkey_options_e {
+    /** Disable strict checking for host keys and allow restricted fallback on
+       changes. */
+    SSH_STRICT_HOSTKEY_OFF = 0,
+    /** Require an existing known_hosts entry. */
+    SSH_STRICT_HOSTKEY_YES = 1,
+    /** Report unknown host keys to the caller for confirmation. */
+    SSH_STRICT_HOSTKEY_ASK = 2,
+    /** Automatically accept and store unknown host keys, but reject changes. */
+    SSH_STRICT_HOSTKEY_ACCEPT_NEW = 3
+};
+
 enum ssh_options_e {
     SSH_OPTIONS_HOST,
     SSH_OPTIONS_PORT,

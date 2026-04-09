@@ -572,8 +572,11 @@ int ssh_options_set_algo(ssh_session session,
  *                value from 1 to 9, 9 being the most efficient but slower).
  *
  *              - SSH_OPTIONS_STRICTHOSTKEYCHECK:
- *                Set the parameter StrictHostKeyChecking to avoid
- *                asking about a fingerprint (int, 0 = false).
+ *                Set the parameter StrictHostKeyChecking to control how
+ *                unknown host keys are handled (int, SSH_STRICT_HOSTKEY_OFF,
+ *                SSH_STRICT_HOSTKEY_YES, SSH_STRICT_HOSTKEY_ASK or
+ *                SSH_STRICT_HOSTKEY_ACCEPT_NEW).
+ *                Default: SSH_STRICT_HOSTKEY_ASK.
  *
  *              - SSH_OPTIONS_PROXYCOMMAND:
  *                Set the command to be executed in order to connect to
@@ -1263,8 +1266,24 @@ int ssh_options_set(ssh_session session,
                 return -1;
             } else {
                 int *x = (int *) value;
+                int mode = *x;
 
-                session->opts.StrictHostKeyChecking = (*x & 0xff) > 0 ? 1 : 0;
+                switch (mode) {
+                case SSH_STRICT_HOSTKEY_OFF:
+                case SSH_STRICT_HOSTKEY_YES:
+                case SSH_STRICT_HOSTKEY_ASK:
+                case SSH_STRICT_HOSTKEY_ACCEPT_NEW:
+                    session->opts.StrictHostKeyChecking = mode;
+                    break;
+                default:
+                    /* Preserve the legacy low-byte "non-zero means yes"
+                     * normalization.
+                     */
+                    session->opts.StrictHostKeyChecking =
+                        (mode & 0xff) > 0 ? SSH_STRICT_HOSTKEY_YES
+                                          : SSH_STRICT_HOSTKEY_OFF;
+                    break;
+                }
             }
             break;
         case SSH_OPTIONS_PROXYCOMMAND:

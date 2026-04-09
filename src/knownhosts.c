@@ -1214,7 +1214,9 @@ ssh_session_get_known_hosts_entry(ssh_session session,
     if (rv == SSH_KNOWN_HOSTS_UNKNOWN || rv == SSH_KNOWN_HOSTS_NOT_FOUND) {
         if ((old_rv == SSH_KNOWN_HOSTS_UNKNOWN ||
              old_rv == SSH_KNOWN_HOSTS_NOT_FOUND) &&
-            session->opts.StrictHostKeyChecking == 0) {
+            (session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF ||
+             session->opts.StrictHostKeyChecking ==
+                 SSH_STRICT_HOSTKEY_ACCEPT_NEW)) {
             rc = ssh_session_update_known_hosts(session);
             if (rc != SSH_OK) {
                 return SSH_KNOWN_HOSTS_ERROR;

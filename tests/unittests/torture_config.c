@@ -934,6 +934,7 @@ static void torture_config_timeout_suffix_string(void **state)
 static void torture_config_reset_boolean_state(ssh_session session)
 {
     torture_reset_config(session);
+    session->opts.StrictHostKeyChecking = SSH_STRICT_HOSTKEY_ASK;
     session->opts.gss_delegate_creds = 0;
     session->opts.flags = SSH_OPT_FLAG_PASSWORD_AUTH |
                           SSH_OPT_FLAG_PUBKEY_AUTH | SSH_OPT_FLAG_KBDINT_AUTH |
@@ -1051,6 +1052,32 @@ static void torture_config_boolean_compat(void **state, const char *file)
 {
     ssh_session session = *state;
     char config[256];
+    size_t i;
+    struct strict_hostkey_case {
+        const char *value;
+        int expected;
+    } strict_cases[] = {
+        {"true", SSH_STRICT_HOSTKEY_YES},
+        {"false", SSH_STRICT_HOSTKEY_OFF},
+        {"ask", SSH_STRICT_HOSTKEY_ASK},
+        {"accept-new", SSH_STRICT_HOSTKEY_ACCEPT_NEW},
+        {"off", SSH_STRICT_HOSTKEY_OFF},
+    };
+
+    for (i = 0; i < ARRAY_SIZE(strict_cases); i++) {
+        torture_config_reset_boolean_state(session);
+        ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+        snprintf(config,
+                 sizeof(config),
+                 "Host test\n\tStrictHostKeyChecking %s\n",
+                 strict_cases[i].value);
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+        assert_int_equal(session->opts.StrictHostKeyChecking,
+                         strict_cases[i].expected);
+    }
 
     torture_config_reset_boolean_state(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "test");

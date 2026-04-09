@@ -115,7 +115,7 @@ ssh_session ssh_new(void)
     }
 
     /* OPTIONS */
-    session->opts.StrictHostKeyChecking = 1;
+    session->opts.StrictHostKeyChecking = SSH_STRICT_HOSTKEY_ASK;
     session->opts.port = 22;
     session->opts.fd = -1;
     session->opts.compressionlevel = 7;

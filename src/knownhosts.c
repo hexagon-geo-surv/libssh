@@ -1181,6 +1181,7 @@ ssh_session_get_known_hosts_entry(ssh_session session,
                                   struct ssh_knownhosts_entry **pentry)
 {
     enum ssh_known_hosts_e old_rv, rv = SSH_KNOWN_HOSTS_UNKNOWN;
+    int rc;
 
     if (pentry != NULL) {
         *pentry = NULL;
@@ -1209,11 +1210,22 @@ ssh_session_get_known_hosts_entry(ssh_session session,
                                                 session->opts.global_knownhosts,
                                                 pentry);
 
-    /* If we did not find any match at all:  we report the previous result */
-    if (rv == SSH_KNOWN_HOSTS_UNKNOWN) {
-        if (session->opts.StrictHostKeyChecking == 0) {
-            return SSH_KNOWN_HOSTS_OK;
+    /* If the global file did not help, report the result from the user file. */
+    if (rv == SSH_KNOWN_HOSTS_UNKNOWN || rv == SSH_KNOWN_HOSTS_NOT_FOUND) {
+        if ((old_rv == SSH_KNOWN_HOSTS_UNKNOWN ||
+             old_rv == SSH_KNOWN_HOSTS_NOT_FOUND) &&
+            session->opts.StrictHostKeyChecking == 0) {
+            rc = ssh_session_update_known_hosts(session);
+            if (rc != SSH_OK) {
+                return SSH_KNOWN_HOSTS_ERROR;
+            }
+
+            return ssh_session_get_known_hosts_entry_file(
+                session,
+                session->opts.knownhosts,
+                pentry);
         }
+
         return old_rv;
     }
 

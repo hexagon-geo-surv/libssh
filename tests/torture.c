@@ -2094,6 +2094,8 @@ void torture_reset_config(ssh_session session)
 {
     memset(session->opts.options_seen, 0, sizeof(session->opts.options_seen));
     SAFE_FREE(session->opts.config_hostname);
+    session->opts.rekey_data = 0;
+    session->opts.rekey_time = 0;
     if (ssh_libssh_proxy_jumps()) {
         ssh_proxyjumps_free(session->opts.proxy_jumps);
     }

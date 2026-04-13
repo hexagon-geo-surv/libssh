@@ -1870,7 +1870,6 @@ static int ssh_config_parse_line_internal(ssh_session session,
         /* Parse the time limit */
         p = ssh_config_get_str_tok(&s, NULL);
         if (p == NULL) {
-            CHECK_COND_OR_FAIL(1, "Missing time limit");
             break;
         } else if (strcmp(p, "none") == 0) {
             ll = 0;

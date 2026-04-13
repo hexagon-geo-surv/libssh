@@ -185,6 +185,8 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tRekeyLimit default none\n" \
     "Host data1\n" \
     "\tRekeyLimit 42G\n" \
+    "Host datatime\n" \
+    "\tRekeyLimit 42G 1h\n" \
     "Host data2\n" \
     "\tRekeyLimit 31M\n" \
     "Host data3\n" \
@@ -2503,6 +2505,7 @@ static void torture_config_rekey(void **state,
     const int previous_rekey_time_ms = 42 * 60 * 1000;
 
     /* Default values */
+    torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "default");
     _parse_config(session, file, string, SSH_OK);
     assert_int_equal(session->opts.rekey_data, 0);
@@ -2515,6 +2518,14 @@ static void torture_config_rekey(void **state,
     assert_int_equal(session->opts.rekey_data,
             (uint64_t) 42 * 1024 * 1024 * 1024);
     assert_int_equal(session->opts.rekey_time, 0);
+
+    /* 42 GB, 1h */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "datatime");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.rekey_data,
+            (uint64_t) 42 * 1024 * 1024 * 1024);
+    assert_int_equal(session->opts.rekey_time, 60 * 60 * 1000);
 
     /* 41 MB */
     torture_reset_config(session);
@@ -2616,6 +2627,20 @@ static void torture_config_rekey_file(void **state)
 static void torture_config_rekey_string(void **state)
 {
     torture_config_rekey(state, NULL, LIBSSH_TESTCONFIG_STRING12);
+}
+
+static void torture_config_rekey_cli_optional_time(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+
+    torture_reset_config(session);
+
+    rc = ssh_config_parse_line_cli(session, "RekeyLimit 42G");
+    assert_int_equal(rc, 0);
+    assert_int_equal(session->opts.rekey_data,
+                     (uint64_t)42 * 1024 * 1024 * 1024);
+    assert_int_equal(session->opts.rekey_time, 0);
 }
 
 /**
@@ -4329,6 +4354,9 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_rekey_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_rekey_cli_optional_time,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_plus_file,

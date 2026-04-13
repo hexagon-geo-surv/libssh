@@ -109,6 +109,8 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG_STRING8 \
     "Host gss\n" \
     "\tGSSAPIAuthentication yes\n" \
+    "Host challenge\n" \
+    "\tChallengeResponseAuthentication yes\n" \
     "Host kbd\n" \
     "\tKbdInteractiveAuthentication yes\n" \
     "Host pass\n" \
@@ -117,6 +119,8 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tPubkeyAuthentication yes\n" \
     "Host nogss\n" \
     "\tGSSAPIAuthentication no\n" \
+    "Host nochallenge\n" \
+    "\tChallengeResponseAuthentication no\n" \
     "Host nokbd\n" \
     "\tKbdInteractiveAuthentication no\n" \
     "Host nopass\n" \
@@ -741,6 +745,10 @@ static void torture_config_auth_methods(void **state,
     assert_false(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
     assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
 
+    ssh_options_set(session, SSH_OPTIONS_HOST, "nochallenge");
+    _parse_config(session, file, string, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
     ssh_options_set(session, SSH_OPTIONS_HOST, "nokbd");
     _parse_config(session, file, string, SSH_OK);
     assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
@@ -762,6 +770,10 @@ static void torture_config_auth_methods(void **state,
     _parse_config(session, file, string, SSH_OK);
     assert_true(session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH);
     assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    ssh_options_set(session, SSH_OPTIONS_HOST, "challenge");
+    _parse_config(session, file, string, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
 
     ssh_options_set(session, SSH_OPTIONS_HOST, "kbd");
     _parse_config(session, file, string, SSH_OK);
@@ -2524,7 +2536,7 @@ static void torture_config_rekey(void **state,
     ssh_options_set(session, SSH_OPTIONS_HOST, "datatime");
     _parse_config(session, file, string, SSH_OK);
     assert_int_equal(session->opts.rekey_data,
-            (uint64_t) 42 * 1024 * 1024 * 1024);
+                     (uint64_t)42 * 1024 * 1024 * 1024);
     assert_int_equal(session->opts.rekey_time, 60 * 60 * 1000);
 
     /* 41 MB */

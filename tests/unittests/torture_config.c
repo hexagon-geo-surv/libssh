@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include <limits.h>
+
 #define LIBSSH_STATIC
 
 #ifndef _WIN32
@@ -58,6 +60,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING "libssh_test_loglevel_missing.tmp"
 #define LIBSSH_TESTCONFIG_JUMP "libssh_test_jump.tmp"
 #define LIBSSH_TESTCONFIG_NUMERIC_INVALID  "libssh_test_numeric_invalid.tmp"
+#define LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX   "libssh_test_timeout_suffix.tmp"
 
 #define LIBSSH_TESTCONFIG_STRING1 \
     "User "USERNAME"\nInclude "LIBSSH_TESTCONFIG2"\n\n"
@@ -344,6 +347,8 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
     unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
     unlink(LIBSSH_TESTCONFIG_JUMP);
+    unlink(LIBSSH_TESTCONFIG_NUMERIC_INVALID);
+    unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
 
     torture_write_file(LIBSSH_TESTCONFIG1,
                        LIBSSH_TESTCONFIG_STRING1);
@@ -455,6 +460,8 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_MATCH_COMPLEX);
     unlink(LIBSSH_TESTCONFIG_LOGLEVEL_MISSING);
     unlink(LIBSSH_TESTCONFIG_JUMP);
+    unlink(LIBSSH_TESTCONFIG_NUMERIC_INVALID);
+    unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
 
     return 0;
 }
@@ -860,6 +867,63 @@ static void torture_config_numeric_invalid_string(void **state)
     torture_config_numeric_invalid(state, NULL);
 }
 
+static void torture_config_timeout_suffix(void **state, const char *file)
+{
+    ssh_session session = *state;
+    struct timeout_case {
+        const char *host;
+        const char *value;
+        long expected;
+        bool infinite;
+    } cases[] = {
+        {"seconds", "30s", 30, false},
+        {"seconds_upper", "30S", 30, false},
+        {"minutes", "1m", 60, false},
+        {"minutes_upper", "1M", 60, false},
+        {"days", "30d", 30L * 24 * 60 * 60, false},
+        {"days_upper", "1D", 24L * 60 * 60, false},
+        {"weeks_upper", "1W", 7L * 24 * 60 * 60, false},
+        {"int_max", "3550w5d3h14m7s", INT_MAX, false},
+        {"repeat_s", "30s30s", 60, false},
+        {"repeat_h", "1h1h", 7200, false},
+        {"compound", "1h30m", 5400, false},
+        {"compound_upper", "1H30M", 5400, false},
+        {"none", "none", 0, true},
+    };
+    char config[256];
+    size_t i;
+
+    for (i = 0; i < ARRAY_SIZE(cases); i++) {
+        torture_reset_config(session);
+        ssh_options_set(session, SSH_OPTIONS_HOST, cases[i].host);
+        snprintf(config,
+                 sizeof(config),
+                 "Host %s\n\tConnectTimeout %s\n",
+                 cases[i].host,
+                 cases[i].value);
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+        if (cases[i].infinite) {
+            assert_int_equal(session->opts.timeout,
+                             (unsigned long)SSH_TIMEOUT_INFINITE);
+            assert_int_equal(session->opts.timeout_usec, 0);
+        } else {
+            assert_int_equal(session->opts.timeout, cases[i].expected);
+        }
+    }
+}
+
+static void torture_config_timeout_suffix_file(void **state)
+{
+    torture_config_timeout_suffix(state, LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
+}
+
+static void torture_config_timeout_suffix_string(void **state)
+{
+    torture_config_timeout_suffix(state, NULL);
+}
 /**
  * @brief Helper for checking hostname, username and port of ssh_jump_info_struct
  */
@@ -3714,6 +3778,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_numeric_invalid_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_timeout_suffix_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_timeout_suffix_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_unknown_file,

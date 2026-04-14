@@ -894,6 +894,69 @@ ssh_config_get_auth_option(enum ssh_config_opcode_e opcode)
     return -1;
 }
 
+static long ssh_config_convtime(const char *p, long notfound)
+{
+    char *endp = NULL;
+    long total = 0;
+    long value;
+    long multiplier;
+
+    if (p == NULL || *p == '\0') {
+        return notfound;
+    }
+
+    while (*p != '\0') {
+        errno = 0;
+        value = strtol(p, &endp, 10);
+        if (p == endp || errno != 0 || value < 0) {
+            return notfound;
+        }
+
+        switch (*endp) {
+        case '\0':
+        case 's':
+        case 'S':
+            multiplier = 1;
+            break;
+        case 'm':
+        case 'M':
+            multiplier = 60;
+            break;
+        case 'h':
+        case 'H':
+            multiplier = 60 * 60;
+            break;
+        case 'd':
+        case 'D':
+            multiplier = 24 * 60 * 60;
+            break;
+        case 'w':
+        case 'W':
+            multiplier = 7 * 24 * 60 * 60;
+            break;
+        default:
+            return notfound;
+        }
+
+        /*
+         * OpenSSH accepts ConnectTimeout values only up to INT_MAX
+         * seconds: see openssh-portable/misc.c:convtime().
+         */
+        if (value > (INT_MAX - total) / multiplier) {
+            return notfound;
+        }
+        total += value * multiplier;
+
+        if (*endp == '\0') {
+            p = endp;
+        } else {
+            p = endp + 1;
+        }
+    }
+
+    return total;
+}
+
 #define CHECK_COND_OR_FAIL(cond, error_message)                \
     if ((cond)) {                                              \
         SSH_LOG(SSH_LOG_DEBUG,                                 \
@@ -930,7 +993,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
   char *keyword = NULL;
   char *lowerhost = NULL;
   size_t len;
-  int i, rv;
+  int i, rv, cmp;
   uint8_t *seen = session->opts.options_seen;
   long l;
   int64_t ll;
@@ -1418,12 +1481,22 @@ static int ssh_config_parse_line_internal(ssh_session session,
       }
       break;
     case SOC_TIMEOUT:
-      l = ssh_config_get_long(&s, -1);
-      CHECK_COND_OR_FAIL(l < 0, "Invalid argument");
-      if (*parsing) {
-          ssh_options_set(session, SSH_OPTIONS_TIMEOUT, &l);
-      }
-      break;
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        cmp = strcmp(p, "none");
+        if (cmp == 0) {
+            if (*parsing) {
+                session->opts.timeout = (unsigned long)SSH_TIMEOUT_INFINITE;
+                session->opts.timeout_usec = 0;
+            }
+            break;
+        }
+        l = ssh_config_convtime(p, -1);
+        CHECK_COND_OR_FAIL(l < 0, "Invalid argument");
+        if (*parsing) {
+            ssh_options_set(session, SSH_OPTIONS_TIMEOUT, &l);
+        }
+        break;
     case SOC_STRICTHOSTKEYCHECK:
       i = ssh_config_get_yesno(&s, -1);
       CHECK_COND_OR_FAIL(i < 0, "Invalid argument");

@@ -191,7 +191,7 @@ long ssh_config_get_long(char **str, long notfound)
     p = ssh_config_get_token(str);
     if (p && *p) {
         i = strtol(p, &endp, 10);
-        if (p == endp) {
+        if (p == endp || *endp != '\0') {
             return notfound;
         }
         return i;

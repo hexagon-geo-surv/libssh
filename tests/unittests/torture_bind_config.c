@@ -147,6 +147,10 @@ extern LIBSSH_THREAD int ssh_log_level;
 
 #define LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE "libssh_test_bind_config_required_rsa_size"
 #define LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_STRING "RequiredRsaSize 2233\n"
+#define LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID \
+    "libssh_test_bind_config_required_rsa_size_invalid"
+#define LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID_STRING \
+    "RequiredRsaSize 2233abc\n"
 
 #define LIBSSH_TEST_BIND_CONFIG_FULL "libssh_test_bind_config_full"
 #define LIBSSH_TEST_BIND_CONFIG_INCLUDE "libssh_test_bind_config_include"
@@ -303,6 +307,9 @@ static int setup_config_files(void **state)
 
     torture_write_file(LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE,
                        LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_STRING);
+    torture_write_file(
+        LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID,
+        LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID_STRING);
 
     torture_write_file(LIBSSH_TEST_BIND_CONFIG_FULL,
                        "ListenAddress "LISTEN_ADDRESS"\n"
@@ -662,6 +669,48 @@ static void torture_bind_config_port_twice_rec_string(void **state)
                              NULL,
                              LIBSSH_TEST_BIND_CONFIG_PORT_TWICE_REC_STRING,
                              123);
+}
+
+static void torture_bind_config_required_rsa_size_invalid(void **state,
+                                                          const char *file,
+                                                          const char *string)
+{
+    struct bind_st *test_state = NULL;
+    ssh_bind bind = NULL;
+    int rc;
+    int rsa_min_size = 2048;
+
+    assert_non_null(state);
+    test_state = *((struct bind_st **)state);
+    assert_non_null(test_state);
+    assert_non_null(test_state->bind);
+    bind = test_state->bind;
+
+    rc = ssh_bind_options_set(bind,
+                              SSH_BIND_OPTIONS_RSA_MIN_SIZE,
+                              &rsa_min_size);
+    assert_int_equal(rc, 0);
+    assert_int_equal(bind->rsa_min_size, rsa_min_size);
+
+    _parse_config(bind, file, string, SSH_OK);
+
+    assert_int_equal(bind->rsa_min_size, rsa_min_size);
+}
+
+static void torture_bind_config_required_rsa_size_invalid_file(void **state)
+{
+    torture_bind_config_required_rsa_size_invalid(
+        state,
+        LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID,
+        NULL);
+}
+
+static void torture_bind_config_required_rsa_size_invalid_string(void **state)
+{
+    torture_bind_config_required_rsa_size_invalid(
+        state,
+        NULL,
+        LIBSSH_TEST_BIND_CONFIG_REQUIRED_RSA_SIZE_INVALID_STRING);
 }
 
 static void
@@ -1737,6 +1786,10 @@ int torture_run_tests(void)
         cmocka_unit_test_setup_teardown(torture_bind_config_port_twice_rec_file,
                 sshbind_setup, sshbind_teardown),
         cmocka_unit_test_setup_teardown(torture_bind_config_port_twice_rec_string,
+                sshbind_setup, sshbind_teardown),
+        cmocka_unit_test_setup_teardown(torture_bind_config_required_rsa_size_invalid_file,
+                sshbind_setup, sshbind_teardown),
+        cmocka_unit_test_setup_teardown(torture_bind_config_required_rsa_size_invalid_string,
                 sshbind_setup, sshbind_teardown),
         cmocka_unit_test_setup_teardown(torture_bind_config_hostkey_file,
                 sshbind_setup, sshbind_teardown),

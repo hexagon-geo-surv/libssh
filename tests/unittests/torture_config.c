@@ -57,6 +57,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG_MATCH_COMPLEX "libssh_test_match_complex.tmp"
 #define LIBSSH_TESTCONFIG_LOGLEVEL_MISSING "libssh_test_loglevel_missing.tmp"
 #define LIBSSH_TESTCONFIG_JUMP "libssh_test_jump.tmp"
+#define LIBSSH_TESTCONFIG_NUMERIC_INVALID  "libssh_test_numeric_invalid.tmp"
 
 #define LIBSSH_TESTCONFIG_STRING1 \
     "User "USERNAME"\nInclude "LIBSSH_TESTCONFIG2"\n\n"
@@ -776,6 +777,87 @@ static void torture_config_auth_methods_file(void **state)
 static void torture_config_auth_methods_string(void **state)
 {
     torture_config_auth_methods(state, NULL, LIBSSH_TESTCONFIG_STRING8);
+}
+
+static void torture_config_numeric_invalid(void **state, const char *file)
+{
+    ssh_session session = *state;
+    struct invalid_numeric_case {
+        const char *config;
+        enum {
+            INVALID_NUMERIC_PORT,
+            INVALID_NUMERIC_TIMEOUT,
+            INVALID_NUMERIC_RSA_SIZE,
+        } kind;
+    } configs[] = {
+        {
+            "Host test\n"
+            "\tPort 2201abc\n",
+            INVALID_NUMERIC_PORT,
+        },
+        {
+            "Host test\n"
+            "\tPort 70000\n",
+            INVALID_NUMERIC_PORT,
+        },
+        {
+            "Host test\n"
+            "\tConnectTimeout 30abc\n",
+            INVALID_NUMERIC_TIMEOUT,
+        },
+        {
+            "Host test\n"
+            "\tConnectTimeout 30x\n",
+            INVALID_NUMERIC_TIMEOUT,
+        },
+        {
+            "Host test\n"
+            "\tConnectTimeout 3550w5d3h14m8s\n",
+            INVALID_NUMERIC_TIMEOUT,
+        },
+        {
+            "Host test\n"
+            "\tRequiredRSASize 2233abc\n",
+            INVALID_NUMERIC_RSA_SIZE,
+        },
+    };
+    size_t i;
+
+    for (i = 0; i < ARRAY_SIZE(configs); i++) {
+        const char *config = configs[i].config;
+
+        torture_reset_config(session);
+        session->opts.port = 2222;
+        session->opts.timeout = 15;
+        session->opts.rsa_min_size = 2048;
+        ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+
+        switch (configs[i].kind) {
+        case INVALID_NUMERIC_PORT:
+            assert_int_equal(session->opts.port, 2222);
+            break;
+        case INVALID_NUMERIC_TIMEOUT:
+            assert_int_equal(session->opts.timeout, 15);
+            break;
+        case INVALID_NUMERIC_RSA_SIZE:
+            assert_int_equal(session->opts.rsa_min_size, 2048);
+            break;
+        }
+    }
+}
+
+static void torture_config_numeric_invalid_file(void **state)
+{
+    torture_config_numeric_invalid(state, LIBSSH_TESTCONFIG_NUMERIC_INVALID);
+}
+
+static void torture_config_numeric_invalid_string(void **state)
+{
+    torture_config_numeric_invalid(state, NULL);
 }
 
 /**
@@ -3626,6 +3708,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_auth_methods_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_numeric_invalid_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_numeric_invalid_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_unknown_file,

@@ -1369,10 +1369,11 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     case SOC_PORT:
-        p = ssh_config_get_str_tok(&s, NULL);
-        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        l = ssh_config_get_long(&s, -1);
+        CHECK_COND_OR_FAIL(l <= 0 || l > 65535, "Invalid argument");
         if (*parsing) {
-            ssh_options_set(session, SSH_OPTIONS_PORT_STR, p);
+            i = (int)l;
+            ssh_options_set(session, SSH_OPTIONS_PORT, &i);
         }
         break;
     case SOC_USERNAME:

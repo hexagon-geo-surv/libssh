@@ -853,9 +853,49 @@ static void torture_options_set_port(void **state)
     assert_true(rc == 0);
     assert_true(session->opts.port == 23);
 
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "23abc");
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 23);
+
     rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "five");
     assert_true(rc == -1);
-    assert_int_not_equal(session->opts.port, 0);
+    assert_true(session->opts.port == 23);
+
+    port = 65535;
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT, &port);
+    assert_true(rc == 0);
+    assert_true(session->opts.port == 65535);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "65535");
+    assert_true(rc == 0);
+    assert_true(session->opts.port == 65535);
+
+    port = 65536;
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT, &port);
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "65536");
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
+
+    port = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT, &port);
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "-1");
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
+
+    port = 70000;
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT, &port);
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT_STR, "70000");
+    assert_true(rc == -1);
+    assert_true(session->opts.port == 65535);
 
     rc = ssh_options_set(session, SSH_OPTIONS_PORT, NULL);
     assert_true(rc == -1);

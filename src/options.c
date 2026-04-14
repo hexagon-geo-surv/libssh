@@ -825,12 +825,12 @@ int ssh_options_set(ssh_session session,
                 return -1;
             } else {
                 int *x = (int *) value;
-                if (*x <= 0) {
+                if (*x <= 0 || *x > 65535) {
                     ssh_set_error_invalid(session);
                     return -1;
                 }
 
-                session->opts.port = *x & 0xffffU;
+                session->opts.port = *x;
             }
             break;
         case SSH_OPTIONS_PORT_STR:
@@ -845,18 +845,18 @@ int ssh_options_set(ssh_session session,
                     return -1;
                 }
                 i = strtol(q, &p, 10);
-                if (q == p) {
+                if (q == p || *p != '\0') {
                     SSH_LOG(SSH_LOG_DEBUG, "No port number was parsed");
                     SAFE_FREE(q);
                     return -1;
                 }
                 SAFE_FREE(q);
-                if (i <= 0) {
+                if (i <= 0 || i > 65535) {
                     ssh_set_error_invalid(session);
                     return -1;
                 }
 
-                session->opts.port = i & 0xffffU;
+                session->opts.port = i;
             }
             break;
         case SSH_OPTIONS_FD:

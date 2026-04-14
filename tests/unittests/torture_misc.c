@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include <limits.h>
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -356,6 +358,21 @@ static void torture_timeout_update(void **state){
     assert_in_range(ssh_timeout_update(&ts,500),1,460);
     assert_int_equal(ssh_timeout_update(&ts,0),0);
     assert_int_equal(ssh_timeout_update(&ts,-1),-1);
+}
+
+static void torture_make_milliseconds(void **state)
+{
+    (void)state;
+
+    assert_int_equal(ssh_make_milliseconds(30, 500000), 30500);
+    assert_int_equal(ssh_make_milliseconds(0, 0), 10000);
+    assert_int_equal(
+        ssh_make_milliseconds((unsigned long)SSH_TIMEOUT_INFINITE, 0),
+        SSH_TIMEOUT_INFINITE);
+    assert_int_equal(ssh_make_milliseconds(30L * 24 * 60 * 60, 0), INT_MAX);
+    assert_int_equal(
+        ssh_make_milliseconds((unsigned long)INT_MAX / 1000, 999999),
+        INT_MAX);
 }
 
 static void torture_ssh_analyze_banner(void **state) {
@@ -1451,6 +1468,7 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_path_expand_percent,
                                         setup,
                                         teardown),
+        cmocka_unit_test(torture_make_milliseconds),
         cmocka_unit_test(torture_timeout_elapsed),
         cmocka_unit_test(torture_timeout_update),
         cmocka_unit_test(torture_ssh_analyze_banner),

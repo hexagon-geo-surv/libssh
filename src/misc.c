@@ -1807,19 +1807,30 @@ ssh_timestamp_difference(struct ssh_timestamp *old, struct ssh_timestamp *new)
  * into millisecond value
  * @param[in] sec number of seconds
  * @param[in] usec number of microseconds
- * @returns milliseconds, or 10000 if user supplied values are equal to zero
+ * @returns milliseconds, or 10000 if user supplied values are equal to zero.
+ *          Finite values larger than INT_MAX milliseconds are capped to
+ *          INT_MAX.
  */
 int ssh_make_milliseconds(unsigned long sec, unsigned long usec)
 {
-	unsigned long res = usec ? (usec / 1000) : 0;
-	res += (sec * 1000);
-	if (res == 0) {
-		res = 10 * 1000; /* use a reasonable default value in case
-				* SSH_OPTIONS_TIMEOUT is not set in options. */
-	}
+    unsigned long res;
+
+    if (sec == (unsigned long)SSH_TIMEOUT_INFINITE) {
+        return SSH_TIMEOUT_INFINITE;
+    }
+    if (sec > (unsigned long)INT_MAX / 1000) {
+        return INT_MAX;
+    }
+
+    res = usec / 1000;
+    res += (sec * 1000);
+    if (res == 0) {
+        res = 10 * 1000; /* use a reasonable default value in case
+                          * SSH_OPTIONS_TIMEOUT is not set in options. */
+    }
 
     if (res > INT_MAX) {
-        return SSH_TIMEOUT_INFINITE;
+        return INT_MAX;
     } else {
         return (int)res;
     }

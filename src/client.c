@@ -656,11 +656,8 @@ int ssh_connect(ssh_session session)
 pending:
     session->pending_call_state = SSH_PENDING_CALL_CONNECT;
     if(ssh_is_blocking(session)) {
-        int timeout = (session->opts.timeout * 1000) +
-            (session->opts.timeout_usec / 1000);
-        if (timeout == 0) {
-            timeout = 10 * 1000;
-        }
+        int timeout = ssh_make_milliseconds(session->opts.timeout,
+                                            session->opts.timeout_usec);
         SSH_LOG(SSH_LOG_PACKET, "Actual timeout : %d", timeout);
         ret = ssh_handle_packets_termination(session, timeout,
                                              ssh_connect_termination, session);

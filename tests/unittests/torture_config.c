@@ -2225,6 +2225,9 @@ static void torture_config_rekey(void **state,
                                  const char *file, const char *string)
 {
     ssh_session session = *state;
+    const char *config = NULL;
+    const uint64_t previous_rekey_data = 64;
+    const int previous_rekey_time_ms = 42 * 60 * 1000;
 
     /* Default values */
     ssh_options_set(session, SSH_OPTIONS_HOST, "default");
@@ -2289,6 +2292,39 @@ static void torture_config_rekey(void **state,
     assert_int_equal(session->opts.rekey_data, 0);
     assert_int_equal(session->opts.rekey_time, 9600 * 1000);
 
+    config = "Host data-too-small\n"
+             "\tRekeyLimit 1 1h\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+
+    torture_reset_config(session);
+    /* Invalid RekeyLimit values should leave the previous settings untouched.
+     */
+    session->opts.rekey_data = previous_rekey_data;
+    session->opts.rekey_time = previous_rekey_time_ms;
+    ssh_options_set(session, SSH_OPTIONS_HOST, "data-too-small");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.rekey_data, previous_rekey_data);
+    assert_int_equal(session->opts.rekey_time, previous_rekey_time_ms);
+
+    config = "Host data-under-minimum\n"
+             "\tRekeyLimit 15 none\n";
+    if (file != NULL) {
+        torture_write_file(file, config);
+    } else {
+        string = config;
+    }
+
+    torture_reset_config(session);
+    session->opts.rekey_data = 128;
+    session->opts.rekey_time = 21 * 60 * 1000;
+    ssh_options_set(session, SSH_OPTIONS_HOST, "data-under-minimum");
+    _parse_config(session, file, string, SSH_OK);
+    assert_int_equal(session->opts.rekey_data, 128);
+    assert_int_equal(session->opts.rekey_time, 21 * 60 * 1000);
 }
 
 /**

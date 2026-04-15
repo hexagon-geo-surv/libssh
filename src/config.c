@@ -1672,6 +1672,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
             }
         }
         CHECK_COND_OR_FAIL(ll < 0, "Invalid data limit");
+        CHECK_COND_OR_FAIL(ll > 0 && ll < 16, "RekeyLimit too small");
         if (*parsing) {
             uint64_t v = (uint64_t)ll;
             ssh_options_set(session, SSH_OPTIONS_REKEY_DATA, &v);

@@ -4,9 +4,6 @@ include/libssh/bind.h
 include/libssh/channels.h
 include/libssh/crypto.h
 include/libssh/dh.h
-include/libssh/ed25519.h
-include/libssh/fe25519.h
-include/libssh/ge25519.h
 include/libssh/hybrid_mlkem.h
 include/libssh/kex.h
 include/libssh/keys.h
@@ -18,5 +15,4 @@ include/libssh/pki_sk.h
 include/libssh/pki.h
 include/libssh/priv.h
 include/libssh/session.h
-include/libssh/string.h
 include/libssh/wrapper.h

@@ -20,7 +20,7 @@
 
 #ifndef ED25519_H_
 #define ED25519_H_
-#include "libssh/priv.h"
+#include <stdint.h>
 
 /**
  * @defgroup ed25519 ed25519 API

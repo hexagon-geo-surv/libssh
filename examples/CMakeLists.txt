@@ -52,11 +52,11 @@ if (UNIX AND NOT WIN32)
             add_executable(proxy proxy.c)
             target_compile_options(proxy PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
             target_link_libraries(proxy ssh::ssh ${ARGP_LIBRARIES})
-
-            add_executable(sshd_direct-tcpip sshd_direct-tcpip.c)
-            target_compile_options(sshd_direct-tcpip PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
-            target_link_libraries(sshd_direct-tcpip ssh::ssh ${ARGP_LIBRARIES})
         endif (WITH_GSSAPI AND GSSAPI_FOUND)
+
+        add_executable(sshd_direct-tcpip sshd_direct-tcpip.c)
+        target_compile_options(sshd_direct-tcpip PRIVATE ${DEFAULT_C_COMPILE_FLAGS})
+        target_link_libraries(sshd_direct-tcpip ssh::ssh ${ARGP_LIBRARIES})
 
         add_executable(samplesshd-kbdint samplesshd-kbdint.c)
         target_compile_options(samplesshd-kbdint PRIVATE ${DEFAULT_C_COMPILE_FLAGS})

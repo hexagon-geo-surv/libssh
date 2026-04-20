@@ -178,6 +178,7 @@ auth_password(ssh_session session,
     return SSH_AUTH_DENIED;
 }
 
+#ifdef WITH_GSSAPI
 static int
 auth_gssapi_mic(ssh_session session,
                 const char *user,
@@ -196,6 +197,7 @@ auth_gssapi_mic(ssh_session session,
     authenticated = true;
     return SSH_AUTH_SUCCESS;
 }
+#endif
 
 static int
 subsystem_request(UNUSED_PARAM(ssh_session session),
@@ -661,9 +663,11 @@ main(int argc, char **argv)
     struct ssh_server_callbacks_struct cb = {
         .userdata = NULL,
         .auth_password_function = auth_password,
+#ifdef WITH_GSSAPI
         .auth_gssapi_mic_function = auth_gssapi_mic,
+#endif
         .channel_open_request_session_function = new_session_channel,
-        .service_request_function = service_request
+        .service_request_function = service_request,
     };
     struct ssh_callbacks_struct cb_gen = {
         .userdata = NULL,

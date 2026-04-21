@@ -2672,6 +2672,60 @@ static void torture_options_apply (void **state)
     ssh_list_free(awaited_list);
 }
 
+static void torture_options_apply_control_path_original_host(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "my-alias");
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(session->opts.originalhost, "my-alias");
+
+    SAFE_FREE(session->opts.host);
+    session->opts.host = strdup("192.168.1.1");
+    assert_non_null(session->opts.host);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_CONTROL_PATH, "/tmp/%n-%h-%p");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_apply(session);
+    assert_ssh_return_code(session, rc);
+    assert_true(session->opts.exp_flags & SSH_OPT_EXP_FLAG_CONTROL_PATH);
+    assert_string_equal(session->opts.control_path,
+                        "/tmp/my-alias-192.168.1.1-22");
+}
+
+static void
+torture_options_apply_proxycommand_original_host_config(void **state)
+{
+    ssh_session session = *state;
+    int rc;
+
+    torture_write_file("test_config",
+                       "Host my_alias\n"
+                       "\tHostName 192.168.1.1\n"
+                       "\tProxyCommand echo %n-%h-%p\n");
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOST, "my_alias");
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(session->opts.originalhost, "my_alias");
+    assert_null(session->opts.host);
+
+    rc = ssh_options_parse_config(session, "test_config");
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(session->opts.originalhost, "my_alias");
+    assert_string_equal(session->opts.host, "192.168.1.1");
+    assert_string_equal(session->opts.ProxyCommand, "echo %n-%h-%p");
+
+    rc = ssh_options_apply(session);
+    assert_ssh_return_code(session, rc);
+    assert_true(session->opts.exp_flags & SSH_OPT_EXP_FLAG_PROXYCOMMAND);
+    assert_string_equal(session->opts.ProxyCommand,
+                        "exec echo my_alias-192.168.1.1-22");
+
+    unlink("test_config");
+}
+
 static void torture_options_set_verbosity (void **state)
 {
     ssh_session session = *state;
@@ -4028,6 +4082,14 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_apply, setup, teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_options_apply_control_path_original_host,
+            setup,
+            teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_options_apply_proxycommand_original_host_config,
+            setup,
+            teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_verbosity,
                                         setup,
                                         teardown),

@@ -211,6 +211,9 @@ It was later modified and expanded by the following RFCs.
     Secure Shell (SSH) Key Exchange Method Using Curve25519 and Curve448
  - <a href="https://tools.ietf.org/html/rfc9142" target="_blank">RFC 9142</a>,
     Key Exchange (KEX) Method Updates and Recommendations for Secure Shell (SSH)
+ - <a href="https://tools.ietf.org/html/rfc9941" target="_blank">RFC 9141</a>,
+    Secure Shell (SSH) Key Exchange Method Using Hybrid Streamlined NTRU Prime
+    sntrup761 and X25519 with SHA-512: sntrup761x25519-sha512
 
 There are also drafts that are being currently developed and followed.
 
@@ -218,8 +221,6 @@ There are also drafts that are being currently developed and followed.
     SSH Agent Protocol
  - <a href="https://tools.ietf.org/html/draft-ietf-sshm-mlkem-hybrid-kex-09" target="_blank">draft-ietf-sshm-mlkem-hybrid-kex-09</a>
     PQ/T Hybrid Key Exchange with ML-KEM in SSH
- - <a href="https://tools.ietf.org/html/draft-ietf-sshm-ntruprime-ssh-06" target="_blank">draft-ietf-sshm-ntruprime-ssh-06</a>
-    Secure Shell (SSH) Key Exchange Method Using Hybrid Streamlined NTRU Prime sntrup761 and X25519 with SHA-512: sntrup761x25519-sha512
  - <a href="https://tools.ietf.org/html/draft-ietf-sshm-chacha20-poly1305-02" target="_blank">draft-ietf-sshm-chacha20-poly1305-02</a>
     Secure Shell (SSH) authenticated encryption cipher: chacha20-poly1305
  - <a href="https://tools.ietf.org/html/draft-ietf-sshm-strict-kex-01" target="_blank">draft-ietf-sshm-strict-kex-01</a>

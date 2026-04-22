@@ -27,6 +27,11 @@
 #include "libssh/libssh.h"
 #include "libssh/priv.h"
 #include "libssh/session.h"
+#include "libssh/buffer.h"
+#include "libssh/keys.h"
+#include "libssh/packet.h"
+#include "libssh/pki.h"
+#include "libssh/ssh2.h"
 
 #include <errno.h>
 #include <sys/types.h>
@@ -170,6 +175,25 @@ static void torture_auth_none(void **state) {
     if (rc == SSH_ERROR) {
         assert_int_equal(ssh_get_error_code(session), SSH_REQUEST_DENIED);
     }
+}
+
+static void
+torture_send_userauth_service_request(ssh_session session,
+                                      enum ssh_pending_call_e pending_state)
+{
+    int rc;
+
+    rc = ssh_buffer_pack(session->out_buffer,
+                         "bs",
+                         SSH2_MSG_SERVICE_REQUEST,
+                         "ssh-userauth");
+    assert_int_equal(rc, SSH_OK);
+
+    session->auth.service_state = SSH_AUTH_SERVICE_SENT;
+    session->pending_call_state = pending_state;
+
+    rc = ssh_packet_send(session);
+    assert_int_equal(rc, SSH_OK);
 }
 
 static void torture_auth_none_nonblocking(void **state) {
@@ -1612,6 +1636,103 @@ static void torture_auth_flags_pubkey(void **state)
     SSH_KEY_FREE(privkey);
 }
 
+static void torture_auth_flags_try_pubkey_service_request(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    struct passwd *pwd = NULL;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key, sizeof(bob_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+
+    ssh_set_blocking(session, 0);
+    torture_send_userauth_service_request(session,
+                                          SSH_PENDING_CALL_AUTH_OFFER_PUBKEY);
+    assert_int_equal(session->auth.service_state, SSH_AUTH_SERVICE_SENT);
+    assert_int_equal(session->pending_call_state,
+                     SSH_PENDING_CALL_AUTH_OFFER_PUBKEY);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_try_publickey(session, NULL, privkey);
+    assert_int_not_equal(rc, SSH_AUTH_DENIED);
+    while (rc == SSH_AUTH_AGAIN) {
+        rc = ssh_userauth_try_publickey(session, NULL, privkey);
+    }
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    SSH_KEY_FREE(privkey);
+}
+
+static void torture_auth_flags_pubkey_service_request(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    struct passwd *pwd = NULL;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key, sizeof(bob_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+
+    ssh_set_blocking(session, 0);
+    torture_send_userauth_service_request(session,
+                                          SSH_PENDING_CALL_AUTH_PUBKEY);
+    assert_int_equal(session->auth.service_state, SSH_AUTH_SERVICE_SENT);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_AUTH_PUBKEY);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_publickey(session, NULL, privkey);
+    assert_int_not_equal(rc, SSH_AUTH_DENIED);
+    while (rc == SSH_AUTH_AGAIN) {
+        rc = ssh_userauth_publickey(session, NULL, privkey);
+    }
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    SSH_KEY_FREE(privkey);
+}
+
 static void torture_auth_flags_agent(void **state)
 {
     struct torture_state *s = *state;
@@ -1667,6 +1788,144 @@ static void torture_auth_flags_agent(void **state)
     assert_int_equal(rc, SSH_AUTH_SUCCESS);
 }
 
+static void torture_auth_flags_agent_pubkey(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    ssh_public_key pubkey = NULL;
+    struct passwd *pwd = NULL;
+    int rc;
+    int off = 0;
+    int on = 1;
+    int original_type;
+
+    if (!ssh_agent_is_running(session)) {
+        print_message("*** Agent not running. Test ignored\n");
+        skip();
+    }
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key, sizeof(bob_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    pubkey = ssh_pki_convert_key_to_publickey(privkey);
+    assert_non_null(pubkey);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    /*
+     * Force the post-assignment fail path in ssh_userauth_agent_publickey()
+     * and verify it clears the pending state before returning.
+     */
+    original_type = pubkey->type;
+    pubkey->type = SSH_KEYTYPE_UNKNOWN;
+    rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    assert_int_equal(rc, SSH_AUTH_ERROR);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+    pubkey->type = original_type;
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    assert_int_equal(rc, SSH_AUTH_DENIED);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+    assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    ssh_set_blocking(session, 0);
+
+    do {
+        rc = ssh_userauth_none(session, NULL);
+    } while (rc == SSH_AUTH_AGAIN);
+
+    rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    assert_int_equal(rc, SSH_AUTH_AGAIN);
+    assert_int_not_equal(session->pending_call_state, SSH_PENDING_CALL_NONE);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    do {
+        rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    } while (rc == SSH_AUTH_AGAIN);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    publickey_free(pubkey);
+    SSH_KEY_FREE(privkey);
+}
+
+static void torture_auth_flags_agent_pubkey_service_request(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char bob_ssh_key[1024];
+    ssh_key privkey = NULL;
+    ssh_public_key pubkey = NULL;
+    struct passwd *pwd = NULL;
+    int rc;
+    int off = 0;
+    int on = 1;
+
+    if (!ssh_agent_is_running(session)) {
+        print_message("*** Agent not running. Test ignored\n");
+        skip();
+    }
+
+    pwd = getpwnam("bob");
+    assert_non_null(pwd);
+
+    snprintf(bob_ssh_key, sizeof(bob_ssh_key), "%s/.ssh/id_rsa", pwd->pw_dir);
+
+    rc = ssh_pki_import_privkey_file(bob_ssh_key, NULL, NULL, NULL, &privkey);
+    assert_int_equal(rc, SSH_OK);
+
+    pubkey = ssh_pki_convert_key_to_publickey(privkey);
+    assert_non_null(pubkey);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, TORTURE_SSH_USER_ALICE);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &on);
+    assert_int_equal(rc, SSH_OK);
+
+    ssh_set_blocking(session, 0);
+    torture_send_userauth_service_request(session, SSH_PENDING_CALL_AUTH_AGENT);
+    assert_int_equal(session->auth.service_state, SSH_AUTH_SERVICE_SENT);
+    assert_int_equal(session->pending_call_state, SSH_PENDING_CALL_AUTH_AGENT);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &off);
+    assert_int_equal(rc, SSH_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+
+    rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    assert_int_not_equal(rc, SSH_AUTH_DENIED);
+    while (rc == SSH_AUTH_AGAIN) {
+        rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
+    }
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    publickey_free(pubkey);
+    SSH_KEY_FREE(privkey);
+}
+
 static void torture_auth_flags_gssapi(void **state)
 {
     struct torture_state *s = *state;
@@ -1720,9 +1979,24 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_auth_flags_pubkey,
                                         pubkey_setup,
                                         session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_flags_try_pubkey_service_request,
+            pubkey_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_flags_pubkey_service_request,
+            pubkey_setup,
+            session_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_flags_agent,
                                         agent_setup,
                                         agent_teardown),
+        cmocka_unit_test_setup_teardown(torture_auth_flags_agent_pubkey,
+                                        agent_setup,
+                                        agent_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_auth_flags_agent_pubkey_service_request,
+            agent_setup,
+            agent_teardown),
         cmocka_unit_test_setup_teardown(torture_auth_flags_gssapi,
                                         session_setup,
                                         session_teardown),

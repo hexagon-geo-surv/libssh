@@ -633,9 +633,13 @@ int ssh_userauth_try_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        session->pending_call_state = SSH_PENDING_CALL_AUTH_OFFER_PUBKEY;
         break;
     case SSH_PENDING_CALL_AUTH_OFFER_PUBKEY:
-        goto pending;
+        if (session->auth.state == SSH_AUTH_STATE_PUBKEY_OFFER_SENT) {
+            goto pending;
+        }
+        break;
     default:
         ssh_set_error(session,
                       SSH_FATAL,
@@ -652,6 +656,7 @@ int ssh_userauth_try_publickey(ssh_session session,
     if (rc == SSH_AGAIN) {
         return SSH_AUTH_AGAIN;
     } else if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -661,6 +666,7 @@ int ssh_userauth_try_publickey(ssh_session session,
         ssh_set_error(session,
                       SSH_REQUEST_DENIED,
                       "Invalid key type (unknown)");
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     rc = ssh_key_algorithm_allowed(session, sig_type_c);
@@ -670,6 +676,7 @@ int ssh_userauth_try_publickey(ssh_session session,
                       "The key algorithm '%s' is not allowed to be used by"
                       " PUBLICKEY_ACCEPTED_TYPES configuration option",
                       sig_type_c);
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     allowed = ssh_key_size_allowed(session, pubkey);
@@ -680,6 +687,7 @@ int ssh_userauth_try_publickey(ssh_session session,
                       "RSA_MIN_SIZE",
                       sig_type_c,
                       ssh_key_size(pubkey));
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
 
@@ -698,9 +706,9 @@ int ssh_userauth_try_publickey(ssh_session session,
 
     session->auth.current_method = SSH_AUTH_METHOD_PUBLICKEY;
     session->auth.state = SSH_AUTH_STATE_PUBKEY_OFFER_SENT;
-    session->pending_call_state = SSH_PENDING_CALL_AUTH_OFFER_PUBKEY;
     rc = ssh_packet_send(session);
     if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -715,6 +723,7 @@ fail:
     SSH_STRING_FREE(pubkey_s);
     ssh_set_error_oom(session);
     ssh_buffer_reinit(session->out_buffer);
+    session->pending_call_state = SSH_PENDING_CALL_NONE;
 
     return SSH_AUTH_ERROR;
 }
@@ -770,9 +779,13 @@ int ssh_userauth_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        session->pending_call_state = SSH_PENDING_CALL_AUTH_PUBKEY;
         break;
     case SSH_PENDING_CALL_AUTH_PUBKEY:
-        goto pending;
+        if (session->auth.state == SSH_AUTH_STATE_PUBKEY_AUTH_SENT) {
+            goto pending;
+        }
+        break;
     default:
         ssh_set_error(
             session,
@@ -789,6 +802,7 @@ int ssh_userauth_publickey(ssh_session session,
     if (rc == SSH_AGAIN) {
         return SSH_AUTH_AGAIN;
     } else if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -801,6 +815,7 @@ int ssh_userauth_publickey(ssh_session session,
         ssh_set_error(session,
                       SSH_REQUEST_DENIED,
                       "Invalid key type (unknown)");
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     rc = ssh_key_algorithm_allowed(session, sig_type_c);
@@ -810,6 +825,7 @@ int ssh_userauth_publickey(ssh_session session,
                       "The key algorithm '%s' is not allowed to be used by"
                       " PUBLICKEY_ACCEPTED_TYPES configuration option",
                       sig_type_c);
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     allowed = ssh_key_size_allowed(session, privkey);
@@ -820,6 +836,7 @@ int ssh_userauth_publickey(ssh_session session,
                       "RSA_MIN_SIZE",
                       sig_type_c,
                       ssh_key_size(privkey));
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
 
@@ -854,9 +871,9 @@ int ssh_userauth_publickey(ssh_session session,
 
     session->auth.current_method = SSH_AUTH_METHOD_PUBLICKEY;
     session->auth.state = SSH_AUTH_STATE_PUBKEY_AUTH_SENT;
-    session->pending_call_state = SSH_PENDING_CALL_AUTH_PUBKEY;
     rc = ssh_packet_send(session);
     if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -871,6 +888,7 @@ fail:
     SSH_STRING_FREE(str);
     ssh_set_error_oom(session);
     ssh_buffer_reinit(session->out_buffer);
+    session->pending_call_state = SSH_PENDING_CALL_NONE;
 
     return SSH_AUTH_ERROR;
 }
@@ -887,9 +905,13 @@ static int ssh_userauth_agent_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        session->pending_call_state = SSH_PENDING_CALL_AUTH_AGENT;
         break;
     case SSH_PENDING_CALL_AUTH_AGENT:
-        goto pending;
+        if (session->auth.state == SSH_AUTH_STATE_PUBKEY_AUTH_SENT) {
+            goto pending;
+        }
+        break;
     default:
         ssh_set_error(session,
                       SSH_FATAL,
@@ -906,6 +928,7 @@ static int ssh_userauth_agent_publickey(ssh_session session,
     if (rc == SSH_AGAIN) {
         return SSH_AUTH_AGAIN;
     } else if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -922,6 +945,7 @@ static int ssh_userauth_agent_publickey(ssh_session session,
                       SSH_REQUEST_DENIED,
                       "Invalid key type (unknown)");
         SSH_STRING_FREE(pubkey_s);
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     rc = ssh_key_algorithm_allowed(session, sig_type_c);
@@ -932,6 +956,7 @@ static int ssh_userauth_agent_publickey(ssh_session session,
                       " PUBLICKEY_ACCEPTED_TYPES configuration option",
                       sig_type_c);
         SSH_STRING_FREE(pubkey_s);
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
     allowed = ssh_key_size_allowed(session, pubkey);
@@ -943,6 +968,7 @@ static int ssh_userauth_agent_publickey(ssh_session session,
                       sig_type_c,
                       ssh_key_size(pubkey));
         SSH_STRING_FREE(pubkey_s);
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_DENIED;
     }
 
@@ -966,9 +992,9 @@ static int ssh_userauth_agent_publickey(ssh_session session,
 
     session->auth.current_method = SSH_AUTH_METHOD_PUBLICKEY;
     session->auth.state = SSH_AUTH_STATE_PUBKEY_AUTH_SENT;
-    session->pending_call_state = SSH_PENDING_CALL_AUTH_AGENT;
     rc = ssh_packet_send(session);
     if (rc == SSH_ERROR) {
+        session->pending_call_state = SSH_PENDING_CALL_NONE;
         return SSH_AUTH_ERROR;
     }
 
@@ -983,6 +1009,8 @@ fail:
     ssh_set_error_oom(session);
     ssh_buffer_reinit(session->out_buffer);
     SSH_STRING_FREE(pubkey_s);
+    SSH_STRING_FREE(sig_blob);
+    session->pending_call_state = SSH_PENDING_CALL_NONE;
 
     return SSH_AUTH_ERROR;
 }
@@ -1821,6 +1849,7 @@ pending:
 fail:
     ssh_set_error_oom(session);
     ssh_buffer_reinit(session->out_buffer);
+    session->pending_call_state = SSH_PENDING_CALL_NONE;
 
     return SSH_AUTH_ERROR;
 }
@@ -1837,7 +1866,8 @@ int ssh_userauth_agent_pubkey(ssh_session session,
         return SSH_AUTH_ERROR;
     }
 
-    if (!(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
+    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
+        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
         SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
         return SSH_AUTH_DENIED;
     }

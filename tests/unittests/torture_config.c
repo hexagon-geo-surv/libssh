@@ -939,6 +939,7 @@ static void torture_config_reset_boolean_state(ssh_session session)
     session->opts.flags = SSH_OPT_FLAG_PASSWORD_AUTH |
                           SSH_OPT_FLAG_PUBKEY_AUTH | SSH_OPT_FLAG_KBDINT_AUTH |
                           SSH_OPT_FLAG_GSSAPI_AUTH;
+    session->opts.pubkey_auth = SSH_PUBKEY_AUTH_ALL;
     session->opts.identities_only = false;
 }
 
@@ -954,6 +955,7 @@ static void torture_config_boolean_invalid(void **state, const char *file)
             INVALID_GSSAPI_AUTH,
             INVALID_KBDINT_AUTH,
             INVALID_PASSWORD_AUTH,
+            INVALID_PUBKEY_AUTH,
         } kind;
     } configs[] = {
         {
@@ -998,6 +1000,11 @@ static void torture_config_boolean_invalid(void **state, const char *file)
             "\tPasswordAuthentication\n",
             INVALID_PASSWORD_AUTH,
         },
+        {
+            "Host test\n"
+            "\tPubkeyAuthentication\n",
+            INVALID_PUBKEY_AUTH,
+        },
     };
     size_t i;
 
@@ -1005,6 +1012,9 @@ static void torture_config_boolean_invalid(void **state, const char *file)
         const char *config = configs[i].config;
 
         torture_config_reset_boolean_state(session);
+        /* These invalid-value cases should behave as no-ops for the fields
+         * exercised only by this test.
+         */
         SAFE_FREE(session->opts.wanted_methods[SSH_COMP_C_S]);
         SAFE_FREE(session->opts.wanted_methods[SSH_COMP_S_C]);
         session->opts.gssapi_key_exchange = false;
@@ -1033,6 +1043,10 @@ static void torture_config_boolean_invalid(void **state, const char *file)
             break;
         case INVALID_PASSWORD_AUTH:
             assert_true(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+            break;
+        case INVALID_PUBKEY_AUTH:
+            assert_true(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH);
+            assert_int_equal(session->opts.pubkey_auth, SSH_PUBKEY_AUTH_ALL);
             break;
         }
     }
@@ -1063,6 +1077,23 @@ static void torture_config_boolean_compat(void **state, const char *file)
         {"accept-new", SSH_STRICT_HOSTKEY_ACCEPT_NEW},
         {"off", SSH_STRICT_HOSTKEY_OFF},
     };
+    struct pubkey_auth_case {
+        const char *value;
+        int expected;
+        bool enabled;
+    } pubkey_cases[] = {
+        {"true", SSH_PUBKEY_AUTH_ALL, true},
+        {"false", SSH_PUBKEY_AUTH_NO, false},
+        {"unbound", SSH_PUBKEY_AUTH_UNBOUND, true},
+        {"host-bound", SSH_PUBKEY_AUTH_HOST_BOUND, true},
+    };
+    struct gssapi_key_exchange_case {
+        const char *value;
+        bool expected;
+    } gssapi_key_exchange_cases[] = {
+        {"true", true},
+        {"false", false},
+    };
 
     for (i = 0; i < ARRAY_SIZE(strict_cases); i++) {
         torture_config_reset_boolean_state(session);
@@ -1077,6 +1108,44 @@ static void torture_config_boolean_compat(void **state, const char *file)
         _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
         assert_int_equal(session->opts.StrictHostKeyChecking,
                          strict_cases[i].expected);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(pubkey_cases); i++) {
+        torture_config_reset_boolean_state(session);
+        ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+        snprintf(config,
+                 sizeof(config),
+                 "Host test\n\tPubkeyAuthentication %s\n",
+                 pubkey_cases[i].value);
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+        assert_int_equal(session->opts.pubkey_auth, pubkey_cases[i].expected);
+        assert_int_equal((session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) != 0,
+                         pubkey_cases[i].enabled);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(gssapi_key_exchange_cases); i++) {
+        torture_config_reset_boolean_state(session);
+        session->opts.gssapi_key_exchange =
+            !gssapi_key_exchange_cases[i].expected;
+        ssh_options_set(session, SSH_OPTIONS_HOST, "test");
+        snprintf(config,
+                 sizeof(config),
+                 "Host test\n\tGSSAPIKeyExchange %s\n",
+                 gssapi_key_exchange_cases[i].value);
+        if (file != NULL) {
+            torture_write_file(file, config);
+        }
+        _parse_config(session, file, file != NULL ? NULL : config, SSH_OK);
+#ifdef WITH_GSSAPI
+        assert_int_equal(session->opts.gssapi_key_exchange,
+                         gssapi_key_exchange_cases[i].expected);
+#else
+        assert_int_equal(session->opts.gssapi_key_exchange,
+                         !gssapi_key_exchange_cases[i].expected);
+#endif
     }
 
     torture_config_reset_boolean_state(session);

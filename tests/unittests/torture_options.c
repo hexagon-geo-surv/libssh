@@ -1838,8 +1838,8 @@ static void torture_options_copy(void **state)
           "GSSAPIServerIdentity my.example.com\n"
           "GSSAPIClientIdentity home.sweet\n"
           "GSSAPIDelegateCredentials yes\n"
-          "PubkeyAuthentication yes\n" /* sets flags */
-          "GSSAPIAuthentication no\n"  /* sets flags */
+          "PubkeyAuthentication host-bound\n" /* sets flags */
+          "GSSAPIAuthentication no\n"         /* sets flags */
           "AddressFamily inet6\n"
           "Tag copied-tag\n"
           "",
@@ -1920,6 +1920,9 @@ static void torture_options_copy(void **state)
     assert_int_equal(new->opts.StrictHostKeyChecking,
                      SSH_STRICT_HOSTKEY_ACCEPT_NEW);
     assert_int_equal(session->opts.flags, new->opts.flags);
+    assert_int_equal(session->opts.pubkey_auth, SSH_PUBKEY_AUTH_HOST_BOUND);
+    assert_int_equal(new->opts.pubkey_auth, SSH_PUBKEY_AUTH_HOST_BOUND);
+    assert_int_equal(session->opts.pubkey_auth, new->opts.pubkey_auth);
     assert_int_equal(session->opts.nodelay, new->opts.nodelay);
     assert_true(session->opts.config_processed == new->opts.config_processed);
     assert_memory_equal(session->opts.options_seen, new->opts.options_seen,
@@ -1964,6 +1967,9 @@ static void torture_options_legacy_integer_values(void **state)
     int negative_strict_value = -1;
     int zero_low_byte_strict_value = 256;
     int negative_zero_low_byte_strict_value = -256;
+    int negative_pubkey_value = -1;
+    int legacy_pubkey_value = 42;
+    int disabled_pubkey_value = 0;
     int rc;
 
     /*
@@ -1997,6 +2003,31 @@ static void torture_options_legacy_integer_values(void **state)
     assert_ssh_return_code(session, rc);
     assert_int_equal(session->opts.StrictHostKeyChecking,
                      SSH_STRICT_HOSTKEY_OFF);
+
+    /*
+     * StrictHostKeyChecking preserves the legacy low-byte normalization, while
+     * PubkeyAuthentication keeps its legacy full-integer behavior so callers
+     * passing -1 still land on SSH_PUBKEY_AUTH_ALL.
+     */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PUBKEY_AUTH,
+                         &disabled_pubkey_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.pubkey_auth, SSH_PUBKEY_AUTH_NO);
+    assert_false((session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) != 0);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PUBKEY_AUTH,
+                         &negative_pubkey_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.pubkey_auth, SSH_PUBKEY_AUTH_ALL);
+    assert_true((session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) != 0);
+
+    rc =
+        ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &legacy_pubkey_value);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.pubkey_auth, SSH_PUBKEY_AUTH_ALL);
+    assert_true((session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) != 0);
 }
 
 #define EXECUTABLE_NAME "test-exec"

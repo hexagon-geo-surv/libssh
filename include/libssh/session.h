@@ -294,6 +294,7 @@ struct ssh_session_struct {
         bool config_hostname_only; /* config hostname path: update host only,
                                       not originalhost */
         char *tag;                 /* configuration tag for Match tagged */
+        int pubkey_auth;
     } opts;
 
     /* server options */

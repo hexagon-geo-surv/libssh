@@ -521,6 +521,18 @@ error:
     return rc;
 }
 
+static bool use_hostbound_pubkey_auth(ssh_session session)
+{
+    if ((session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND) == 0 ||
+        session->current_crypto == NULL ||
+        session->current_crypto->server_pubkey == NULL) {
+        return false;
+    }
+
+    return session->opts.pubkey_auth == SSH_PUBKEY_AUTH_ALL ||
+           session->opts.pubkey_auth == SSH_PUBKEY_AUTH_HOST_BOUND;
+}
+
 /**
  * @internal
  *
@@ -548,8 +560,7 @@ static int build_pubkey_auth_request(ssh_session session,
     int rc;
     const char *auth_method = "publickey";
 
-    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND &&
-        session->current_crypto->server_pubkey != NULL) {
+    if (use_hostbound_pubkey_auth(session)) {
         auth_method = "publickey-hostbound-v00@openssh.com";
     }
 
@@ -568,12 +579,22 @@ static int build_pubkey_auth_request(ssh_session session,
         return SSH_ERROR;
     }
 
-    if (session->extensions & SSH_EXT_PUBLICKEY_HOSTBOUND &&
-        session->current_crypto->server_pubkey != NULL) {
+    if (use_hostbound_pubkey_auth(session)) {
         rc = add_hostbound_pubkey(session);
         if (rc < 0) {
             return SSH_ERROR;
         }
+    }
+
+    return SSH_OK;
+}
+
+static int check_pubkey_auth_mode(ssh_session session)
+{
+    if (!(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) ||
+        session->opts.pubkey_auth == SSH_PUBKEY_AUTH_NO) {
+        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
+        return SSH_AUTH_DENIED;
     }
 
     return SSH_OK;
@@ -620,12 +641,6 @@ int ssh_userauth_try_publickey(ssh_session session,
         return SSH_AUTH_ERROR;
     }
 
-    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
-        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
-        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
-        return SSH_AUTH_DENIED;
-    }
-
     if (pubkey == NULL || !ssh_key_is_public(pubkey)) {
         ssh_set_error(session, SSH_FATAL, "Invalid pubkey");
         return SSH_AUTH_ERROR;
@@ -633,6 +648,10 @@ int ssh_userauth_try_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        rc = check_pubkey_auth_mode(session);
+        if (rc != SSH_OK) {
+            return rc;
+        }
         session->pending_call_state = SSH_PENDING_CALL_AUTH_OFFER_PUBKEY;
         break;
     case SSH_PENDING_CALL_AUTH_OFFER_PUBKEY:
@@ -766,12 +785,6 @@ int ssh_userauth_publickey(ssh_session session,
         return SSH_AUTH_ERROR;
     }
 
-    if (session->pending_call_state == SSH_PENDING_CALL_NONE &&
-        !(session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH)) {
-        SSH_LOG(SSH_LOG_DEBUG, "Public key authentication is disabled");
-        return SSH_AUTH_DENIED;
-    }
-
     if (privkey == NULL || !ssh_key_is_private(privkey)) {
         ssh_set_error(session, SSH_FATAL, "Invalid private key");
         return SSH_AUTH_ERROR;
@@ -779,6 +792,10 @@ int ssh_userauth_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        rc = check_pubkey_auth_mode(session);
+        if (rc != SSH_OK) {
+            return rc;
+        }
         session->pending_call_state = SSH_PENDING_CALL_AUTH_PUBKEY;
         break;
     case SSH_PENDING_CALL_AUTH_PUBKEY:
@@ -905,6 +922,12 @@ static int ssh_userauth_agent_publickey(ssh_session session,
 
     switch (session->pending_call_state) {
     case SSH_PENDING_CALL_NONE:
+        if (session->auth.state != SSH_AUTH_STATE_PK_OK) {
+            rc = check_pubkey_auth_mode(session);
+            if (rc != SSH_OK) {
+                return rc;
+            }
+        }
         session->pending_call_state = SSH_PENDING_CALL_AUTH_AGENT;
         break;
     case SSH_PENDING_CALL_AUTH_AGENT:

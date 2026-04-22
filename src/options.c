@@ -284,6 +284,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     new->opts.StrictHostKeyChecking = src->opts.StrictHostKeyChecking;
     new->opts.gss_delegate_creds    = src->opts.gss_delegate_creds;
     new->opts.flags                 = src->opts.flags;
+    new->opts.pubkey_auth = src->opts.pubkey_auth;
     new->opts.nodelay               = src->opts.nodelay;
     new->opts.config_processed      = src->opts.config_processed;
     new->opts.control_master        = src->opts.control_master;
@@ -623,11 +624,13 @@ int ssh_options_set_algo(ssh_session session,
  *                in ssh_userauth_password(). (int, 0=false).
  *
  *              - SSH_OPTIONS_PUBKEY_AUTH
- *                Set it if pubkey authentication should be used
- *                in ssh_userauth_publickey_auto(),
+ *                Set the PubkeyAuthentication mode used by
+ *                ssh_userauth_publickey_auto(),
  *                ssh_userauth_try_publickey(),
- *                ssh_userauth_publickey(), and
- *                ssh_userauth_agent(). (int, 0=false).
+ *                ssh_userauth_publickey(), and ssh_userauth_agent().
+ *                The default is SSH_PUBKEY_AUTH_ALL.
+ *                (int, SSH_PUBKEY_AUTH_NO, SSH_PUBKEY_AUTH_ALL,
+ *                SSH_PUBKEY_AUTH_UNBOUND or SSH_PUBKEY_AUTH_HOST_BOUND).
  *
  *              - SSH_OPTIONS_KBDINT_AUTH
  *                Set it if keyboard-interactive authentication should
@@ -1415,10 +1418,32 @@ int ssh_options_set(ssh_session session,
                         type == SSH_OPTIONS_KBDINT_AUTH ?
                             SSH_OPT_FLAG_KBDINT_AUTH:
                             SSH_OPT_FLAG_GSSAPI_AUTH;
-                if (x != 0){
+                if (x != 0) {
                     session->opts.flags |= u;
                 } else {
                     session->opts.flags &= ~u;
+                }
+                if (type == SSH_OPTIONS_PUBKEY_AUTH) {
+                    /*
+                     * Keep the legacy enabled/disabled auth flag semantics in
+                     * sync above while also storing the selected
+                     * PubkeyAuthentication mode here.
+                     */
+                    switch (x) {
+                    case SSH_PUBKEY_AUTH_NO:
+                    case SSH_PUBKEY_AUTH_ALL:
+                    case SSH_PUBKEY_AUTH_UNBOUND:
+                    case SSH_PUBKEY_AUTH_HOST_BOUND:
+                        session->opts.pubkey_auth = x;
+                        break;
+                    default:
+                        /* Preserve the legacy non-zero "yes" normalization
+                         * here so callers passing -1 still land on
+                         * SSH_PUBKEY_AUTH_ALL.
+                         */
+                        session->opts.pubkey_auth = SSH_PUBKEY_AUTH_ALL;
+                        break;
+                    }
                 }
             }
             break;

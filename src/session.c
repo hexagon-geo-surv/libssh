@@ -128,6 +128,7 @@ ssh_session ssh_new(void)
                           SSH_OPT_FLAG_PUBKEY_AUTH |
                           SSH_OPT_FLAG_KBDINT_AUTH |
                           SSH_OPT_FLAG_GSSAPI_AUTH;
+    session->opts.pubkey_auth = SSH_PUBKEY_AUTH_ALL;
 
     session->opts.exp_flags = 0;
 

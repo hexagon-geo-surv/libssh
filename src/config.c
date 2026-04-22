@@ -1097,6 +1097,21 @@ static int ssh_config_get_strict_hostkey(char **str, int notfound)
 
     return ssh_config_get_token_value(str, strict_hostkey_map, notfound);
 }
+
+static int ssh_config_get_pubkey_auth(char **str, int notfound)
+{
+    static const struct ssh_config_token_value_map pubkey_auth_map[] = {
+        {"yes", SSH_PUBKEY_AUTH_ALL},
+        {"true", SSH_PUBKEY_AUTH_ALL},
+        {"no", SSH_PUBKEY_AUTH_NO},
+        {"false", SSH_PUBKEY_AUTH_NO},
+        {"unbound", SSH_PUBKEY_AUTH_UNBOUND},
+        {"host-bound", SSH_PUBKEY_AUTH_HOST_BOUND},
+        {NULL, 0},
+    };
+
+    return ssh_config_get_token_value(str, pubkey_auth_map, notfound);
+}
 #define CHECK_COND_OR_FAIL(cond, error_message)                \
     if ((cond)) {                                              \
         SSH_LOG(SSH_LOG_DEBUG,                                 \
@@ -1925,14 +1940,21 @@ static int ssh_config_parse_line_internal(ssh_session session,
         break;
     case SOC_GSSAPIAUTHENTICATION:
     case SOC_KBDINTERACTIVEAUTHENTICATION:
-    case SOC_PASSWORDAUTHENTICATION:
-    case SOC_PUBKEYAUTHENTICATION: {
+    case SOC_PASSWORDAUTHENTICATION: {
         enum ssh_options_e option = ssh_config_get_auth_option(opcode);
         i = ssh_config_get_yesno(&s, -1);
 
         CHECK_COND_OR_FAIL(i < 0, "Authentication option");
         if (*parsing) {
             ssh_options_set(session, option, &i);
+        }
+        break;
+    }
+    case SOC_PUBKEYAUTHENTICATION: {
+        i = ssh_config_get_pubkey_auth(&s, -1);
+        CHECK_COND_OR_FAIL(i < 0, "Authentication option");
+        if (*parsing) {
+            ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &i);
         }
         break;
     }

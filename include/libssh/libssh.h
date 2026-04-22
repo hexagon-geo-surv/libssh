@@ -390,6 +390,17 @@ enum ssh_strict_hostkey_options_e {
     SSH_STRICT_HOSTKEY_ACCEPT_NEW = 3
 };
 
+enum ssh_pubkey_auth_options_e {
+    /** Disable public key authentication. */
+    SSH_PUBKEY_AUTH_NO = 0,
+    /** Enable the default public key authentication behavior. */
+    SSH_PUBKEY_AUTH_ALL = 1,
+    /** Use unbound public key authentication only. */
+    SSH_PUBKEY_AUTH_UNBOUND = 2,
+    /** Use host-bound public key authentication when supported. */
+    SSH_PUBKEY_AUTH_HOST_BOUND = 3
+};
+
 enum ssh_options_e {
     SSH_OPTIONS_HOST,
     SSH_OPTIONS_PORT,

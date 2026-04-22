@@ -419,10 +419,21 @@ int ssh_is_server_known(ssh_session session)
         }
     } while (1);
 
-    if ((ret == SSH_SERVER_NOT_KNOWN) &&
-        (session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF ||
-         session->opts.StrictHostKeyChecking ==
-             SSH_STRICT_HOSTKEY_ACCEPT_NEW)) {
+    if (session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF) {
+        if (ret == SSH_SERVER_KNOWN_CHANGED || ret == SSH_SERVER_FOUND_OTHER) {
+            ssh_known_hosts_continue_unsafe(session);
+            ret = SSH_SERVER_KNOWN_OK;
+        } else if (ret == SSH_SERVER_NOT_KNOWN) {
+            int rv = ssh_session_update_known_hosts(session);
+            if (rv != SSH_OK) {
+                ret = SSH_SERVER_ERROR;
+            } else {
+                ret = SSH_SERVER_KNOWN_OK;
+            }
+        }
+    } else if ((ret == SSH_SERVER_NOT_KNOWN) &&
+               session->opts.StrictHostKeyChecking ==
+                   SSH_STRICT_HOSTKEY_ACCEPT_NEW) {
         int rv = ssh_session_update_known_hosts(session);
         if (rv != SSH_OK) {
             ret = SSH_SERVER_ERROR;

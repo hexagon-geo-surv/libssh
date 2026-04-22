@@ -311,6 +311,30 @@ struct ssh_session_struct {
     struct ssh_pki_ctx_struct *pki_context;
 };
 
+/**
+ * @internal
+ *
+ * @brief Apply the reduced-authentication behavior for an unsafe host key
+ * continuation.
+ *
+ * When `StrictHostKeyChecking` is `off` and host key verification reports a
+ * changed or other key, OpenSSH allows the connection to continue only
+ * "subject to some restrictions"; see `ssh_config(5)` for
+ * `StrictHostKeyChecking` and `check_host_key()` in OpenSSH's `sshconnect.c`
+ * under the `continue_unsafe` label.  For libssh's supported client-side auth
+ * methods, this means disabling password and keyboard-interactive
+ * authentication for the rest of the session.
+ */
+static inline void ssh_known_hosts_continue_unsafe(ssh_session session)
+{
+    SSH_LOG(SSH_LOG_WARN,
+            "Continuing despite an unsafe host key with "
+            "StrictHostKeyChecking=off; password and keyboard-interactive "
+            "authentication have been disabled for this session");
+    session->opts.flags &=
+        ~(SSH_OPT_FLAG_PASSWORD_AUTH | SSH_OPT_FLAG_KBDINT_AUTH);
+}
+
 /** @internal
  * @brief a termination function evaluates the status of an object
  * @param user[in] object to evaluate

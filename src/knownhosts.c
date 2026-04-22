@@ -386,6 +386,7 @@ static void ssh_knownhosts_entries_free(struct ssh_list *entry_list)
     }
     ssh_list_free(entry_list);
 }
+
 /**
  * @internal
  *
@@ -1152,6 +1153,13 @@ ssh_known_hosts_check_server_key(const char *hosts_entry,
     return found;
 }
 
+static bool ssh_known_hosts_should_continue_unsafe(ssh_session session,
+                                                   enum ssh_known_hosts_e rv)
+{
+    return session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF &&
+           (rv == SSH_KNOWN_HOSTS_CHANGED || rv == SSH_KNOWN_HOSTS_OTHER);
+}
+
 /**
  * @brief Get the known_hosts entry for the currently connected session.
  *
@@ -1210,8 +1218,18 @@ ssh_session_get_known_hosts_entry(ssh_session session,
                                                 session->opts.global_knownhosts,
                                                 pentry);
 
+    if (ssh_known_hosts_should_continue_unsafe(session, rv)) {
+        ssh_known_hosts_continue_unsafe(session);
+        return SSH_KNOWN_HOSTS_OK;
+    }
+
     /* If the global file did not help, report the result from the user file. */
     if (rv == SSH_KNOWN_HOSTS_UNKNOWN || rv == SSH_KNOWN_HOSTS_NOT_FOUND) {
+        if (ssh_known_hosts_should_continue_unsafe(session, old_rv)) {
+            ssh_known_hosts_continue_unsafe(session);
+            return SSH_KNOWN_HOSTS_OK;
+        }
+
         if ((old_rv == SSH_KNOWN_HOSTS_UNKNOWN ||
              old_rv == SSH_KNOWN_HOSTS_NOT_FOUND) &&
             (session->opts.StrictHostKeyChecking == SSH_STRICT_HOSTKEY_OFF ||
@@ -1222,10 +1240,16 @@ ssh_session_get_known_hosts_entry(ssh_session session,
                 return SSH_KNOWN_HOSTS_ERROR;
             }
 
-            return ssh_session_get_known_hosts_entry_file(
-                session,
-                session->opts.knownhosts,
-                pentry);
+            rv =
+                ssh_session_get_known_hosts_entry_file(session,
+                                                       session->opts.knownhosts,
+                                                       pentry);
+            if (rv == SSH_KNOWN_HOSTS_UNKNOWN ||
+                rv == SSH_KNOWN_HOSTS_NOT_FOUND) {
+                return SSH_KNOWN_HOSTS_OK;
+            }
+
+            return rv;
         }
 
         return old_rv;

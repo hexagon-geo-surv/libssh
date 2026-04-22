@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "session.c"
 #include "known_hosts.c"
@@ -474,6 +475,135 @@ static void torture_knownhosts_no_hostkeychecking(void **state)
     assert_int_equal(found, SSH_KNOWN_HOSTS_OK);
 }
 
+static void torture_knownhosts_no_hostkeychecking_legacy(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    struct stat sb;
+    char tmp_file[1024] = {0};
+    char *known_hosts_file = NULL;
+    int strict_host_key_checking = SSH_STRICT_HOSTKEY_OFF;
+    int rc;
+
+    snprintf(tmp_file,
+             sizeof(tmp_file),
+             "%s/%s",
+             s->socket_dir,
+             TMP_FILE_TEMPLATE);
+
+    known_hosts_file = torture_create_temp_file(tmp_file);
+    assert_non_null(known_hosts_file);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, known_hosts_file);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "ecdsa-sha2-nistp521");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &strict_host_key_checking);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_is_server_known(session);
+    assert_int_equal(rc, SSH_SERVER_KNOWN_OK);
+
+    rc = stat(known_hosts_file, &sb);
+    assert_return_code(rc, errno);
+    assert_true(sb.st_size > 0);
+
+    free(known_hosts_file);
+}
+
+static void torture_knownhosts_no_hostkeychecking_changed(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char tmp_file[1024] = {0};
+    char *known_hosts_file = NULL;
+    int strict_host_key_checking = SSH_STRICT_HOSTKEY_OFF;
+    int rc;
+
+    snprintf(tmp_file,
+             sizeof(tmp_file),
+             "%s/%s",
+             s->socket_dir,
+             TMP_FILE_TEMPLATE);
+
+    known_hosts_file = torture_create_temp_file(tmp_file);
+    assert_non_null(known_hosts_file);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, known_hosts_file);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "rsa-sha2-256");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &strict_host_key_checking);
+    assert_ssh_return_code(session, rc);
+
+    torture_write_file(known_hosts_file,
+                       TORTURE_SSH_SERVER " ssh-rsa " BADRSA "\n");
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_is_server_known(session);
+    assert_int_equal(rc, SSH_SERVER_KNOWN_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    free(known_hosts_file);
+}
+
+static void torture_knownhosts_no_hostkeychecking_other(void **state)
+{
+    struct torture_state *s = *state;
+    ssh_session session = s->ssh.session;
+    char tmp_file[1024] = {0};
+    char *known_hosts_file = NULL;
+    int strict_host_key_checking = SSH_STRICT_HOSTKEY_OFF;
+    int rc;
+
+    snprintf(tmp_file,
+             sizeof(tmp_file),
+             "%s/%s",
+             s->socket_dir,
+             TMP_FILE_TEMPLATE);
+
+    known_hosts_file = torture_create_temp_file(tmp_file);
+    assert_non_null(known_hosts_file);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, known_hosts_file);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "ecdsa-sha2-nistp521");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_STRICTHOSTKEYCHECK,
+                         &strict_host_key_checking);
+    assert_ssh_return_code(session, rc);
+
+    torture_write_file(known_hosts_file,
+                       TORTURE_SSH_SERVER " ssh-rsa " BADRSA "\n");
+
+    rc = ssh_connect(session);
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_is_server_known(session);
+    assert_int_equal(rc, SSH_SERVER_KNOWN_OK);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH);
+    assert_false(session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH);
+
+    free(known_hosts_file);
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -501,6 +631,18 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_knownhosts_no_hostkeychecking,
                                         session_setup,
                                         session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_knownhosts_no_hostkeychecking_legacy,
+            session_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_knownhosts_no_hostkeychecking_changed,
+            session_setup,
+            session_teardown),
+        cmocka_unit_test_setup_teardown(
+            torture_knownhosts_no_hostkeychecking_other,
+            session_setup,
+            session_teardown),
     };
 
     ssh_init();

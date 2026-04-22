@@ -61,7 +61,8 @@ char *ssh_gcry_bn2dec(bignum bn) {
   }
 
   if (!gcry_mpi_cmp_ui(bn, 0)) {
-    strcpy(ret, "0");
+      ret[0] = '0';
+      ret[1] = '\0';
   } else {
     ten = bignum_new();
     if (ten == NULL) {

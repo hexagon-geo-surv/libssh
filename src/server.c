@@ -695,32 +695,25 @@ int ssh_auth_reply_default(ssh_session session,int partial) {
     session->auth.supported_methods = SSH_AUTH_METHOD_PUBLICKEY | SSH_AUTH_METHOD_PASSWORD;
   }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_PUBLICKEY) {
-    strncat(methods_c, "publickey,",
-            sizeof(methods_c) - strlen(methods_c) - 1);
+      strlcat(methods_c, "publickey,", sizeof(methods_c));
   }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_GSSAPI_MIC){
-	  strncat(methods_c,"gssapi-with-mic,",
-			  sizeof(methods_c) - strlen(methods_c) - 1);
+      strlcat(methods_c, "gssapi-with-mic,", sizeof(methods_c));
   }
   /* Check if GSSAPI Key exchange was performed */
   if (session->auth.supported_methods & SSH_AUTH_METHOD_GSSAPI_KEYEX) {
       if (ssh_kex_is_gss(session->current_crypto)) {
-          strncat(methods_c,
-                  "gssapi-keyex,",
-                  sizeof(methods_c) - strlen(methods_c) - 1);
+          strlcat(methods_c, "gssapi-keyex,", sizeof(methods_c));
       }
   }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_INTERACTIVE) {
-    strncat(methods_c, "keyboard-interactive,",
-            sizeof(methods_c) - strlen(methods_c) - 1);
+      strlcat(methods_c, "keyboard-interactive,", sizeof(methods_c));
   }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_PASSWORD) {
-    strncat(methods_c, "password,",
-            sizeof(methods_c) - strlen(methods_c) - 1);
+      strlcat(methods_c, "password,", sizeof(methods_c));
   }
   if (session->auth.supported_methods & SSH_AUTH_METHOD_HOSTBASED) {
-    strncat(methods_c, "hostbased,",
-            sizeof(methods_c) - strlen(methods_c) - 1);
+      strlcat(methods_c, "hostbased,", sizeof(methods_c));
   }
 
   if (methods_c[0] == '\0' || methods_c[strlen(methods_c)-1] != ',') {

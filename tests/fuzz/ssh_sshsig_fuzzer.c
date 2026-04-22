@@ -56,7 +56,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (signature == NULL) {
         goto out;
     }
-    strncpy(signature, (const char *)data, size);
+    memcpy(signature, data, size);
     signature[size] = '\0';
 
     rc = sshsig_verify(input, sizeof(input), signature, namespace, &pkey);

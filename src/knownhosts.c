@@ -632,14 +632,10 @@ char *ssh_known_hosts_get_algorithms_names(ssh_session session)
         }
 
         if (needcomma) {
-            strncat(methods_buffer,
-                    ",",
-                    sizeof(methods_buffer) - strlen(methods_buffer) - 1);
+            strlcat(methods_buffer, ",", sizeof(methods_buffer));
         }
 
-        strncat(methods_buffer,
-                algo,
-                sizeof(methods_buffer) - strlen(methods_buffer) - 1);
+        strlcat(methods_buffer, algo, sizeof(methods_buffer));
         needcomma = true;
 
         ssh_knownhosts_entry_free(entry);

@@ -1282,6 +1282,69 @@ static void torture_ssh_get_hexa(void **state)
     ssh_string_free_char(hex);
 }
 
+static void torture_strlcpy(void **state)
+{
+    char dest[16];
+    size_t len;
+
+    (void)state;
+
+    /* Test basic copy */
+    len = strlcpy(dest, "hello", sizeof(dest));
+    assert_int_equal(len, 5);
+    assert_string_equal(dest, "hello");
+
+    /* Test truncation */
+    len = strlcpy(dest, "this is a very long string", sizeof(dest));
+    assert_int_equal(len, 26);          /* Returns source length, not copied */
+    assert_int_equal(strlen(dest), 15); /* Truncated to fit */
+
+    /* Test empty string */
+    len = strlcpy(dest, "", sizeof(dest));
+    assert_int_equal(len, 0);
+    assert_string_equal(dest, "");
+
+    /* Test size 0 - should not modify dest */
+    memset(dest, 'x', sizeof(dest));
+    len = strlcpy(dest, "test", 0);
+    assert_int_equal(len, 4);
+    assert_int_equal(dest[0], 'x'); /* Unchanged */
+}
+
+static void torture_strlcat(void **state)
+{
+    char dest[32];
+    size_t len;
+
+    (void)state;
+
+    /* Test basic concatenation */
+    strlcpy(dest, "hello", sizeof(dest));
+    len = strlcat(dest, " world", sizeof(dest));
+    assert_int_equal(len, 11);
+    assert_string_equal(dest, "hello world");
+
+    /* Test concatenation to full buffer */
+    strlcpy(dest, "123456789012345678901234567890", sizeof(dest));
+    len = strlcat(dest, "x", sizeof(dest));
+    assert_int_equal(
+        len,
+        31); /* 30 + 1 = 31, buffer already full so nothing appended */
+
+    /* Test concatenation when dest is already full */
+    memset(dest, 'x', sizeof(dest) - 1);
+    dest[sizeof(dest) - 1] = '\0';
+    len = strlcat(dest, "test", sizeof(dest));
+    assert_int_equal(len, 35);          /* 31 + 4 */
+    assert_int_equal(strlen(dest), 31); /* Unchanged */
+
+    /* Test empty append */
+    strlcpy(dest, "test", sizeof(dest));
+    len = strlcat(dest, "", sizeof(dest));
+    assert_int_equal(len, 4);
+    assert_string_equal(dest, "test");
+}
+
 int torture_run_tests(void) {
     int rc;
     struct CMUnitTest tests[] = {
@@ -1319,6 +1382,8 @@ int torture_run_tests(void) {
         cmocka_unit_test(torture_ssh_check_username_syntax),
         cmocka_unit_test(torture_ssh_is_ipaddr),
         cmocka_unit_test(torture_ssh_get_hexa),
+        cmocka_unit_test(torture_strlcpy),
+        cmocka_unit_test(torture_strlcat),
     };
 
     ssh_init();

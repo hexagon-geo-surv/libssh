@@ -52,7 +52,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (!input) {
         return 1;
     }
-    strncpy(input, (const char *)data, size);
+    memcpy(input, data, size);
     input[size] = '\0';
 
     assert(nalloc_start(data, size) > 0);

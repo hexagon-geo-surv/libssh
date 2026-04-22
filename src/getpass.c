@@ -74,7 +74,7 @@ static int ssh_gets(const char *prompt, char *buf, size_t len, int verify)
         fprintf(stdout, "\n");
 
         if (*tmp) {
-            strncpy(buf, tmp, len);
+            strlcpy(buf, tmp, len);
         }
 
         if (verify) {

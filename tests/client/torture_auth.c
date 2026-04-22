@@ -426,7 +426,7 @@ torture_auth_autopubkey_protected_auth_function (const char *prompt, char *buf, 
     ssh_string_free_char(expected_id);
 
     data->n_calls += 1;
-    strncpy(buf, "secret", len);
+    strlcpy(buf, "secret", len);
     return 0;
 }
 

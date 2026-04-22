@@ -1145,8 +1145,7 @@ char *ssh_dirname (const char *path)
     return NULL;
   }
 
-  strncpy(new, path, len);
-  new[len] = '\0';
+  strlcpy(new, path, len + 1);
 
   return new;
 }
@@ -1203,8 +1202,7 @@ char *ssh_basename (const char *path)
     return NULL;
   }
 
-  strncpy(new, s, len);
-  new[len] = '\0';
+  strlcpy(new, s, len + 1);
 
   return new;
 }
@@ -1621,7 +1619,7 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
             return NULL;
         }
         l = strlen(buf);
-        strncpy(buf + l, x, MAX_BUF_SIZE - l - 1);
+        strlcpy(buf + l, x, MAX_BUF_SIZE - l);
         buf[i] = '\0';
         SAFE_FREE(x);
     }
@@ -2644,5 +2642,48 @@ FILE *ssh_strict_fopen(const char *filename, size_t max_file_size)
     /* the flcose() will close also the underlying fd */
     return f;
 }
+
+/*
+ * BSD-compatible fallback implementations for systems without native
+ * strlcpy/strlcat. These are original implementations following the OpenBSD API
+ * specification. The strlcpy() and strlcat() API was designed by Todd C.
+ * Miller. See: https://man.openbsd.org/strlcpy.3
+ */
+
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *dst, const char *src, size_t size)
+{
+    size_t len = strlen(src);
+
+    if (size != 0) {
+        size_t copy_len = (len >= size) ? size - 1 : len;
+
+        memcpy(dst, src, copy_len);
+        dst[copy_len] = '\0';
+    }
+
+    return len;
+}
+#endif /* HAVE_STRLCPY */
+
+#ifndef HAVE_STRLCAT
+size_t strlcat(char *dst, const char *src, size_t size)
+{
+    size_t dst_len;
+    const char *p = memchr(dst, '\0', size);
+    size_t src_len = strlen(src);
+
+    dst_len = (p != NULL) ? (size_t)(p - dst) : size;
+
+    if (dst_len < size) {
+        size_t copy_len =
+            (src_len >= size - dst_len) ? size - dst_len - 1 : src_len;
+        memcpy(dst + dst_len, src, copy_len);
+        dst[dst_len + copy_len] = '\0';
+    }
+
+    return dst_len + src_len;
+}
+#endif /* HAVE_STRLCAT */
 
 /** @} */

@@ -60,6 +60,14 @@ extern "C" {
 char *strndup(const char *s, size_t n);
 #endif /* ! HAVE_STRNDUP */
 
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *dst, const char *src, size_t size);
+#endif
+
+#ifndef HAVE_STRLCAT
+size_t strlcat(char *dst, const char *src, size_t size);
+#endif
+
 #ifdef HAVE_BYTESWAP_H
 #include <byteswap.h>
 #endif

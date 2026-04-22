@@ -338,9 +338,9 @@ char *ssh_remove_duplicates(const char *list)
     for (i = 0; i < num_tokens; i++) {
         if (should_copy[i]) {
             if (need_comma) {
-                strncat(ret, ",", (max_len - strlen(ret) - 1));
+                strlcat(ret, ",", max_len);
             }
-            strncat(ret, tok->tokens[i], (max_len - strlen(ret) - 1));
+            strlcat(ret, tok->tokens[i], max_len);
             need_comma = true;
         }
     }

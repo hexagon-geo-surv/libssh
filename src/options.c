@@ -2969,7 +2969,7 @@ static char *ssh_bind_options_expand_escape(ssh_bind sshbind, const char *s)
             return NULL;
         }
         l = strlen(buf);
-        strncpy(buf + l, x, MAX_BUF_SIZE - l - 1);
+        strlcpy(buf + l, x, MAX_BUF_SIZE - l);
         buf[i] = '\0';
         SAFE_FREE(x);
     }

@@ -386,7 +386,7 @@ match_cidr_address_list(const char *address,
     }
 
     if (address != NULL) {
-        strncpy(addr, address, NI_MAXHOST - 1);
+        strlcpy(addr, address, sizeof(addr));
 
         /* Remove interface in case of IPv6 address: addr%interface */
         a = strchr(addr, '%');
@@ -484,7 +484,7 @@ match_cidr_address_list(const char *address,
         }
 #undef VALID_CIDR_CHARS
 
-        strncpy(addr_buffer, cp, sizeof(addr_buffer) - 1);
+        strlcpy(addr_buffer, cp, sizeof(addr_buffer));
         sp = strchr(addr_buffer, '/');
         if (sp != NULL) {
             *sp = '\0';

@@ -1840,16 +1840,20 @@ readdir_long_name(char *z_file_name, struct stat *z_st, char *z_long_name)
     *ptr++ = ' ';
     *ptr = '\0';
 
-    snprintf(tmpbuf, sizeof(tmpbuf), "%3d %d %d %d", (int)z_st->st_nlink,
-             (int)z_st->st_uid, (int)z_st->st_gid, (int)z_st->st_size);
-    strcat(z_long_name, tmpbuf);
-
     ctime_r(&z_st->st_mtime, time);
     if ((ptr = strchr(time, '\n'))) {
         *ptr = '\0';
     }
-    snprintf(tmpbuf, sizeof(tmpbuf), " %s %s", time + 4, z_file_name);
-    strcat(z_long_name, tmpbuf);
+    snprintf(tmpbuf,
+             sizeof(tmpbuf),
+             "%3d %d %d %d %s %s",
+             (int)z_st->st_nlink,
+             (int)z_st->st_uid,
+             (int)z_st->st_gid,
+             (int)z_st->st_size,
+             time + 4,
+             z_file_name);
+    strlcat(z_long_name, tmpbuf, MAX_LONG_NAME_LEN);
 
     return SSH_OK;
 }

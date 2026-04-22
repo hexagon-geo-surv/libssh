@@ -1868,8 +1868,7 @@ static int recursive_rm_dir_content(const char *path)
     int rc = 0;
     BOOL removed;
 
-    strcpy(file_path, path);
-    strcat(file_path, "\\*");
+    snprintf(file_path, sizeof(file_path), "%s\\*", path);
 
     file_handle = FindFirstFile(file_path, &file_data);
 
@@ -1897,9 +1896,11 @@ static int recursive_rm_dir_content(const char *path)
             }
 
             /* Create full file path */
-            strcpy(file_path, path);
-            strcat(file_path, "\\");
-            strcat(file_path, file_data.cFileName);
+            snprintf(file_path,
+                     sizeof(file_path),
+                     "%s\\%s",
+                     path,
+                     file_data.cFileName);
 
             attributes = GetFileAttributes(file_path);
             if (attributes & FILE_ATTRIBUTE_DIRECTORY) {

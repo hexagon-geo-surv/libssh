@@ -1402,6 +1402,15 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                 processed = to_be_read - current_macsize;
             }
 
+            if (packet_offset - sizeof(uint32_t) > (size_t)packet_len) {
+                ssh_set_error(session,
+                              SSH_FATAL,
+                              "Invalid packet length %" PRIu32 ", required %zu",
+                              packet_len,
+                              packet_offset + sizeof(uint32_t));
+                goto error;
+            }
+
             /* remaining encrypted bytes from the packet, MAC not included */
             packet_remaining = packet_len - (packet_offset - sizeof(uint32_t));
             cleartext_packet = ssh_buffer_allocate(session->in_buffer,

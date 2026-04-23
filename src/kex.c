@@ -213,7 +213,15 @@
                                            "rsa-sha2-256-cert-v01@openssh.com," \
                                            FIPS_ALLOWED_HOSTKEYS
 
-#define FIPS_ALLOWED_KEX "ecdh-sha2-nistp256,"\
+#ifdef HAVE_MLKEM1024
+#define FIPS_MLKEM_KEX "mlkem768nistp256-sha256," \
+                       "mlkem1024nistp384-sha384,"
+#else
+#define FIPS_MLKEM_KEX "mlkem768nistp256-sha256,"
+#endif
+
+#define FIPS_ALLOWED_KEX FIPS_MLKEM_KEX \
+                         "ecdh-sha2-nistp256,"\
                          "ecdh-sha2-nistp384,"\
                          "ecdh-sha2-nistp521,"\
                          "diffie-hellman-group-exchange-sha256,"\

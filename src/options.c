@@ -1606,6 +1606,7 @@ char *ssh_options_get_algo(ssh_session session,
  *                  - SSH_OPTIONS_ADDRESS_FAMILY
  *                  - SSH_OPTIONS_BATCH_MODE
  *                  - SSH_OPTIONS_CONTROL_MASTER
+ *                  - SSH_OPTIONS_PORT
  *                  - SSH_OPTIONS_IDENTITIES_ONLY
  *                  - SSH_OPTIONS_LOG_VERBOSITY
  *                  - SSH_OPTIONS_STRICTHOSTKEYCHECK
@@ -1633,6 +1634,9 @@ int ssh_options_get_int(ssh_session session,
     switch (type) {
     case SSH_OPTIONS_ADDRESS_FAMILY:
         *value = session->opts.address_family;
+        break;
+    case SSH_OPTIONS_PORT:
+        *value = (session->opts.port == 0) ? 22 : (int)session->opts.port;
         break;
     case SSH_OPTIONS_BATCH_MODE:
         *value = session->opts.batch_mode ? 1 : 0;
@@ -1684,30 +1688,28 @@ int ssh_options_get_int(ssh_session session,
 }
 
 /**
- * @brief This function can get ssh the ssh port. It must only be used on
- *        a valid ssh session. This function is useful when the session
- *        options have been automatically inferred from the environment
- *        or configuration files and one
+ * @brief This function returns the port number set for the SSH session.
  *
- * @param  session An allocated SSH session structure.
+ * It is either the port set explicitly via ssh_options_set() or the value
+ * read from the configuration file. If no port has been set, the default
+ * port 22 is returned.
  *
- * @param  port_target An unsigned integer into which the
- *         port will be set from the ssh session.
+ * @param  session      An allocated SSH session structure.
  *
- * @return       0 on success, < 0 on error.
+ * @param  port_target  A pointer to an unsigned integer to store the port.
  *
+ * @return              0 on success, < 0 on error.
  */
 int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
-    if (session == NULL) {
+    int value;
+    int rc;
+
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PORT, &value);
+    if (rc != SSH_OK) {
         return -1;
     }
 
-    if (session->opts.port == 0) {
-        *port_target = 22;
-        return 0;
-    }
-
-    *port_target = session->opts.port;
+    *port_target = (unsigned int)value;
 
     return 0;
 }

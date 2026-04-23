@@ -2887,6 +2887,19 @@ static void torture_options_get_int(void **state)
     assert_int_equal(rc, SSH_OK);
     assert_int_equal(result, 0);
 
+    /* SSH_OPTIONS_PORT: default should return 22 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PORT, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 22);
+
+    /* After setting port to 2222, getter should return 2222 */
+    ival = 2222;
+    rc = ssh_options_set(session, SSH_OPTIONS_PORT, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PORT, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 2222);
+
 }
 
 static void torture_options_set_rsa_min_size(void **state)

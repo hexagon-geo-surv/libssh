@@ -1573,6 +1573,93 @@ char *ssh_options_get_algo(ssh_session session,
 
 
 /**
+ * @brief Get an integer or boolean SSH option from the session.
+ *
+ * This function is useful when the session options have been automatically
+ * inferred from the environment or configuration files and the application
+ * needs to read back an integer or boolean option value.
+ *
+ * @param  session   An allocated SSH session structure.
+ *
+ * @param  type     The option type to get. This could be one of the
+ *                  following:
+ *                  - SSH_OPTIONS_ADDRESS_FAMILY
+ *                  - SSH_OPTIONS_CONTROL_MASTER
+ *                  - SSH_OPTIONS_IDENTITIES_ONLY
+ *                  - SSH_OPTIONS_LOG_VERBOSITY
+ *                  - SSH_OPTIONS_STRICTHOSTKEYCHECK
+ *                  - SSH_OPTIONS_NODELAY
+ *                  - SSH_OPTIONS_RSA_MIN_SIZE
+ *                  - SSH_OPTIONS_PASSWORD_AUTH
+ *                  - SSH_OPTIONS_PUBKEY_AUTH
+ *                  - SSH_OPTIONS_KBDINT_AUTH
+ *                  - SSH_OPTIONS_GSSAPI_AUTH
+ *                  - SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS
+ *                  - SSH_OPTIONS_GSSAPI_KEY_EXCHANGE
+ *
+ * @param  value    A pointer to an integer to store the option value.
+ *
+ * @return          SSH_OK on success, SSH_ERROR on error.
+ */
+int ssh_options_get_int(ssh_session session,
+                        enum ssh_options_e type,
+                        int *value)
+{
+    if (session == NULL || value == NULL) {
+        return SSH_ERROR;
+    }
+
+    switch (type) {
+    case SSH_OPTIONS_ADDRESS_FAMILY:
+        *value = session->opts.address_family;
+        break;
+    case SSH_OPTIONS_CONTROL_MASTER:
+        *value = session->opts.control_master;
+        break;
+    case SSH_OPTIONS_IDENTITIES_ONLY:
+        *value = session->opts.identities_only ? 1 : 0;
+        break;
+    case SSH_OPTIONS_LOG_VERBOSITY:
+        *value = session->common.log_verbosity;
+        break;
+    case SSH_OPTIONS_STRICTHOSTKEYCHECK:
+        *value = session->opts.StrictHostKeyChecking;
+        break;
+    case SSH_OPTIONS_NODELAY:
+        *value = session->opts.nodelay;
+        break;
+    case SSH_OPTIONS_RSA_MIN_SIZE:
+        *value = session->opts.rsa_min_size;
+        break;
+    case SSH_OPTIONS_PASSWORD_AUTH:
+        *value = (session->opts.flags & SSH_OPT_FLAG_PASSWORD_AUTH) ? 1 : 0;
+        break;
+    case SSH_OPTIONS_PUBKEY_AUTH:
+        *value = (session->opts.flags & SSH_OPT_FLAG_PUBKEY_AUTH) ? 1 : 0;
+        break;
+    case SSH_OPTIONS_KBDINT_AUTH:
+        *value = (session->opts.flags & SSH_OPT_FLAG_KBDINT_AUTH) ? 1 : 0;
+        break;
+    case SSH_OPTIONS_GSSAPI_AUTH:
+        *value = (session->opts.flags & SSH_OPT_FLAG_GSSAPI_AUTH) ? 1 : 0;
+        break;
+    case SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS:
+        *value = session->opts.gss_delegate_creds ? 1 : 0;
+        break;
+#ifdef WITH_GSSAPI
+    case SSH_OPTIONS_GSSAPI_KEY_EXCHANGE:
+        *value = session->opts.gssapi_key_exchange ? 1 : 0;
+        break;
+#endif
+    default:
+        ssh_set_error_invalid(session);
+        return SSH_ERROR;
+    }
+
+    return SSH_OK;
+}
+
+/**
  * @brief This function can get ssh the ssh port. It must only be used on
  *        a valid ssh session. This function is useful when the session
  *        options have been automatically inferred from the environment

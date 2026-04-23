@@ -2645,6 +2645,203 @@ static void torture_options_set_verbosity (void **state)
     assert_int_not_equal(new_level, 0);
 }
 
+static void torture_options_get_int(void **state)
+{
+    ssh_session session = *state;
+    bool bval;
+    int ival;
+    int result;
+    int rc;
+
+    /* NULL session must be rejected */
+    rc = ssh_options_get_int(NULL, SSH_OPTIONS_ADDRESS_FAMILY, &result);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* NULL output pointer must be rejected */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ADDRESS_FAMILY, NULL);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* Unsupported option type must be rejected */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_HOST, &result);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* SSH_OPTIONS_ADDRESS_FAMILY default should be ANY */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ADDRESS_FAMILY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_ADDRESS_FAMILY_ANY);
+
+    /* After setting to INET, getter should return INET */
+    ival = SSH_ADDRESS_FAMILY_INET;
+    rc = ssh_options_set(session, SSH_OPTIONS_ADDRESS_FAMILY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ADDRESS_FAMILY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_ADDRESS_FAMILY_INET);
+
+    /* After setting back to ANY, getter should return ANY */
+    ival = SSH_ADDRESS_FAMILY_ANY;
+    rc = ssh_options_set(session, SSH_OPTIONS_ADDRESS_FAMILY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ADDRESS_FAMILY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_ADDRESS_FAMILY_ANY);
+
+    /* SSH_OPTIONS_CONTROL_MASTER: default should be SSH_CONTROL_MASTER_NO */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_CONTROL_MASTER, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_CONTROL_MASTER_NO);
+
+    /* After setting to AUTO, getter should return AUTO */
+    ival = SSH_CONTROL_MASTER_AUTO;
+    rc = ssh_options_set(session, SSH_OPTIONS_CONTROL_MASTER, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_CONTROL_MASTER, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_CONTROL_MASTER_AUTO);
+
+    /* SSH_OPTIONS_IDENTITIES_ONLY : default should be 0 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_IDENTITIES_ONLY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After enabling, getter should return 1 */
+    bval = true;
+    rc = ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &bval);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_IDENTITIES_ONLY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* SSH_OPTIONS_LOG_VERBOSITY: default should be SSH_LOG_NOLOG */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_LOG_VERBOSITY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_LOG_NOLOG);
+
+    /* After setting to WARNING, getter should return WARNING */
+    ival = SSH_LOG_WARNING;
+    rc = ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_LOG_VERBOSITY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_LOG_WARNING);
+
+    /* SSH_OPTIONS_STRICTHOSTKEYCHECK: default should be 1 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling, getter should return 0 */
+    ival = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_STRICTHOSTKEYCHECK, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* SSH_OPTIONS_NODELAY: default should be 0 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_NODELAY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After enabling, getter should return 1 */
+    ival = 1;
+    rc = ssh_options_set(session, SSH_OPTIONS_NODELAY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_NODELAY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* SSH_OPTIONS_RSA_MIN_SIZE: default should be 0 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_RSA_MIN_SIZE, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After setting to RSA_MIN_KEY_SIZE, getter will return RSA_MIN_KEY_SIZE */
+    ival = RSA_MIN_KEY_SIZE;
+    rc = ssh_options_set(session, SSH_OPTIONS_RSA_MIN_SIZE, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_RSA_MIN_SIZE, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, RSA_MIN_KEY_SIZE);
+
+    /* SSH_OPTIONS_PASSWORD_AUTH : enabled by default */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PASSWORD_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling password auth, getter should return 0 */
+    ival = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PASSWORD_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After re-enabling password auth, getter should return 1 */
+    ival = 1;
+    rc = ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PASSWORD_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* SSH_OPTIONS_PUBKEY_AUTH (bitmask field): enabled by default */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PUBKEY_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling pubkey auth, getter should return 0 */
+    ival = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_PUBKEY_AUTH, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_PUBKEY_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* SSH_OPTIONS_KBDINT_AUTH : enabled by default */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_KBDINT_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling kbdint auth, getter should return 0 */
+    ival = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_KBDINT_AUTH, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_KBDINT_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* SSH_OPTIONS_GSSAPI_AUTH : enabled by default */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_GSSAPI_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling gssapi auth, getter should return 0 */
+    ival = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_AUTH, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_GSSAPI_AUTH, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS: default should be 0 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS,
+                             &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After enabling, getter should return 1 */
+    ival = 1;
+    rc = ssh_options_set(session, SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS,
+                         &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_GSSAPI_DELEGATE_CREDENTIALS,
+                             &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+}
+
 static void torture_options_set_rsa_min_size(void **state)
 {
     ssh_session session = *state;
@@ -3731,6 +3928,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_auth_flags,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_get_int,
                                         setup,
                                         teardown),
     };

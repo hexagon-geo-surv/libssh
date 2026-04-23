@@ -511,5 +511,5 @@ LIBSSH_AFTER_4_11_0
 {
     global:
         ssh_bind_config_parse_string;
+        ssh_options_get_int;
 } LIBSSH_4_11_0;
-

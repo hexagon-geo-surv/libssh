@@ -72,6 +72,7 @@ enum ssh_config_opcode_e {
     SOC_GSSAPIKEYEXCHANGE,
     SOC_GSSAPIKEXALGORITHMS,
     SOC_TAG,
+    SOC_BATCHMODE,
 
     SOC_MAX /* Keep this one last in the list */
 };

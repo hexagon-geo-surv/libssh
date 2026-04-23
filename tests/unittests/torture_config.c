@@ -47,6 +47,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG16 "libssh_testconfig16.tmp"
 #define LIBSSH_TESTCONFIG17 "libssh_testconfig17.tmp"
 #define LIBSSH_TESTCONFIG18 "libssh_testconfig18.tmp"
+#define LIBSSH_TESTCONFIG19 "libssh_testconfig19.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -237,6 +238,12 @@ extern LIBSSH_THREAD int ssh_log_level;
     "Host af6\n"                   \
     "\tAddressFamily inet6\n"
 
+#define LIBSSH_TESTCONFIG_STRING19 \
+    "Host nobatch\n"               \
+    "\tBatchMode no\n"             \
+    "Host batch\n"                 \
+    "\tBatchMode yes\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -326,6 +333,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG16);
     unlink(LIBSSH_TESTCONFIG17);
     unlink(LIBSSH_TESTCONFIG18);
+    unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -388,6 +396,10 @@ static int setup_config_files(void **state)
     torture_write_file(LIBSSH_TESTCONFIG18,
                        LIBSSH_TESTCONFIG_STRING18);
 
+    /* BatchMode */
+    torture_write_file(LIBSSH_TESTCONFIG19,
+                       LIBSSH_TESTCONFIG_STRING19);
+
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
 
@@ -432,6 +444,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG16);
     unlink(LIBSSH_TESTCONFIG17);
     unlink(LIBSSH_TESTCONFIG18);
+    unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -1936,6 +1949,51 @@ static void torture_config_control_master_string(void **state)
 static void torture_config_control_master_file(void **state)
 {
     torture_config_control_master(state, LIBSSH_TESTCONFIG17, NULL);
+}
+
+/**
+ * @brief Verify we can parse BatchMode configuration option
+ */
+static void torture_config_batch_mode(void **state,
+                                      const char *file,
+                                      const char *string)
+{
+    ssh_session session = *state;
+
+    int batch_mode = -1;
+    int rc;
+
+    /* BatchMode no: batch_mode should be 0 */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "nobatch");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, &batch_mode);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(batch_mode, 0);
+
+    /* BatchMode yes: batch_mode should be 1 */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "batch");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, &batch_mode);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(batch_mode, 1);
+}
+
+/**
+ * @brief Verify we can parse BatchMode configuration option from string
+ */
+static void torture_config_batch_mode_string(void **state)
+{
+    torture_config_batch_mode(state, NULL, LIBSSH_TESTCONFIG_STRING19);
+}
+
+/**
+ * @brief Verify we can parse BatchMode configuration option from file
+ */
+static void torture_config_batch_mode_file(void **state)
+{
+    torture_config_batch_mode(state, LIBSSH_TESTCONFIG19, NULL);
 }
 
 /**
@@ -3549,6 +3607,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_control_master_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_batch_mode_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_batch_mode_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

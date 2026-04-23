@@ -121,6 +121,7 @@ ssh_session ssh_new(void)
     session->opts.compressionlevel = 7;
     session->opts.nodelay = 0;
     session->opts.identities_only = false;
+    session->opts.batch_mode = false;
     session->opts.control_master = SSH_CONTROL_MASTER_NO;
 
     session->opts.flags = SSH_OPT_FLAG_PASSWORD_AUTH |

@@ -286,6 +286,7 @@ struct ssh_session_struct {
         int control_master;
         char *control_path;
         int address_family;
+        bool batch_mode;
         char *originalhost;        /* user-supplied host for config matching */
         bool config_hostname_only; /* config hostname path: update host only,
                                       not originalhost */

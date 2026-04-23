@@ -92,7 +92,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"pubkeyauthentication", SOC_PUBKEYAUTHENTICATION, true},
     {"addkeystoagent", SOC_UNSUPPORTED, true},
     {"addressfamily", SOC_ADDRESSFAMILY, true},
-    {"batchmode", SOC_UNSUPPORTED, true},
+    {"batchmode", SOC_BATCHMODE, true},
     {"canonicaldomains", SOC_UNSUPPORTED, true},
     {"canonicalizefallbacklocal", SOC_UNSUPPORTED, true},
     {"canonicalizehostname", SOC_UNSUPPORTED, true},
@@ -1703,6 +1703,14 @@ static int ssh_config_parse_line_internal(ssh_session session,
           ssh_options_set(session, SSH_OPTIONS_IDENTITIES_ONLY, &b);
       }
       break;
+    case SOC_BATCHMODE:
+        i = ssh_config_get_yesno(&s, -1);
+        CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
+        if (*parsing) {
+            bool b = i;
+            ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &b);
+        }
+        break;
     case SOC_CONTROLMASTER:
       p = ssh_config_get_str_tok(&s, NULL);
       CHECK_COND_OR_FAIL(p == NULL, "ControlMaster");

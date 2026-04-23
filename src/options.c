@@ -703,6 +703,17 @@ int ssh_options_set_algo(ssh_session session,
  *                 - SSH_ADDRESS_FAMILY_INET: IPv4 only
  *                 - SSH_ADDRESS_FAMILY_INET6: IPv6 only
  *
+ *              - SSH_OPTIONS_BATCH_MODE
+ *                If set to true, indicates that the application is running
+ *                non-interactively and must not prompt the user. The
+ *                application is responsible for skipping password
+ *                authentication and keyboard-interactive authentication,
+ *                and for returning failure from passphrase callbacks instead
+ *                of prompting the user. Use ssh_options_get_int() with
+ *                SSH_OPTIONS_BATCH_MODE to read back this value after
+ *                parsing a configuration file.
+ *                (bool)
+ *
  * @param  value The value to set. This is a generic pointer and the
  *               datatype which is used should be set according to the
  *               type set.
@@ -1523,6 +1534,15 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
                 session->opts.address_family = *x;
             }
             break;
+        case SSH_OPTIONS_BATCH_MODE:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                bool *x = (bool *)value;
+                session->opts.batch_mode = *x;
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -1584,6 +1604,7 @@ char *ssh_options_get_algo(ssh_session session,
  * @param  type     The option type to get. This could be one of the
  *                  following:
  *                  - SSH_OPTIONS_ADDRESS_FAMILY
+ *                  - SSH_OPTIONS_BATCH_MODE
  *                  - SSH_OPTIONS_CONTROL_MASTER
  *                  - SSH_OPTIONS_IDENTITIES_ONLY
  *                  - SSH_OPTIONS_LOG_VERBOSITY
@@ -1612,6 +1633,9 @@ int ssh_options_get_int(ssh_session session,
     switch (type) {
     case SSH_OPTIONS_ADDRESS_FAMILY:
         *value = session->opts.address_family;
+        break;
+    case SSH_OPTIONS_BATCH_MODE:
+        *value = session->opts.batch_mode ? 1 : 0;
         break;
     case SSH_OPTIONS_CONTROL_MASTER:
         *value = session->opts.control_master;

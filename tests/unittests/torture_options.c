@@ -2645,6 +2645,32 @@ static void torture_options_set_verbosity (void **state)
     assert_int_not_equal(new_level, 0);
 }
 
+static void torture_options_set_batch_mode(void **state)
+{
+    ssh_session session = *state;
+    bool val;
+    int rc;
+
+    /* Default value after setup() should be false */
+    assert_false(session->opts.batch_mode);
+
+    /* NULL value must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, NULL);
+    assert_int_equal(rc, -1);
+
+    /* Batch mode will be disabled */
+    val = false;
+    rc = ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &val);
+    assert_ssh_return_code(session, rc);
+    assert_false(session->opts.batch_mode);
+
+    /* Batch mode will be enabled */
+    val = true;
+    rc = ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &val);
+    assert_ssh_return_code(session, rc);
+    assert_true(session->opts.batch_mode);
+}
+
 static void torture_options_get_int(void **state)
 {
     ssh_session session = *state;
@@ -2654,11 +2680,11 @@ static void torture_options_get_int(void **state)
     int rc;
 
     /* NULL session must be rejected */
-    rc = ssh_options_get_int(NULL, SSH_OPTIONS_ADDRESS_FAMILY, &result);
+    rc = ssh_options_get_int(NULL, SSH_OPTIONS_BATCH_MODE, &result);
     assert_int_equal(rc, SSH_ERROR);
 
     /* NULL output pointer must be rejected */
-    rc = ssh_options_get_int(session, SSH_OPTIONS_ADDRESS_FAMILY, NULL);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, NULL);
     assert_int_equal(rc, SSH_ERROR);
 
     /* Unsupported option type must be rejected */
@@ -2839,6 +2865,27 @@ static void torture_options_get_int(void **state)
                              &result);
     assert_int_equal(rc, SSH_OK);
     assert_int_equal(result, 1);
+
+    /* SSH_OPTIONS_BATCH_MODE default should be 0 */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+
+    /* After enabling batch mode, getter should return 1 */
+    bval = true;
+    rc = ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &bval);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* After disabling batch mode, getter should return 0 */
+    bval = false;
+    rc = ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &bval);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_BATCH_MODE, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
 
 }
 
@@ -3928,6 +3975,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_auth_flags,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_set_batch_mode,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_get_int,

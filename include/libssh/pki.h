@@ -105,7 +105,6 @@ struct ssh_signature_struct {
     enum ssh_digest_e hash_type;
     const char *type_c;
 #if defined(HAVE_LIBGCRYPT)
-    gcry_sexp_t rsa_sig;
     gcry_sexp_t ecdsa_sig;
 #elif defined(HAVE_LIBMBEDCRYPTO)
     ssh_string rsa_sig;

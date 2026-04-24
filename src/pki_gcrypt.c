@@ -1731,42 +1731,10 @@ fail:
 
 ssh_string pki_signature_to_blob(const ssh_signature sig)
 {
-    const char *s = NULL; /* used in RSA */
-
-    gcry_sexp_t sexp = NULL;
-    size_t size = 0;
     ssh_string sig_blob = NULL;
     int rc;
 
     switch (sig->type) {
-    case SSH_KEYTYPE_RSA:
-        sexp = gcry_sexp_find_token(sig->rsa_sig, "s", 0);
-        if (sexp == NULL) {
-            return NULL;
-        }
-        s = gcry_sexp_nth_data(sexp, 1, &size);
-
-        /*
-         * Remove leading zeroes, but only the ones that do not make the MPI
-         * representation look like a negative value (first bit is one),
-         * which might confuse some implementations.
-         */
-        while (size > 1 && s[0] == 0 && (s[1] & 0x80) == 0) {
-            size--;
-            s++;
-        }
-
-        sig_blob = ssh_string_new(size);
-        if (sig_blob == NULL) {
-            return NULL;
-        }
-        rc = ssh_string_fill(sig_blob, discard_const_p(char, s), size);
-        gcry_sexp_release(sexp);
-        if (rc < 0) {
-            SSH_STRING_FREE(sig_blob);
-            return NULL;
-        }
-        break;
     case SSH_KEYTYPE_ED25519:
         sig_blob = pki_ed25519_signature_to_blob(sig);
         break;
@@ -1832,9 +1800,13 @@ ssh_string pki_signature_to_blob(const ssh_signature sig)
         break;
     }
 #endif
+    case SSH_KEYTYPE_RSA:
     case SSH_KEYTYPE_SK_ECDSA:
     case SSH_KEYTYPE_SK_ED25519:
-        /* For SK keys, signature data is already in raw_sig */
+        if (sig->raw_sig == NULL) {
+            SSH_LOG(SSH_LOG_TRACE, "Raw signature is NULL");
+            return NULL;
+        }
         sig_blob = ssh_string_copy(sig->raw_sig);
         break;
     case SSH_KEYTYPE_RSA1:
@@ -1903,12 +1875,8 @@ ssh_signature pki_signature_from_blob(const ssh_key pubkey,
         ssh_log_hexdump("RSA signature", ssh_string_data(sig_blob), len);
 #endif
 
-        err = gcry_sexp_build(&sig->rsa_sig,
-                              NULL,
-                              "(sig-val(rsa(s %b)))",
-                              ssh_string_len(sig_blob),
-                              ssh_string_data(sig_blob));
-        if (err) {
+        sig->raw_sig = ssh_string_copy(sig_blob);
+        if (sig->raw_sig == NULL) {
             ssh_signature_free(sig);
             return NULL;
         }
@@ -2028,7 +1996,16 @@ ssh_signature pki_do_sign_hash(const ssh_key privkey,
     sig->type_c = ssh_key_signature_to_char(privkey->type, hash_type);
     sig->hash_type = hash_type;
     switch (privkey->type) {
-    case SSH_KEYTYPE_RSA:
+    case SSH_KEYTYPE_RSA: {
+        gcry_sexp_t rsa_sig = NULL;
+        gcry_sexp_t sig_sexp = NULL;
+        ssh_string sig_blob_padded = NULL;
+        char *blob_padded_data = NULL;
+        const char *s = NULL;
+        size_t sig_len = 0;
+        size_t pad_len = 0;
+        size_t rsalen = (gcry_pk_get_nbits(privkey->rsa) + 7) / 8;
+
         switch (hash_type) {
         case SSH_DIGEST_SHA1:
             hash_c = "sha1";
@@ -2055,13 +2032,64 @@ ssh_signature pki_do_sign_hash(const ssh_key privkey,
             return NULL;
         }
 
-        err = gcry_pk_sign(&sig->rsa_sig, sexp, privkey->rsa);
+        err = gcry_pk_sign(&rsa_sig, sexp, privkey->rsa);
         gcry_sexp_release(sexp);
         if (err) {
             ssh_signature_free(sig);
             return NULL;
         }
+
+        /* Check for invalid modulus length */
+        if (rsalen == 0) {
+            SSH_LOG(SSH_LOG_PACKET, "Invalid RSA modulus length: %zu", rsalen);
+            goto errout;
+        }
+
+        sig_sexp = gcry_sexp_find_token(rsa_sig, "s", 0);
+        if (sig_sexp == NULL) {
+            SSH_LOG(SSH_LOG_PACKET,
+                    "RSA error: Failed to find signature S-expression token "
+                    "'s' in gcrypt output");
+            goto errout;
+        }
+        s = gcry_sexp_nth_data(sig_sexp, 1, &sig_len);
+        if (s == NULL) {
+            SSH_LOG(SSH_LOG_PACKET,
+                    "RSA error: S-expression does not contain signature blob");
+            goto errout;
+        }
+        if (sig_len > rsalen) {
+            SSH_LOG(SSH_LOG_TRACE,
+                    "Signature is too big: %zu > %zu",
+                    sig_len,
+                    rsalen);
+            goto errout;
+        }
+
+        sig_blob_padded = ssh_string_new(rsalen);
+        if (sig_blob_padded == NULL) {
+            goto errout;
+        }
+        pad_len = rsalen - sig_len;
+        blob_padded_data = ssh_string_data(sig_blob_padded);
+        if (blob_padded_data == NULL) {
+            goto errout;
+        }
+        /* Fill the leading bytes with zeroes */
+        memset(blob_padded_data, 0, pad_len);
+        /* Copy the signature data into the remaining space */
+        memcpy(blob_padded_data + pad_len, s, sig_len);
+        sig->raw_sig = sig_blob_padded;
+        gcry_sexp_release(sig_sexp);
+        gcry_sexp_release(rsa_sig);
         break;
+    errout:
+        gcry_sexp_release(sig_sexp);
+        gcry_sexp_release(rsa_sig);
+        SSH_STRING_FREE(sig_blob_padded);
+        ssh_signature_free(sig);
+        return NULL;
+    }
     case SSH_KEYTYPE_ED25519:
         err = pki_ed25519_sign(privkey, sig, hash, hlen);
         if (err != SSH_OK) {
@@ -2264,7 +2292,22 @@ int pki_verify_data_signature(ssh_signature signature,
 
     switch (pubkey->type) {
     case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA_CERT01:
+    case SSH_KEYTYPE_RSA_CERT01: {
+        gcry_sexp_t rsa_sig = NULL;
+        size_t raw_sig_len = ssh_string_len(signature->raw_sig);
+        const unsigned char *raw_sig_data = ssh_string_data(signature->raw_sig);
+
+        err = gcry_sexp_build(&rsa_sig,
+                              NULL,
+                              "(sig-val(rsa(s %b)))",
+                              raw_sig_len,
+                              raw_sig_data);
+        if (err) {
+            SSH_LOG(SSH_LOG_TRACE,
+                    "RSA error: could not build S-expression from raw_sig");
+            return SSH_ERROR;
+        }
+
         err = gcry_sexp_build(&sexp,
                               NULL,
                               "(data(flags pkcs1)(hash %s %b))",
@@ -2273,10 +2316,12 @@ int pki_verify_data_signature(ssh_signature signature,
                               hash);
         if (err) {
             SSH_LOG(SSH_LOG_TRACE, "RSA hash error: %s", gcry_strerror(err));
+            gcry_sexp_release(rsa_sig);
             return SSH_ERROR;
         }
-        err = gcry_pk_verify(signature->rsa_sig, sexp, pubkey->rsa);
+        err = gcry_pk_verify(rsa_sig, sexp, pubkey->rsa);
         gcry_sexp_release(sexp);
+        gcry_sexp_release(rsa_sig);
         if (err) {
             SSH_LOG(SSH_LOG_TRACE, "Invalid RSA signature");
             if (gcry_err_code(err) != GPG_ERR_BAD_SIGNATURE) {
@@ -2287,6 +2332,7 @@ int pki_verify_data_signature(ssh_signature signature,
             return SSH_ERROR;
         }
         break;
+    }
     case SSH_KEYTYPE_ECDSA_P256:
     case SSH_KEYTYPE_ECDSA_P384:
     case SSH_KEYTYPE_ECDSA_P521:

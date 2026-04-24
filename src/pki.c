@@ -1013,11 +1013,9 @@ void ssh_signature_free(ssh_signature sig)
 
     switch(sig->type) {
         case SSH_KEYTYPE_RSA:
-#ifdef HAVE_LIBGCRYPT
-            gcry_sexp_release(sig->rsa_sig);
-#elif defined HAVE_LIBMBEDCRYPTO
+#ifdef HAVE_LIBMBEDCRYPTO
             SAFE_FREE(sig->rsa_sig);
-#endif /* HAVE_LIBGCRYPT */
+#endif /* HAVE_LIBMBEDCRYPTO */
             break;
         case SSH_KEYTYPE_ECDSA_P256:
         case SSH_KEYTYPE_ECDSA_P384:

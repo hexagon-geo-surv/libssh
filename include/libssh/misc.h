@@ -53,7 +53,10 @@ int ssh_file_readaccess_ok(const char *file);
 int ssh_dir_writeable(const char *path);
 
 char *ssh_path_expand_tilde(const char *d);
+/* Expand a string using session option values. */
 char *ssh_path_expand_escape(ssh_session session, const char *s);
+/* Expand HostName tokens. */
+char *ssh_path_expand_hostname(ssh_session session, const char *s);
 int ssh_analyze_banner(ssh_session session, int server);
 int ssh_is_ipaddr_v4(const char *str);
 int ssh_is_ipaddr(const char *str);

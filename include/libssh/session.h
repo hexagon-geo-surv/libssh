@@ -290,6 +290,7 @@ struct ssh_session_struct {
         int address_family;
         bool batch_mode;
         char *originalhost;        /* user-supplied host for config matching */
+        char *config_hostname; /* normalized HostName pattern, applied later */
         bool config_hostname_only; /* config hostname path: update host only,
                                       not originalhost */
         char *tag;                 /* configuration tag for Match tagged */

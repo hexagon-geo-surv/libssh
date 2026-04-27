@@ -1469,26 +1469,12 @@ err:
     return NULL;
 }
 
-/** @internal
- * @brief expands a string in function of session options
- *
- * @param[in] session  The SSH session providing option values for expansion.
- * @param[in] s Format string to expand. Known parameters:
- *               - %d user home directory (~)
- *               - %h target host name
- *               - %u local username
- *               - %l local hostname
- *               - %r remote username
- *               - %p remote port
- *               - %j proxyjump string
- *               - %C Hash of %l%h%p%r%j
- *
- * @returns Expanded string. The caller needs to free the memory using
- *          ssh_string_free_char().
- *
- * @see ssh_string_free_char()
+/* Internal expansion helper. hostname_lenient preserves unknown %X tokens
+ * literally for HostName handling.
  */
-char *ssh_path_expand_escape(ssh_session session, const char *s)
+static char *ssh_path_expand_internal(ssh_session session,
+                                      const char *s,
+                                      bool hostname_lenient)
 {
     char *buf = NULL;
     char *r = NULL;
@@ -1520,8 +1506,7 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
 
     for (i = 0; *p != '\0'; p++) {
         if (*p != '%') {
-        escape:
-            buf[i] = *p;
+            buf[i] = hostname_lenient ? tolower((unsigned char)*p) : *p;
             i++;
             if (i >= MAX_BUF_SIZE) {
                 free(buf);
@@ -1534,12 +1519,51 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
 
         p++;
         if (*p == '\0') {
+            /* HostName expansion rejects trailing '%' to match the parse-time
+             * scan. Keep the general expansion path unchanged, where a
+             * trailing '%' is truncated.
+             */
+            if (hostname_lenient) {
+                ssh_set_error(session, SSH_FATAL, "Incomplete Hostname token");
+                free(buf);
+                free(r);
+                return NULL;
+            }
             break;
+        }
+
+        if (hostname_lenient && *p != '%' && *p != 'h') {
+            buf[i] = '%';
+            i++;
+            if (i >= MAX_BUF_SIZE) {
+                ssh_set_error(session, SSH_FATAL, "String too long");
+                free(buf);
+                free(r);
+                return NULL;
+            }
+            buf[i] = *p;
+            i++;
+            if (i >= MAX_BUF_SIZE) {
+                ssh_set_error(session, SSH_FATAL, "String too long");
+                free(buf);
+                free(r);
+                return NULL;
+            }
+            buf[i] = '\0';
+            continue;
         }
 
         switch (*p) {
         case '%':
-            goto escape;
+            buf[i] = '%';
+            i++;
+            if (i >= MAX_BUF_SIZE) {
+                free(buf);
+                free(r);
+                return NULL;
+            }
+            buf[i] = '\0';
+            continue;
         case 'd':
             x = ssh_get_user_home_dir(session);
             if (x == NULL) {
@@ -1557,11 +1581,25 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
             break;
         case 'h':
             if (session->opts.host) {
-                x = strdup(session->opts.host);
+                x = hostname_lenient ? ssh_lowercase(session->opts.host)
+                                     : strdup(session->opts.host);
             } else if (session->opts.originalhost) {
-                x = strdup(session->opts.originalhost);
+                x = hostname_lenient ? ssh_lowercase(session->opts.originalhost)
+                                     : strdup(session->opts.originalhost);
             } else {
                 ssh_set_error(session, SSH_FATAL, "Cannot expand host");
+                free(buf);
+                free(r);
+                return NULL;
+            }
+            break;
+        case 'n':
+            if (session->opts.originalhost) {
+                x = strdup(session->opts.originalhost);
+            } else {
+                ssh_set_error(session,
+                              SSH_FATAL,
+                              "Cannot expand original host");
                 free(buf);
                 free(r);
                 return NULL;
@@ -1633,6 +1671,51 @@ char *ssh_path_expand_escape(ssh_session session, const char *s)
         free(buf);
     }
     return x;
+}
+
+/**
+ * @brief Expand a string using session option values.
+ *
+ * @param[in] session  The SSH session providing option values for expansion.
+ * @param[in] s        Format string to expand.
+ *
+ * Supported tokens:
+ *               - %d user home directory (~)
+ *               - %h target host name
+ *               - %u local username
+ *               - %l local hostname
+ *               - %r remote username
+ *               - %p remote port
+ *               - %j proxyjump string
+ *               - %C Hash of %l%h%p%r%j
+ *               - %n original target host name
+ *
+ * @returns Expanded string. The caller needs to free the memory using
+ *          ssh_string_free_char().
+ *
+ * @see ssh_string_free_char()
+ */
+char *ssh_path_expand_escape(ssh_session session, const char *s)
+{
+    return ssh_path_expand_internal(session, s, false);
+}
+
+/**
+ * @brief Expand HostName tokens.
+ *
+ * @param[in] session  The SSH session providing option values for expansion.
+ * @param[in] s        HostName pattern to expand.
+ *
+ * Like ssh_path_expand_escape(), but only interprets %% and %h. Other %X
+ * tokens are preserved literally. Literal hostname text and %h expansions are
+ * normalized to lowercase.
+ *
+ * @returns Expanded string. The caller needs to free the memory using
+ *          ssh_string_free_char().
+ */
+char *ssh_path_expand_hostname(ssh_session session, const char *s)
+{
+    return ssh_path_expand_internal(session, s, true);
 }
 
 /**

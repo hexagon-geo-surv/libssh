@@ -124,6 +124,14 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
         }
     }
 
+    if (src->opts.config_hostname != NULL) {
+        new->opts.config_hostname = strdup(src->opts.config_hostname);
+        if (new->opts.config_hostname == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+    }
+
     if (src->opts.bindaddr != NULL) {
         new->opts.bindaddr = strdup(src->opts.bindaddr);
         if (new->opts.bindaddr == NULL) {
@@ -782,6 +790,7 @@ int ssh_options_set(ssh_session session,
                     session->opts.username = username;
                 }
                 if (!session->opts.config_hostname_only) {
+                    SAFE_FREE(session->opts.config_hostname);
                     SAFE_FREE(session->opts.originalhost);
                     session->opts.originalhost = hostname;
                 } else {
@@ -2268,6 +2277,46 @@ int ssh_options_apply(ssh_session session)
         if (rc < 0) {
             return -1;
         }
+    }
+
+    if (session->opts.config_hostname != NULL) {
+        char *saved_host = NULL;
+
+        tmp = ssh_path_expand_hostname(session, session->opts.config_hostname);
+        if (tmp == NULL) {
+            return -1;
+        }
+        if (session->opts.host != NULL) {
+            saved_host = strdup(session->opts.host);
+            if (saved_host == NULL) {
+                free(tmp);
+                ssh_set_error_oom(session);
+                return -1;
+            }
+        }
+        session->opts.config_hostname_only = true;
+        rc = ssh_options_set(session, SSH_OPTIONS_HOST, tmp);
+        session->opts.config_hostname_only = false;
+        if (rc != SSH_OK) {
+            /* If HostName expansion leaves a literal '%', keep the current
+             * host instead of treating the deferred HostName as fatal.
+             */
+            if (strchr(tmp, '%') == NULL) {
+                SAFE_FREE(saved_host);
+                free(tmp);
+                return -1;
+            }
+            SSH_LOG(SSH_LOG_WARN,
+                    "HostName %s contains unknown expansion tokens and could "
+                    "not be applied; falling back to current host",
+                    tmp);
+            SAFE_FREE(session->opts.host);
+            session->opts.host = saved_host;
+            saved_host = NULL;
+        }
+        SAFE_FREE(saved_host);
+        free(tmp);
+        SAFE_FREE(session->opts.config_hostname);
     }
 
     if ((session->opts.exp_flags & SSH_OPT_EXP_FLAG_KNOWNHOSTS) == 0) {

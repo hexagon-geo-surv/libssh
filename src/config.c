@@ -534,6 +534,91 @@ ssh_match_exec(ssh_session session, const char *command, bool negate)
 }
 #endif /* WITH_EXEC */
 
+/*
+ * HostName recognizes %% and %h during config parsing. Other %X sequences are
+ * left for deferred HostName expansion, and only a trailing bare '%' is
+ * rejected here.
+ */
+static int ssh_config_scan_hostname_tokens(ssh_session session,
+                                           const char *hostname,
+                                           bool *needs_host,
+                                           bool *has_unknown)
+{
+    const char *p = NULL;
+
+    if (needs_host != NULL) {
+        *needs_host = false;
+    }
+    if (has_unknown != NULL) {
+        *has_unknown = false;
+    }
+
+    if (hostname == NULL) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Cannot scan HostName tokens from NULL input");
+        return -1;
+    }
+
+    for (p = hostname; *p != '\0'; p++) {
+        if (*p == '%') {
+            if (p[1] == '\0') {
+                ssh_set_error(session, SSH_FATAL, "Incomplete Hostname token");
+                return -1;
+            }
+            switch (p[1]) {
+            case '%':
+                p++;
+                continue;
+            case 'h':
+                if (needs_host != NULL) {
+                    *needs_host = true;
+                }
+                p++;
+                continue;
+            default:
+                if (has_unknown != NULL) {
+                    *has_unknown = true;
+                }
+                p++;
+                continue;
+            }
+        }
+    }
+
+    return 0;
+}
+
+static char *ssh_config_lowercase_hostname_pattern(const char *hostname)
+{
+    char *pattern = NULL;
+    char *p = NULL;
+    bool escape = false;
+
+    if (hostname == NULL) {
+        return NULL;
+    }
+
+    pattern = strdup(hostname);
+    if (pattern == NULL) {
+        return NULL;
+    }
+
+    for (p = pattern; *p != '\0'; p++) {
+        if (escape) {
+            escape = false;
+            continue;
+        }
+        if (*p == '%') {
+            escape = true;
+            continue;
+        }
+        *p = tolower((unsigned char)*p);
+    }
+
+    return pattern;
+}
+
 /**
  * @brief: Parse the ProxyJump configuration line and if parsing,
  * stores the result in the configuration option
@@ -1409,25 +1494,60 @@ static int ssh_config_parse_line_internal(ssh_session session,
         p = ssh_config_get_str_tok(&s, NULL);
         CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
         if (*parsing) {
-            char *z = NULL;
-            char *lower = NULL;
-            z = ssh_path_expand_escape(session, p);
-            if (z == NULL) {
-                z = strdup(p);
+            int rc;
+            bool had_expansion = strchr(p, '%') != NULL;
+            bool needs_host = false;
+            bool has_unknown = false;
+            rc = ssh_config_scan_hostname_tokens(session,
+                                                 p,
+                                                 &needs_host,
+                                                 &has_unknown);
+            if (rc < 0) {
+                SAFE_FREE(x);
+                return -1;
             }
-            if (z != NULL) {
-                /* Always lowercase hostname */
-                lower = ssh_lowercase(z);
+            if (had_expansion) {
+                if (!has_unknown &&
+                    (!needs_host || session->opts.host != NULL ||
+                     session->opts.originalhost != NULL)) {
+                    char *expanded = ssh_path_expand_hostname(session, p);
+                    if (expanded == NULL) {
+                        SAFE_FREE(x);
+                        return -1;
+                    }
+                    session->opts.config_hostname_only = true;
+                    rv = ssh_options_set(session, SSH_OPTIONS_HOST, expanded);
+                    session->opts.config_hostname_only = false;
+                    free(expanded);
+                    if (rv != SSH_OK) {
+                        /* Expanded HostName values remain fatal if host
+                         * validation rejects the resulting hostname.
+                         */
+                        SAFE_FREE(x);
+                        return -1;
+                    }
+                } else {
+                    char *hostname_pattern =
+                        ssh_config_lowercase_hostname_pattern(p);
+                    if (hostname_pattern == NULL) {
+                        ssh_set_error_oom(session);
+                        SAFE_FREE(x);
+                        return -1;
+                    }
+                    SAFE_FREE(session->opts.config_hostname);
+                    session->opts.config_hostname = hostname_pattern;
+                }
+            } else {
+                char *lower = ssh_lowercase(p);
                 if (lower == NULL) {
-                    SAFE_FREE(z);
+                    ssh_set_error_oom(session);
                     SAFE_FREE(x);
                     return -1;
                 }
                 session->opts.config_hostname_only = true;
                 ssh_options_set(session, SSH_OPTIONS_HOST, lower);
-                free(lower);
                 session->opts.config_hostname_only = false;
-                free(z);
+                free(lower);
             }
         }
         break;

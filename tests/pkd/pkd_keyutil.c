@@ -263,7 +263,7 @@ void cleanup_putty_client_keys(void)
 
     cleanup_key(PUTTY_ECDSA256_TESTKEY);
     cleanup_file(PUTTY_ECDSA256_PPK_TESTKEY);
-    
+
     cleanup_key(PUTTY_ED25519_TESTKEY);
     cleanup_file(PUTTY_ED25519_PPK_TESTKEY);
 }

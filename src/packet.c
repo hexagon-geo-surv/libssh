@@ -1247,8 +1247,14 @@ static bool ssh_packet_need_rekey(ssh_session session,
 /* in blocking mode, it will read at least len bytes and will block until it's ok. */
 
 /** @internal
- * @handles a data received event. It then calls the handlers for the different packet types
- * or and exception handler callback.
+ * @brief handles a data received event
+ *
+ * Processes up to one packet from the given buffer and calls the handlers
+ * for the different packet types or an exception handler callback. If the
+ * buffer does not contain a complete packet, nothing is processed and zero
+ * is returned. So typically this function needs to be called in a loop until
+ * it returns zero to properly handle multiple packets in the buffer.
+ *
  * @param user pointer to current ssh_session
  * @param data pointer to the data received
  * @len length of data received. It might not be enough for a complete packet
@@ -1590,18 +1596,10 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
 
             session->packet_state = PACKET_STATE_INIT;
             if (processed < receivedlen) {
-                size_t num;
-                /* Handle a potential packet left in socket buffer */
                 SSH_LOG(SSH_LOG_PACKET,
-                        "Processing %zu bytes left in socket buffer",
+                        "packet: %zu bytes still remaining in socket buffer "
+                        "after processing",
                         receivedlen-processed);
-
-                ptr = ((uint8_t*)data) + processed;
-
-                num = ssh_packet_socket_callback(ptr,
-                                                 receivedlen - processed,
-                                                 user);
-                processed += num;
             }
 
             ok = ssh_packet_need_rekey(session, 0);

@@ -1253,7 +1253,7 @@ static bool ssh_packet_need_rekey(ssh_session session,
  * @param data pointer to the data received
  * @len length of data received. It might not be enough for a complete packet
  * @returns number of bytes read and processed. Zero means only partial packet
- * received and negative value means error.
+ * received.
  */
 size_t
 ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
@@ -1610,7 +1610,7 @@ ssh_packet_socket_callback(const void *data, size_t receivedlen, void *user)
                 rc = ssh_send_rekex(session);
                 if (rc != SSH_OK) {
                     SSH_LOG(SSH_LOG_PACKET, "Rekey failed: rc = %d", rc);
-                    return rc;
+                    goto error;
                 }
             }
 

@@ -333,6 +333,11 @@ ssh_gssapi_handle_userauth(ssh_session session, const char *user,
         }
     }
     gss_release_oid_set(&min_stat, &selected);
+    if (i == n_oid) {
+        SSH_LOG(SSH_LOG_TRACE, "GSSAPI: no selected OID matched client OIDs");
+        ssh_auth_reply_default(session, 0);
+        return SSH_ERROR;
+    }
     session->gssapi->user = strdup(user);
     session->gssapi->state = SSH_GSSAPI_STATE_RCV_TOKEN;
     return ssh_gssapi_send_response(session, oids[i]);

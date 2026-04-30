@@ -2197,7 +2197,7 @@ ssh_userauth_kbdint_getprompt(ssh_session session, unsigned int i, char *echo)
         ssh_set_error_invalid(session);
         return NULL;
     }
-    if (i > session->kbdint->nprompts) {
+    if (i >= session->kbdint->nprompts) {
         ssh_set_error_invalid(session);
         return NULL;
     }

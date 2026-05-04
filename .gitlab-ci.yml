@@ -86,7 +86,11 @@ workflow:
   script:
     # torture_gssapi_key_exchange_null is excluded because of a bug
     # https://bugzilla.opensuse.org/show_bug.cgi?id=1254680
-    - cmake $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
+    - cmake
+        -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold"
+        -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold"
+        -DCMAKE_MODULE_LINKER_FLAGS="-fuse-ld=mold"
+        $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
       make -j$(nproc) &&
       ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"
 
@@ -610,8 +614,13 @@ tumbleweed/openssl_3.x/x86/gcc:
 
 tumbleweed/openssl_3.x/x86_64/gcc7:
   extends: .tumbleweed
-  variables:
-    CMAKE_ADDITIONAL_OPTIONS: "-DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7"
+  script:
+    # the gcc7 does not support the -fuse-ld switch so do not include it here
+    - cmake
+      -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7
+      $CMAKE_OPTIONS $CMAKE_ADDITIONAL_OPTIONS .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure -E "^torture_gssapi_key_exchange_null$"
 
 tumbleweed/openssl_3.x/x86/gcc7:
   extends: .tumbleweed

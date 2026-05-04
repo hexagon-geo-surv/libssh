@@ -2110,7 +2110,7 @@ err:
  */
 char *ssh_strreplace(const char *src, const char *pattern, const char *replace)
 {
-    char *p = NULL;
+    const char *p = NULL;
     char *src_replaced = NULL;
 
     if (src == NULL) {

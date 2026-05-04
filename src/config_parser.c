@@ -246,7 +246,7 @@ int ssh_config_parse_uri(const char *tok,
                          bool ignore_port,
                          bool strict)
 {
-    char *endp = NULL;
+    const char *endp = NULL;
     long port_n;
     int rc;
 
@@ -333,7 +333,7 @@ int ssh_config_parse_uri(const char *tok,
                 goto error;
             }
             for (c = *hostname; *c != '\0'; c++) {
-                char *is_meta = strchr("'`\"$\\;&<>|(){},", *c);
+                const char *is_meta = strchr("'`\"$\\;&<>|(){},", *c);
                 int is_space = isspace((unsigned char)*c);
                 int is_ctrl = iscntrl((unsigned char)*c);
                 if (is_meta != NULL || is_space || is_ctrl) {

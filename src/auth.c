@@ -409,6 +409,12 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_pk_ok) {
  * methods are available. The server MAY return a list of methods that may
  * continue.
  *
+ * If the PreferredAuthentications option is set via ssh_options_set(), only
+ * methods listed in that option will be returned, filtered by intersection
+ * with server-advertised methods. This allows the client to restrict which
+ * authentication methods are attempted. Method name resolution is handled
+ * by ssh_auth_method_from_name().
+ *
  * @param[in] session   The SSH session.
  *
  * @param[in] username  Deprecated, set to NULL.
@@ -418,19 +424,72 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_pk_ok) {
  *                      - SSH_AUTH_METHOD_PUBLICKEY
  *                      - SSH_AUTH_METHOD_HOSTBASED
  *                      - SSH_AUTH_METHOD_INTERACTIVE
+ *                      - SSH_AUTH_METHOD_GSSAPI_MIC
+ *                      - SSH_AUTH_METHOD_GSSAPI_KEYEX
  *
  * @warning Other reserved flags may appear in future versions.
  * @see ssh_userauth_none()
+ * @see ssh_options_set()
+ * @see ssh_auth_method_from_name()
  */
 int ssh_userauth_list(ssh_session session, const char *username)
 {
+    int methods = 0;
     (void) username; /* unused */
 
     if (session == NULL) {
         return 0;
     }
 
-    return session->auth.supported_methods;
+    methods = session->auth.supported_methods;
+
+    if (session->opts.preferred_authentications != NULL) {
+        int allowed = 0;
+        char *saveptr = NULL;
+        char *method = NULL;
+        char *auth_copy = strdup(session->opts.preferred_authentications);
+
+        if (auth_copy == NULL) {
+            ssh_set_error_oom(session);
+            SSH_LOG(SSH_LOG_WARNING,
+                    "Failed to allocate memory for PreferredAuthentications");
+            return methods;
+        }
+
+        method = strtok_r(auth_copy, ",", &saveptr);
+
+        while (method != NULL) {
+            char *end = NULL;
+
+            /* Trim leading whitespace */
+            while (*method == ' ' || *method == '\t') {
+                method++;
+            }
+            /* Trim trailing whitespace */
+            end = method + strlen(method) - 1;
+            while (end > method && (*end == ' ' || *end == '\t')) {
+                *end = '\0';
+                end--;
+            }
+
+            allowed |= ssh_auth_method_from_name(method);
+
+            method = strtok_r(NULL, ",", &saveptr);
+        }
+
+        free(auth_copy);
+
+        if (methods != (methods & allowed)) {
+            SSH_LOG(SSH_LOG_DEBUG,
+                    "PreferredAuthentications filtered methods from 0x%x to 0x%x",
+                    methods,
+                    methods & allowed);
+        }
+
+        methods &= allowed;
+    }
+
+    return methods;
 }
 
 /**

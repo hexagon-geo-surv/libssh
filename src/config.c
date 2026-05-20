@@ -116,7 +116,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"nohostauthenticationforlocalhost", SOC_UNSUPPORTED, true},
     {"numberofpasswordprompts", SOC_UNSUPPORTED, true},
     {"pkcs11provider", SOC_UNSUPPORTED, true},
-    {"preferredauthentications", SOC_UNSUPPORTED, true},
+    {"preferredauthentications", SOC_PREFERRED_AUTHENTICATIONS, true},
     {"proxyjump", SOC_PROXYJUMP, true},
     {"proxyusefdpass", SOC_UNSUPPORTED, true},
     {"pubkeyacceptedalgorithms", SOC_PUBKEYACCEPTEDKEYTYPES, true},
@@ -1987,6 +1987,13 @@ static int ssh_config_parse_line_internal(ssh_session session,
         if (*parsing) {
             bool b = i;
             ssh_options_set(session, SSH_OPTIONS_BATCH_MODE, &b);
+        }
+        break;
+    case SOC_PREFERRED_AUTHENTICATIONS:
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        if (*parsing) {
+            ssh_options_set(session, SSH_OPTIONS_PREFERRED_AUTHENTICATIONS, p);
         }
         break;
     case SOC_CONTROLMASTER:

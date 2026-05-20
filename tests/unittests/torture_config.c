@@ -258,6 +258,13 @@ extern LIBSSH_THREAD int ssh_log_level;
     "Host batch\n"                 \
     "\tBatchMode yes\n"
 
+#define LIBSSH_TESTCONFIG20 "libssh_testconfig20.tmp"
+#define LIBSSH_TESTCONFIG_STRING20                    \
+    "Host withpref\n"                                 \
+    "\tPreferredAuthentications publickey,password\n" \
+    "Host nopref\n"                                   \
+    "\tHostName example.com\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -359,6 +366,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
     unlink(LIBSSH_TESTCONFIG_BOOLEAN_INVALID);
     unlink(LIBSSH_TESTCONFIG_BOOLEAN_COMPAT);
+    unlink(LIBSSH_TESTCONFIG20);
 
     torture_write_file(LIBSSH_TESTCONFIG1,
                        LIBSSH_TESTCONFIG_STRING1);
@@ -438,6 +446,10 @@ static int setup_config_files(void **state)
     torture_write_file(LIBSSH_TESTCONFIG_JUMP,
                        LIBSSH_TESTCONFIG_JUMP_STRING);
 
+    /* PreferredAuthentications */
+    torture_write_file(LIBSSH_TESTCONFIG20,
+                       LIBSSH_TESTCONFIG_STRING20);
+
     return 0;
 }
 
@@ -474,6 +486,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG_TIMEOUT_SUFFIX);
     unlink(LIBSSH_TESTCONFIG_BOOLEAN_INVALID);
     unlink(LIBSSH_TESTCONFIG_BOOLEAN_COMPAT);
+    unlink(LIBSSH_TESTCONFIG20);
 
     return 0;
 }
@@ -2424,6 +2437,54 @@ static void torture_config_batch_mode_string(void **state)
 }
 
 /**
+ * @brief Verify we can parse PreferredAuthentications config option
+ */
+static void torture_config_preferred_authentications(void **state,
+                                                     const char *file,
+                                                     const char *string)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc;
+
+    /* Host without PreferredAuthentications then option should be NULL */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "nopref");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_int_equal(rc, SSH_ERROR);
+    assert_null(value);
+
+    /* Host that has PreferredAuthentications set */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "withpref");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "publickey,password");
+    ssh_string_free_char(value);
+    value = NULL;
+}
+
+static void torture_config_preferred_authentications_string(void **state)
+{
+    torture_config_preferred_authentications(state,
+                                             NULL,
+                                             LIBSSH_TESTCONFIG_STRING20);
+}
+
+static void torture_config_preferred_authentications_file(void **state)
+{
+    torture_config_preferred_authentications(state,
+                                             LIBSSH_TESTCONFIG20,
+                                             NULL);
+}
+
+/**
  * @brief Verify we can parse BatchMode configuration option from file
  */
 static void torture_config_batch_mode_file(void **state)
@@ -4354,6 +4415,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_batch_mode_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_preferred_authentications_file,
+                                        setup,
+                                       teardown),
+        cmocka_unit_test_setup_teardown(torture_config_preferred_authentications_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

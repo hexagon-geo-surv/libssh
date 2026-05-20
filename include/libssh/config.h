@@ -73,6 +73,7 @@ enum ssh_config_opcode_e {
     SOC_GSSAPIKEXALGORITHMS,
     SOC_TAG,
     SOC_BATCHMODE,
+    SOC_PREFERRED_AUTHENTICATIONS,
 
     SOC_MAX /* Keep this one last in the list */
 };

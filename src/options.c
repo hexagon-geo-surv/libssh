@@ -273,6 +273,14 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
         }
     }
 
+    if (src->opts.preferred_authentications != NULL) {
+        new->opts.preferred_authentications = strdup(src->opts.preferred_authentications);
+        if (new->opts.preferred_authentications == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+    }
+
     memcpy(new->opts.options_seen, src->opts.options_seen,
            sizeof(new->opts.options_seen));
 
@@ -1608,6 +1616,21 @@ int ssh_options_set(ssh_session session,
                 session->opts.batch_mode = *x;
             }
             break;
+        case SSH_OPTIONS_PREFERRED_AUTHENTICATIONS:
+            v = value;
+            SAFE_FREE(session->opts.preferred_authentications);
+            if (v != NULL) {
+                if (v[0] == '\0') {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                session->opts.preferred_authentications = strdup(v);
+                if (session->opts.preferred_authentications == NULL) {
+                    ssh_set_error_oom(session);
+                    return -1;
+                }
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -1893,6 +1916,10 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
 
         case SSH_OPTIONS_USER:
             src = session->opts.username;
+            break;
+
+        case SSH_OPTIONS_PREFERRED_AUTHENTICATIONS:
+            src = session->opts.preferred_authentications;
             break;
 
         case SSH_OPTIONS_IDENTITY: {

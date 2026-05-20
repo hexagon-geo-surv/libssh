@@ -2849,6 +2849,146 @@ static void torture_options_set_batch_mode(void **state)
     assert_true(session->opts.batch_mode);
 }
 
+static void torture_options_set_preferred_authentications(void **state)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc;
+
+    /* Default value after setup() should be NULL */
+    assert_null(session->opts.preferred_authentications);
+
+    /* Getting an unset option will fail */
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_int_not_equal(rc, SSH_OK);
+    assert_null(value);
+
+    /* NULL value should clear the option */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         NULL);
+    assert_ssh_return_code(session, rc);
+    assert_null(session->opts.preferred_authentications);
+
+    /* Valid comma-separated list */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         "publickey,password");
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(session->opts.preferred_authentications,
+                        "publickey,password");
+
+    /* Getting a set option should succeed and return the same value */
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(value, "publickey,password");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Empty string is an error and it would silently block all auth */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         "");
+    assert_int_equal(rc, -1);
+
+    /* Set a different value and verify get round-trip */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         "publickey");
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_ssh_return_code(session, rc);
+    assert_string_equal(value, "publickey");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Clear the option with NULL */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         NULL);
+    assert_ssh_return_code(session, rc);
+    assert_null(session->opts.preferred_authentications);
+
+    /* Getting a cleared option should fail */
+    rc = ssh_options_get(session,
+                         SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                         &value);
+    assert_int_not_equal(rc, SSH_OK);
+    assert_null(value);
+}
+
+static void torture_options_userauth_list_no_preference(void **state)
+{
+    ssh_session session = *state;
+    int methods = 0;
+
+    /* Set up a known set of server-advertised methods */
+    session->auth.supported_methods = SSH_AUTH_METHOD_PUBLICKEY |
+                                      SSH_AUTH_METHOD_PASSWORD |
+                                      SSH_AUTH_METHOD_INTERACTIVE;
+
+    /* Without PreferredAuthentications, ssh_userauth_list returns all */
+    methods = ssh_userauth_list(session, NULL);
+    assert_int_equal(methods, SSH_AUTH_METHOD_PUBLICKEY |
+                              SSH_AUTH_METHOD_PASSWORD |
+                              SSH_AUTH_METHOD_INTERACTIVE);
+}
+
+static void torture_options_userauth_list_filter_subset(void **state)
+{
+    ssh_session session = *state;
+    int methods = 0;
+
+    session->auth.supported_methods = SSH_AUTH_METHOD_PUBLICKEY |
+                                      SSH_AUTH_METHOD_PASSWORD |
+                                      SSH_AUTH_METHOD_INTERACTIVE |
+                                      SSH_AUTH_METHOD_HOSTBASED;
+
+    /* Whitespace around method names should be trimmed by ssh_userauth_list */
+    ssh_options_set(session,
+                    SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                    " publickey ,  password ");
+    methods = ssh_userauth_list(session, NULL);
+    assert_int_equal(methods, SSH_AUTH_METHOD_PUBLICKEY |
+                              SSH_AUTH_METHOD_PASSWORD);
+}
+
+static void torture_options_userauth_list_method_not_supported(void **state)
+{
+    ssh_session session = *state;
+    int methods = 0;
+
+    session->auth.supported_methods = SSH_AUTH_METHOD_GSSAPI_MIC;
+
+    ssh_options_set(session,
+                    SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                    "publickey,password");
+    methods = ssh_userauth_list(session, NULL);
+    assert_int_equal(methods, 0);
+}
+
+static void torture_options_userauth_list_unknown_method_ignored(void **state)
+{
+    ssh_session session = *state;
+    int methods = 0;
+
+    session->auth.supported_methods = SSH_AUTH_METHOD_PUBLICKEY |
+                                      SSH_AUTH_METHOD_PASSWORD;
+
+    ssh_options_set(session,
+                    SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
+                    "publickey,garbage,password");
+    methods = ssh_userauth_list(session, NULL);
+    assert_int_equal(methods, SSH_AUTH_METHOD_PUBLICKEY |
+                              SSH_AUTH_METHOD_PASSWORD);
+}
+
 static void torture_options_get_int(void **state)
 {
     ssh_session session = *state;
@@ -4180,6 +4320,21 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_batch_mode,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_set_preferred_authentications,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_userauth_list_no_preference,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_userauth_list_filter_subset,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_userauth_list_method_not_supported,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_userauth_list_unknown_method_ignored,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_get_int,

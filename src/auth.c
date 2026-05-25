@@ -226,6 +226,46 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_banner)
 /**
  * @internal
  *
+ * @brief Get the authentication method bitmask from a method name string.
+ *
+ * @param[in] method  The method name string. Valid values are:
+ *                    - "password"
+ *                    - "publickey"
+ *                    - "keyboard-interactive"
+ *                    - "hostbased"
+ *                    - "gssapi-with-mic"
+ *                    - "gssapi-keyex"
+ *
+ * @returns The SSH_AUTH_METHOD_* bitmask, or 0 if the name is unknown.
+ */
+static uint32_t ssh_auth_method_from_name(const char *method)
+{
+    if (strcmp(method, "password") == 0) {
+        return SSH_AUTH_METHOD_PASSWORD;
+    }
+    if (strcmp(method, "publickey") == 0) {
+        return SSH_AUTH_METHOD_PUBLICKEY;
+    }
+    if (strcmp(method, "keyboard-interactive") == 0) {
+        return SSH_AUTH_METHOD_INTERACTIVE;
+    }
+    if (strcmp(method, "hostbased") == 0) {
+        return SSH_AUTH_METHOD_HOSTBASED;
+    }
+#ifdef WITH_GSSAPI
+    if (strcmp(method, "gssapi-with-mic") == 0) {
+        return SSH_AUTH_METHOD_GSSAPI_MIC;
+    }
+    if (strcmp(method, "gssapi-keyex") == 0) {
+        return SSH_AUTH_METHOD_GSSAPI_KEYEX;
+    }
+#endif
+    return 0;
+}
+
+/**
+ * @internal
+ *
  * @brief Handles a SSH_USERAUTH_FAILURE packet.
  *
  * This handles the complete or partial authentication failure.
@@ -233,6 +273,7 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_banner)
 SSH_PACKET_CALLBACK(ssh_packet_userauth_failure) {
     const char *current_method = ssh_auth_get_current_method(session);
     char *auth_methods = NULL;
+    char *methods_copy = NULL;
     uint8_t partial = 0;
     int rc;
     (void) type;
@@ -263,31 +304,23 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_failure) {
                 ssh_get_error(session));
 
     }
-    session->auth.supported_methods = 0;
-    if (strstr(auth_methods, "password") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_PASSWORD;
-    }
-    if (strstr(auth_methods, "keyboard-interactive") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_INTERACTIVE;
-    }
-    if (strstr(auth_methods, "publickey") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_PUBLICKEY;
-    }
-    if (strstr(auth_methods, "hostbased") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_HOSTBASED;
-    }
-#ifdef WITH_GSSAPI
-    if (strstr(auth_methods, "gssapi-with-mic") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_MIC;
-    }
-    if (strstr(auth_methods, "gssapi-keyex") != NULL) {
-        session->auth.supported_methods |= SSH_AUTH_METHOD_GSSAPI_KEYEX;
-    }
-#endif
+    methods_copy = strdup(auth_methods);
+    if (methods_copy != NULL) {
+        char *saveptr = NULL;
+        char *tok = strtok_r(methods_copy, ",", &saveptr);
 
+        session->auth.supported_methods = 0;
+        while (tok != NULL) {
+            session->auth.supported_methods |=
+                ssh_auth_method_from_name(tok);
+            tok = strtok_r(NULL, ",", &saveptr);
+        }
+        SAFE_FREE(methods_copy);
+    }
 end:
     session->auth.current_method = SSH_AUTH_METHOD_UNKNOWN;
     SAFE_FREE(auth_methods);
+    SAFE_FREE(methods_copy);
 
     return SSH_PACKET_USED;
 }

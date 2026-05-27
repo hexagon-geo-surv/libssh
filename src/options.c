@@ -296,6 +296,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     new->opts.nodelay               = src->opts.nodelay;
     new->opts.config_processed      = src->opts.config_processed;
     new->opts.control_master        = src->opts.control_master;
+    new->opts.number_of_password_prompts = src->opts.number_of_password_prompts;
     new->opts.address_family        = src->opts.address_family;
     new->common.log_verbosity       = src->common.log_verbosity;
     new->common.callbacks           = src->common.callbacks;
@@ -735,6 +736,14 @@ int ssh_options_set_algo(ssh_session session,
  *                SSH_OPTIONS_BATCH_MODE to read back this value after
  *                parsing a configuration file.
  *                (bool)
+ *
+ *              - SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS
+ *                Set the maximum number of password prompts before giving up.
+ *                OpenSSH default is 3. The value must be a positive integer
+ *                (>= 1). Passing NULL or a value <= 0 is rejected.
+ *                When read via ssh_options_get_int(), 0 means "not configured"
+ *                and the CLI will use the default of 3.
+ *                (int)
  *
  * @param  value The value to set. This is a generic pointer and the
  *               datatype which is used should be set according to the
@@ -1631,6 +1640,19 @@ int ssh_options_set(ssh_session session,
                 }
             }
             break;
+        case SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                int *x = (int *)value;
+                if (*x <= 0) {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                session->opts.number_of_password_prompts = *x;
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -1699,6 +1721,7 @@ char *ssh_options_get_algo(ssh_session session,
  *                  - SSH_OPTIONS_LOG_VERBOSITY
  *                  - SSH_OPTIONS_STRICTHOSTKEYCHECK
  *                  - SSH_OPTIONS_NODELAY
+ *                  - SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS
  *                  - SSH_OPTIONS_RSA_MIN_SIZE
  *                  - SSH_OPTIONS_PASSWORD_AUTH
  *                  - SSH_OPTIONS_PUBKEY_AUTH
@@ -1728,6 +1751,9 @@ int ssh_options_get_int(ssh_session session,
         break;
     case SSH_OPTIONS_BATCH_MODE:
         *value = session->opts.batch_mode ? 1 : 0;
+        break;
+    case SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS:
+        *value = session->opts.number_of_password_prompts;
         break;
     case SSH_OPTIONS_CONTROL_MASTER:
         *value = session->opts.control_master;

@@ -114,7 +114,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"ipqos", SOC_UNSUPPORTED, true},
     {"kbdinteractivedevices", SOC_UNSUPPORTED, true},
     {"nohostauthenticationforlocalhost", SOC_UNSUPPORTED, true},
-    {"numberofpasswordprompts", SOC_UNSUPPORTED, true},
+    {"numberofpasswordprompts", SOC_NUMBER_OF_PASSWORD_PROMPTS, true},
     {"pkcs11provider", SOC_UNSUPPORTED, true},
     {"preferredauthentications", SOC_PREFERRED_AUTHENTICATIONS, true},
     {"proxyjump", SOC_PROXYJUMP, true},
@@ -1994,6 +1994,14 @@ static int ssh_config_parse_line_internal(ssh_session session,
         CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
         if (*parsing) {
             ssh_options_set(session, SSH_OPTIONS_PREFERRED_AUTHENTICATIONS, p);
+        }
+        break;
+    case SOC_NUMBER_OF_PASSWORD_PROMPTS:
+        l = ssh_config_get_long(&s, -1);
+        CHECK_COND_OR_FAIL(l <= 0 || l > INT_MAX, "Invalid argument");
+        if (*parsing) {
+            i = (int)l;
+            ssh_options_set(session, SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS, &i);
         }
         break;
     case SOC_CONTROLMASTER:

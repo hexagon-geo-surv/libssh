@@ -2989,6 +2989,60 @@ static void torture_options_userauth_list_unknown_method_ignored(void **state)
                               SSH_AUTH_METHOD_PASSWORD);
 }
 
+static void torture_options_number_of_password_prompts(void **state)
+{
+    ssh_session session = *state;
+    int val = 0;
+    int result = 0;
+    int rc = 0;
+
+    /* Default should be 0 */
+    assert_int_equal(session->opts.number_of_password_prompts, 0);
+
+    /* NULL will be rejected */
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                         NULL);
+    assert_int_equal(rc, -1);
+
+    /* 0 is not a valid prompt count */
+    val = 0;
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                         &val);
+    assert_int_equal(rc, -1);
+
+    /* Negative is not a valid prompt count */
+    val = -1;
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                         &val);
+    assert_int_equal(rc, -1);
+
+    /* 3 is the OpenSSH default which will be accepted */
+    val = 3;
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                         &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.number_of_password_prompts, 3);
+
+    /* Verify get returns the same value we just set */
+    rc = ssh_options_get_int(session,
+                             SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                             &result);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(result, 3);
+
+    /* 1 is the minimum sensible value */
+    val = 1;
+    rc = ssh_options_set(session,
+                         SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                         &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.number_of_password_prompts, 1);
+}
+
 static void torture_options_get_int(void **state)
 {
     ssh_session session = *state;
@@ -4335,6 +4389,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_userauth_list_unknown_method_ignored,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_number_of_password_prompts,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_get_int,

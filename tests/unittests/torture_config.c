@@ -50,6 +50,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG17 "libssh_testconfig17.tmp"
 #define LIBSSH_TESTCONFIG18 "libssh_testconfig18.tmp"
 #define LIBSSH_TESTCONFIG19 "libssh_testconfig19.tmp"
+#define LIBSSH_TESTCONFIG21 "libssh_testconfig21.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -265,6 +266,12 @@ extern LIBSSH_THREAD int ssh_log_level;
     "Host nopref\n"                                   \
     "\tHostName example.com\n"
 
+#define LIBSSH_TESTCONFIG_STRING21  \
+    "Host fewprompts\n"             \
+    "\tNumberOfPasswordPrompts 1\n" \
+    "Host defaultprompts\n"         \
+    "\tHostName example.com\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -355,6 +362,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG17);
     unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TESTCONFIG19);
+    unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -426,6 +434,10 @@ static int setup_config_files(void **state)
     torture_write_file(LIBSSH_TESTCONFIG19,
                        LIBSSH_TESTCONFIG_STRING19);
 
+    /* NumberOfPasswordPrompts */
+    torture_write_file(LIBSSH_TESTCONFIG21,
+                       LIBSSH_TESTCONFIG_STRING21);
+
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
 
@@ -475,6 +487,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG17);
     unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TESTCONFIG19);
+    unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -2493,6 +2506,54 @@ static void torture_config_batch_mode_file(void **state)
 }
 
 /**
+ * @brief Verify we can parse NumberOfPasswordPrompts configuration option
+ */
+static void torture_config_number_of_password_prompts(void **state,
+                                                      const char *file,
+                                                      const char *string)
+{
+    ssh_session session = *state;
+    int result = -1;
+    int rc = 0;
+
+    /* Host with NumberOfPasswordPrompts set */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "fewprompts");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session,
+                             SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                             &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 1);
+
+    /* Host without the directive it should remain 0*/
+    memset(&session->opts.number_of_password_prompts, 0,
+           sizeof(session->opts.number_of_password_prompts));
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "defaultprompts");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session,
+                             SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+                             &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 0);
+}
+
+static void torture_config_number_of_password_prompts_string(void **state)
+{
+    torture_config_number_of_password_prompts(state,
+                                              NULL,
+                                              LIBSSH_TESTCONFIG_STRING21);
+}
+
+static void torture_config_number_of_password_prompts_file(void **state)
+{
+    torture_config_number_of_password_prompts(state,
+                                              LIBSSH_TESTCONFIG21,
+                                              NULL);
+}
+
+/**
  * @brief Verify we can parse AdressFamily configuration option
  */
 static void torture_config_address_family(void **state,
@@ -4419,8 +4480,14 @@ int torture_run_tests(void)
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_preferred_authentications_file,
                                         setup,
-                                       teardown),
+                                        teardown),
         cmocka_unit_test_setup_teardown(torture_config_preferred_authentications_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_number_of_password_prompts_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_number_of_password_prompts_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

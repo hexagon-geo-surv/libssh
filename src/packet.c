@@ -1825,6 +1825,7 @@ SSH_PACKET_CALLBACK(ssh_packet_unimplemented){
     if (rc != SSH_OK) {
         SSH_LOG(SSH_LOG_TRACE,
                 "Could not unpack SSH_MSG_UNIMPLEMENTED packet");
+        return SSH_PACKET_USED;
     }
 
     SSH_LOG(SSH_LOG_RARE,

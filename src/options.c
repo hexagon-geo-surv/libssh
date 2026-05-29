@@ -297,6 +297,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     new->opts.config_processed      = src->opts.config_processed;
     new->opts.control_master        = src->opts.control_master;
     new->opts.number_of_password_prompts = src->opts.number_of_password_prompts;
+    new->opts.request_tty           = src->opts.request_tty;
     new->opts.address_family        = src->opts.address_family;
     new->common.log_verbosity       = src->common.log_verbosity;
     new->common.callbacks           = src->common.callbacks;
@@ -743,6 +744,18 @@ int ssh_options_set_algo(ssh_session session,
  *                (>= 1). Passing NULL or a value <= 0 is rejected.
  *                When read via ssh_options_get_int(), 0 means "not configured"
  *                and the CLI will use the default of 3.
+ *                (int)
+ *
+ *              - SSH_OPTIONS_REQUEST_TTY
+ *                Set whether to request a pseudo-terminal for the session.
+ *                Accepted values are SSH_REQUEST_TTY_NO (never),
+ *                SSH_REQUEST_TTY_YES (always),
+ *                SSH_REQUEST_TTY_AUTO (request on login),
+ *                and SSH_REQUEST_TTY_FORCE (always, even when a command is
+ *                specified).Note that this value is parsed from the 
+ *                configuration file and stored for the calling application to
+ *                read; libssh does not automatically request a PTY based on
+ *                this setting.
  *                (int)
  *
  * @param  value The value to set. This is a generic pointer and the
@@ -1653,6 +1666,19 @@ int ssh_options_set(ssh_session session,
                 session->opts.number_of_password_prompts = *x;
             }
             break;
+        case SSH_OPTIONS_REQUEST_TTY:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                int *x = (int *)value;
+                if (*x < SSH_REQUEST_TTY_NO || *x > SSH_REQUEST_TTY_FORCE) {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                session->opts.request_tty = *x;
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -1754,6 +1780,9 @@ int ssh_options_get_int(ssh_session session,
         break;
     case SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS:
         *value = session->opts.number_of_password_prompts;
+        break;
+    case SSH_OPTIONS_REQUEST_TTY:
+        *value = session->opts.request_tty;
         break;
     case SSH_OPTIONS_CONTROL_MASTER:
         *value = session->opts.control_master;
@@ -3335,3 +3364,4 @@ int ssh_bind_options_parse_config(ssh_bind sshbind, const char *filename)
 #endif
 
 /** @} */
+

@@ -148,7 +148,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"localforward", SOC_NA, true},
     {"permitlocalcommand", SOC_NA, true},
     {"remoteforward", SOC_NA, true},
-    {"requesttty", SOC_NA, true},
+    {"requesttty", SOC_REQUEST_TTY, true},
     {"sendenv", SOC_NA, true},
     {"tunnel", SOC_NA, true},
     {"tunneldevice", SOC_NA, true},
@@ -2004,6 +2004,21 @@ static int ssh_config_parse_line_internal(ssh_session session,
             ssh_options_set(session, SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS, &i);
         }
         break;
+    case SOC_REQUEST_TTY: {
+        static const struct ssh_config_token_value_map request_tty_map[] = {
+            {"no", SSH_REQUEST_TTY_NO},
+            {"yes", SSH_REQUEST_TTY_YES},
+            {"auto", SSH_REQUEST_TTY_AUTO},
+            {"force", SSH_REQUEST_TTY_FORCE},
+            {NULL, 0},
+        };
+        i = ssh_config_get_token_value(&s, request_tty_map, -1);
+        CHECK_COND_OR_FAIL(i < 0, "Invalid argument");
+        if (*parsing) {
+            ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &i);
+        }
+        break;
+    }
     case SOC_CONTROLMASTER:
       p = ssh_config_get_str_tok(&s, NULL);
       CHECK_COND_OR_FAIL(p == NULL, "ControlMaster");

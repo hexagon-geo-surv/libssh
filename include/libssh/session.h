@@ -291,6 +291,7 @@ struct ssh_session_struct {
         bool batch_mode;
         char *preferred_authentications;
         int number_of_password_prompts;
+        int request_tty;
         char *originalhost;        /* user-supplied host for config matching */
         char *config_hostname; /* normalized HostName pattern, applied later */
         bool config_hostname_only; /* config hostname path: update host only,

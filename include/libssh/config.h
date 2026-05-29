@@ -75,6 +75,7 @@ enum ssh_config_opcode_e {
     SOC_BATCHMODE,
     SOC_PREFERRED_AUTHENTICATIONS,
     SOC_NUMBER_OF_PASSWORD_PROMPTS,
+    SOC_REQUEST_TTY,
 
     SOC_MAX /* Keep this one last in the list */
 };

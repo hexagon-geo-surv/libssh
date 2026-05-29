@@ -51,6 +51,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG18 "libssh_testconfig18.tmp"
 #define LIBSSH_TESTCONFIG19 "libssh_testconfig19.tmp"
 #define LIBSSH_TESTCONFIG21 "libssh_testconfig21.tmp"
+#define LIBSSH_TESTCONFIG22 "libssh_testconfig22.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -271,6 +272,15 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tNumberOfPasswordPrompts 1\n" \
     "Host defaultprompts\n"         \
     "\tHostName example.com\n"
+#define LIBSSH_TESTCONFIG_STRING22 \
+    "Host notty\n"                 \
+    "\tRequestTTY no\n"            \
+    "Host ttyyes\n"                \
+    "\tRequestTTY yes\n"           \
+    "Host ttyauto\n"               \
+    "\tRequestTTY auto\n"          \
+    "Host ttyforce\n"              \
+    "\tRequestTTY force\n"
 
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
@@ -363,6 +373,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TESTCONFIG21);
+    unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -437,6 +448,9 @@ static int setup_config_files(void **state)
     /* NumberOfPasswordPrompts */
     torture_write_file(LIBSSH_TESTCONFIG21,
                        LIBSSH_TESTCONFIG_STRING21);
+    /* RequestTTY */
+    torture_write_file(LIBSSH_TESTCONFIG22,
+                       LIBSSH_TESTCONFIG_STRING22);
 
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
@@ -488,6 +502,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG18);
     unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TESTCONFIG21);
+    unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -2554,6 +2569,66 @@ static void torture_config_number_of_password_prompts_file(void **state)
 }
 
 /**
+* @brief Verify we can parse RequestTTY configuration option
+ */
+static void torture_config_request_tty(void **state,
+                                       const char *file,
+                                       const char *string)
+{
+    ssh_session session = *state;
+    int request_tty = -1;
+    int rc = 0;
+
+    /* RequestTTY no: request_tty should be SSH_REQUEST_TTY_NO */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "notty");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &request_tty);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(request_tty, SSH_REQUEST_TTY_NO);
+
+    /* RequestTTY yes: request_tty should be SSH_REQUEST_TTY_YES */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ttyyes");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &request_tty);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(request_tty, SSH_REQUEST_TTY_YES);
+
+    /* RequestTTY auto: request_tty should be SSH_REQUEST_TTY_AUTO */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ttyauto");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &request_tty);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(request_tty, SSH_REQUEST_TTY_AUTO);
+
+    /* RequestTTY force: request_tty should be SSH_REQUEST_TTY_FORCE */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ttyforce");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &request_tty);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(request_tty, SSH_REQUEST_TTY_FORCE);
+}
+
+/**
+ * @brief Verify we can parse RequestTTY configuration option from string
+ */
+static void torture_config_request_tty_string(void **state)
+{
+    torture_config_request_tty(state, NULL, LIBSSH_TESTCONFIG_STRING22);
+}
+
+/**
+ * @brief Verify we can parse RequestTTY configuration option from file
+ */
+static void torture_config_request_tty_file(void **state)
+{
+    torture_config_request_tty(state, LIBSSH_TESTCONFIG22, NULL);
+}
+
+/**
  * @brief Verify we can parse AdressFamily configuration option
  */
 static void torture_config_address_family(void **state,
@@ -4488,6 +4563,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_number_of_password_prompts_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_request_tty_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_request_tty_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

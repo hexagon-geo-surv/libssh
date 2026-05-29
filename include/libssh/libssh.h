@@ -401,6 +401,20 @@ enum ssh_pubkey_auth_options_e {
     SSH_PUBKEY_AUTH_HOST_BOUND = 3
 };
 
+/**
+ * @brief Enumeration of the different values for the RequestTTY option.
+ */
+enum ssh_request_tty_e {
+    /** Never request a TTY. */
+    SSH_REQUEST_TTY_NO = 0,
+    /** Always request a TTY. */
+    SSH_REQUEST_TTY_YES = 1,
+    /** Request a TTY when opening a login session. */
+    SSH_REQUEST_TTY_AUTO = 2,
+    /** Always request a TTY, even if a command is specified. */
+    SSH_REQUEST_TTY_FORCE = 3
+};
+
 enum ssh_options_e {
     SSH_OPTIONS_HOST,
     SSH_OPTIONS_PORT,
@@ -459,6 +473,7 @@ enum ssh_options_e {
     SSH_OPTIONS_BATCH_MODE,
     SSH_OPTIONS_PREFERRED_AUTHENTICATIONS,
     SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS,
+    SSH_OPTIONS_REQUEST_TTY,
 };
 
 enum {

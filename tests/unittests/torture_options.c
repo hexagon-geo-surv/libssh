@@ -3043,6 +3043,50 @@ static void torture_options_number_of_password_prompts(void **state)
     assert_int_equal(session->opts.number_of_password_prompts, 1);
 }
 
+static void torture_options_set_request_tty(void **state)
+{
+    ssh_session session = *state;
+    int val = 0;
+    int rc = 0;
+
+    /* Default value should be SSH_REQUEST_TTY_NO */
+    assert_int_equal(session->opts.request_tty, SSH_REQUEST_TTY_NO);
+
+    /* NULL value must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, NULL);
+    assert_int_equal(rc, -1);
+
+    /* Valid values */
+    val = SSH_REQUEST_TTY_NO;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.request_tty, SSH_REQUEST_TTY_NO);
+
+    val = SSH_REQUEST_TTY_YES;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.request_tty, SSH_REQUEST_TTY_YES);
+
+    val = SSH_REQUEST_TTY_AUTO;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.request_tty, SSH_REQUEST_TTY_AUTO);
+
+    val = SSH_REQUEST_TTY_FORCE;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(session->opts.request_tty, SSH_REQUEST_TTY_FORCE);
+
+    /* Invalid value must be rejected */
+    val = -1;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_int_equal(rc, -1);
+
+    val = 100;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
+    assert_int_equal(rc, -1);
+}
+
 static void torture_options_get_int(void **state)
 {
     ssh_session session = *state;
@@ -3272,6 +3316,42 @@ static void torture_options_get_int(void **state)
     assert_int_equal(rc, SSH_OK);
     assert_int_equal(result, 2222);
 
+    /* SSH_OPTIONS_REQUEST_TTY default should be SSH_REQUEST_TTY_NO */
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_REQUEST_TTY_NO);
+
+    /* After setting to YES, getter should return YES */
+    ival = SSH_REQUEST_TTY_YES;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_REQUEST_TTY_YES);
+
+    /* After setting to AUTO, getter should return AUTO */
+    ival = SSH_REQUEST_TTY_AUTO;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_REQUEST_TTY_AUTO);
+
+    /* After setting to FORCE, getter should return FORCE */
+    ival = SSH_REQUEST_TTY_FORCE;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_REQUEST_TTY_FORCE);
+
+    /* After setting back to NO, getter should return NO */
+    ival = SSH_REQUEST_TTY_NO;
+    rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &ival);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_REQUEST_TTY, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, SSH_REQUEST_TTY_NO);
 }
 
 static void torture_options_set_rsa_min_size(void **state)
@@ -4392,6 +4472,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_number_of_password_prompts,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_set_request_tty,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_get_int,

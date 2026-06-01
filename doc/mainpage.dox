@@ -48,7 +48,8 @@ The libssh library provides:
  - <strong>Global Requests</strong>: tcpip-forward, forwarded-tcpip
  - <strong>Channel Requests</strong>: x11, pty, exit-status, signal,
    exit-signal, keepalive@openssh.com, auth-agent-req
-   (auth-agent-req@openssh.com)
+   (auth-agent-req@openssh.com), direct-streamlocal@openssh.com,
+   no-more-sessions@openssh.com
  - <strong>Subsystems</strong>: sftp(version 3), <i>OpenSSH Extensions</i>
  - <strong>SFTP</strong>: statvfs@openssh.com, fstatvfs@openssh.com,
    limits@openssh.com, posix-rename@openssh.com, lsetstat@openssh.com,

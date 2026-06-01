@@ -214,11 +214,11 @@ It was later modified and expanded by the following RFCs.
  - <a href="https://tools.ietf.org/html/rfc9941" target="_blank">RFC 9141</a>,
     Secure Shell (SSH) Key Exchange Method Using Hybrid Streamlined NTRU Prime
     sntrup761 and X25519 with SHA-512: sntrup761x25519-sha512
+ - <a href="https://tools.ietf.org/html/rfc9987" target="_blank">RFC 9987</a>,
+    Secure Shell (SSH) Agent Protocol
 
 There are also drafts that are being currently developed and followed.
 
- - <a href="https://tools.ietf.org/html/draft-miller-ssh-agent-03" target="_blank">draft-miller-ssh-agent-08</a>
-    SSH Agent Protocol
  - <a href="https://tools.ietf.org/html/draft-ietf-sshm-mlkem-hybrid-kex-09" target="_blank">draft-ietf-sshm-mlkem-hybrid-kex-09</a>
     PQ/T Hybrid Key Exchange with ML-KEM in SSH
  - <a href="https://tools.ietf.org/html/draft-ietf-sshm-chacha20-poly1305-02" target="_blank">draft-ietf-sshm-chacha20-poly1305-02</a>

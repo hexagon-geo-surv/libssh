@@ -1387,125 +1387,132 @@ error:
 }
 #endif /* WITH_SERVER */
 
-SSH_PACKET_CALLBACK(ssh_packet_channel_open){
-  ssh_message msg = NULL;
-  char *type_c = NULL;
-  uint32_t originator_port, destination_port;
-  int rc;
+SSH_PACKET_CALLBACK(ssh_packet_channel_open)
+{
+    ssh_message msg = NULL;
+    char *type_c = NULL;
+    uint32_t originator_port, destination_port;
+    int rc;
 
-  (void)type;
-  (void)user;
-  msg = ssh_message_new(session);
-  if (msg == NULL) {
-    ssh_set_error_oom(session);
-    goto error;
-  }
+    (void)type;
+    (void)user;
 
-  msg->type = SSH_REQUEST_CHANNEL_OPEN;
-  rc = ssh_buffer_unpack(packet, "s", &type_c);
-  if (rc != SSH_OK){
-      goto error;
-  }
-
-  SSH_LOG(SSH_LOG_PACKET,
-      "Clients wants to open a %s channel", type_c);
-
-  rc = ssh_buffer_unpack(packet,
-                         "ddd",
-                         &msg->channel_request_open.sender,
-                         &msg->channel_request_open.window,
-                         &msg->channel_request_open.packet_size);
-  if (rc != SSH_OK){
-      goto error;
-  }
-
-  if (msg->channel_request_open.packet_size == 0) {
-      ssh_set_error(session,
-                    SSH_FATAL,
-                    "Invalid maximum packet size 0 in SSH2_MSG_CHANNEL_OPEN");
-      goto error;
-  }
-
-  if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED){
-    ssh_set_error(session,SSH_FATAL, "Invalid state when receiving channel open request (must be authenticated)");
-    goto error;
-  }
-
-  if (strcmp(type_c, "session") == 0) {
-    if (session->flags & SSH_SESSION_FLAG_NO_MORE_SESSIONS) {
-        ssh_session_set_disconnect_message(session, "No more sessions allowed!");
-        ssh_set_error(session, SSH_FATAL, "No more sessions allowed!");
-        session->session_state = SSH_SESSION_STATE_ERROR;
-        ssh_send_disconnect(session);
+    msg = ssh_message_new(session);
+    if (msg == NULL) {
+        ssh_set_error_oom(session);
         goto error;
     }
 
-    msg->channel_request_open.type = SSH_CHANNEL_SESSION;
-    SAFE_FREE(type_c);
-    goto end;
-  }
-
-  if (strcmp(type_c,"direct-tcpip") == 0) {
-    rc = ssh_buffer_unpack(packet,
-                           "sdsd",
-                           &msg->channel_request_open.destination,
-                           &destination_port,
-                           &msg->channel_request_open.originator,
-                           &originator_port);
+    msg->type = SSH_REQUEST_CHANNEL_OPEN;
+    rc = ssh_buffer_unpack(packet, "s", &type_c);
     if (rc != SSH_OK) {
-      goto error;
-    }
-
-    msg->channel_request_open.destination_port = (uint16_t) destination_port;
-    msg->channel_request_open.originator_port = (uint16_t) originator_port;
-    msg->channel_request_open.type = SSH_CHANNEL_DIRECT_TCPIP;
-    goto end;
-  }
-
-  if (strcmp(type_c,"forwarded-tcpip") == 0) {
-    rc = ssh_buffer_unpack(packet, "sdsd",
-            &msg->channel_request_open.destination,
-            &destination_port,
-            &msg->channel_request_open.originator,
-            &originator_port
-        );
-    if (rc != SSH_OK){
         goto error;
     }
-    msg->channel_request_open.destination_port = (uint16_t) destination_port;
-    msg->channel_request_open.originator_port = (uint16_t) originator_port;
-    msg->channel_request_open.type = SSH_CHANNEL_FORWARDED_TCPIP;
-    goto end;
-  }
 
-  if (strcmp(type_c,"x11") == 0) {
-    rc = ssh_buffer_unpack(packet, "sd",
-            &msg->channel_request_open.originator,
-            &originator_port);
-    if (rc != SSH_OK){
+    SSH_LOG(SSH_LOG_PACKET, "Clients wants to open a %s channel", type_c);
+
+    rc = ssh_buffer_unpack(packet,
+                           "ddd",
+                           &msg->channel_request_open.sender,
+                           &msg->channel_request_open.window,
+                           &msg->channel_request_open.packet_size);
+    if (rc != SSH_OK) {
         goto error;
     }
-    msg->channel_request_open.originator_port = (uint16_t) originator_port;
-    msg->channel_request_open.type = SSH_CHANNEL_X11;
-    goto end;
-  }
 
-  if (strcmp(type_c,"auth-agent@openssh.com") == 0) {
-    msg->channel_request_open.type = SSH_CHANNEL_AUTH_AGENT;
-    goto end;
-  }
+    if (msg->channel_request_open.packet_size == 0) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Invalid maximum packet size 0 in SSH2_MSG_CHANNEL_OPEN");
+        goto error;
+    }
 
-  msg->channel_request_open.type = SSH_CHANNEL_UNKNOWN;
-  goto end;
+    if (session->session_state != SSH_SESSION_STATE_AUTHENTICATED) {
+        ssh_set_error(session,
+                      SSH_FATAL,
+                      "Invalid state when receiving channel open request "
+                      "(must be authenticated)");
+        goto error;
+    }
+
+    if (strcmp(type_c, "session") == 0) {
+        if (session->flags & SSH_SESSION_FLAG_NO_MORE_SESSIONS) {
+            ssh_session_set_disconnect_message(session,
+                                               "No more sessions allowed!");
+            ssh_set_error(session, SSH_FATAL, "No more sessions allowed!");
+            session->session_state = SSH_SESSION_STATE_ERROR;
+            ssh_send_disconnect(session);
+            goto error;
+        }
+
+        msg->channel_request_open.type = SSH_CHANNEL_SESSION;
+        SAFE_FREE(type_c);
+        goto end;
+    }
+
+    if (strcmp(type_c, "direct-tcpip") == 0) {
+        rc = ssh_buffer_unpack(packet,
+                               "sdsd",
+                               &msg->channel_request_open.destination,
+                               &destination_port,
+                               &msg->channel_request_open.originator,
+                               &originator_port);
+        if (rc != SSH_OK) {
+            goto error;
+        }
+
+        msg->channel_request_open.destination_port = (uint16_t)destination_port;
+        msg->channel_request_open.originator_port = (uint16_t)originator_port;
+        msg->channel_request_open.type = SSH_CHANNEL_DIRECT_TCPIP;
+        goto end;
+    }
+
+    if (strcmp(type_c, "forwarded-tcpip") == 0) {
+        rc = ssh_buffer_unpack(packet,
+                               "sdsd",
+                               &msg->channel_request_open.destination,
+                               &destination_port,
+                               &msg->channel_request_open.originator,
+                               &originator_port);
+        if (rc != SSH_OK) {
+            goto error;
+        }
+        msg->channel_request_open.destination_port = (uint16_t)destination_port;
+        msg->channel_request_open.originator_port = (uint16_t)originator_port;
+        msg->channel_request_open.type = SSH_CHANNEL_FORWARDED_TCPIP;
+        goto end;
+    }
+
+    if (strcmp(type_c, "x11") == 0) {
+        rc = ssh_buffer_unpack(packet,
+                               "sd",
+                               &msg->channel_request_open.originator,
+                               &originator_port);
+        if (rc != SSH_OK) {
+            goto error;
+        }
+        msg->channel_request_open.originator_port = (uint16_t)originator_port;
+        msg->channel_request_open.type = SSH_CHANNEL_X11;
+        goto end;
+    }
+
+    if (strcmp(type_c, "auth-agent@openssh.com") == 0) {
+        msg->channel_request_open.type = SSH_CHANNEL_AUTH_AGENT;
+        goto end;
+    }
+
+    msg->channel_request_open.type = SSH_CHANNEL_UNKNOWN;
+    goto end;
 
 error:
-  SSH_MESSAGE_FREE(msg);
-end:
-  SAFE_FREE(type_c);
-  if(msg != NULL)
-    ssh_message_queue(session,msg);
+    SSH_MESSAGE_FREE(msg);
 
-  return SSH_PACKET_USED;
+end:
+    SAFE_FREE(type_c);
+    if (msg != NULL)
+        ssh_message_queue(session, msg);
+
+    return SSH_PACKET_USED;
 }
 
 /**

@@ -954,7 +954,8 @@ SSH_PACKET_CALLBACK(channel_rcv_request)
         return SSH_PACKET_USED;
     }
 
-    if (strcmp(request, "auth-agent-req@openssh.com") == 0) {
+    if (strcmp(request, "auth-agent-req") == 0 ||
+        strcmp(request, "auth-agent-req@openssh.com") == 0) {
         int status;
 
         SAFE_FREE(request);
@@ -1119,6 +1120,7 @@ int ssh_channel_open_auth_agent(ssh_channel channel)
       return SSH_ERROR;
   }
 
+  /* FIXME use "auth-agent" from RFC9987 when it gets addoption */
   return channel_open(channel,
                       "auth-agent@openssh.com",
                       WINDOW_DEFAULT,

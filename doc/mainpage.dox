@@ -48,7 +48,10 @@ The libssh library provides:
    exit-signal, keepalive@openssh.com, auth-agent-req
    (auth-agent-req@openssh.com)
  - <strong>Subsystems</strong>: sftp(version 3), <i>OpenSSH Extensions</i>
- - <strong>SFTP</strong>: <i>statvfs@openssh.com, fstatvfs@openssh.com</i>
+ - <strong>SFTP</strong>: statvfs@openssh.com, fstatvfs@openssh.com,
+   limits@openssh.com, posix-rename@openssh.com, lsetstat@openssh.com,
+   hardlink@openssh.com, fsync@openssh.com, expand-path@openssh.com,
+   users-groups-by-id@openssh.com
  - <strong>Thread-safe</strong>: Just don't share sessions
  - <strong>Non-blocking</strong>: it can be used both blocking and non-blocking
  - <strong>Your sockets</strong>: the app hands over the socket, or uses libssh sockets

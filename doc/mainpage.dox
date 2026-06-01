@@ -30,7 +30,8 @@ The libssh library provides:
  - <strong>GSSAPI Key Exchange Methods</strong>: gss-group14-sha256-*,
    gss-group16-sha512-*, gss-nistp256-sha256-*, gss-curve25519-sha256-*
  - <strong>Public Key Algorithms</strong>: ssh-ed25519, ecdsa-sha2-nistp256,
-   ecdsa-sha2-nistp384, ecdsa-sha2-nistp521, ssh-rsa, rsa-sha2-512, rsa-sha2-256
+   ecdsa-sha2-nistp384, ecdsa-sha2-nistp521, ssh-rsa, rsa-sha2-512,
+   rsa-sha2-256, sk-ssh-ed25519@openssh.com, sk-ecdsa-sha2-nistp256@openssh.com
  - <strong>Ciphers</strong>: chacha20-poly1305@openssh.com,
    aes256-gcm@openssh.com, aes128-gcm@openssh.com,
    aes256-ctr, aes192-ctr, aes128-ctr, aes256-cbc, aes192-cbc, aes128-cbc,

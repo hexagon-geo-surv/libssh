@@ -727,6 +727,14 @@ int ssh_options_set_algo(ssh_session session,
  *                 - SSH_ADDRESS_FAMILY_INET: IPv4 only
  *                 - SSH_ADDRESS_FAMILY_INET6: IPv6 only
  *
+ *              - SSH_OPTIONS_PREFERRED_AUTHENTICATIONS
+ *                Set the preferred authentication method(s) to use.
+ *                This value is parsed from the configuration file and stored
+ *                for the calling application to read; libssh does not
+ *                automatically reorder authentication methods based on this
+ *                setting.
+ *                (string)
+ *
  *              - SSH_OPTIONS_BATCH_MODE
  *                If set to true, indicates that the application is running
  *                non-interactively and must not prompt the user. The
@@ -736,6 +744,9 @@ int ssh_options_set_algo(ssh_session session,
  *                of prompting the user. Use ssh_options_get_int() with
  *                SSH_OPTIONS_BATCH_MODE to read back this value after
  *                parsing a configuration file.
+ *                Note that this value is parsed from the configuration file
+ *                and stored for the calling application to read; libssh does
+ *                not automatically change its behavior based on this setting.
  *                (bool)
  *
  *              - SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS
@@ -744,6 +755,9 @@ int ssh_options_set_algo(ssh_session session,
  *                (>= 1). Passing NULL or a value <= 0 is rejected.
  *                When read via ssh_options_get_int(), 0 means "not configured"
  *                and the CLI will use the default of 3.
+ *                Note that this value is parsed from the configuration file
+ *                and stored for the calling application to read; libssh does
+ *                not automatically limit password prompts based on this setting.
  *                (int)
  *
  *              - SSH_OPTIONS_REQUEST_TTY
@@ -752,7 +766,7 @@ int ssh_options_set_algo(ssh_session session,
  *                SSH_REQUEST_TTY_YES (always),
  *                SSH_REQUEST_TTY_AUTO (request on login),
  *                and SSH_REQUEST_TTY_FORCE (always, even when a command is
- *                specified).Note that this value is parsed from the 
+ *                specified). Note that this value is parsed from the
  *                configuration file and stored for the calling application to
  *                read; libssh does not automatically request a PTY based on
  *                this setting.

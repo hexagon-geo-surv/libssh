@@ -150,6 +150,10 @@ static int test_scp_with_cipher(const uint8_t *data,
     ssh_scp scp = NULL, scp_recursive = NULL;
     char buf[256] = {0};
     pthread_t srv_thread;
+    int rc;
+    long timeout = 1;
+    bool no = false;
+    struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
 
     /* Configure mock SSH server with fuzzer data */
     struct ssh_mock_server_config server_config = {
@@ -172,7 +176,6 @@ static int test_scp_with_cipher(const uint8_t *data,
     }
 
     /* Set socket timeouts to prevent indefinite blocking */
-    struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
     setsockopt(socket_fds[0], SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(socket_fds[0], SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     setsockopt(socket_fds[1], SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
@@ -191,18 +194,47 @@ static int test_scp_with_cipher(const uint8_t *data,
         goto cleanup;
     }
 
-    /* Configure client with specified cipher/HMAC */
-    ssh_options_set(client_session, SSH_OPTIONS_FD, &socket_fds[1]);
-    ssh_options_set(client_session, SSH_OPTIONS_HOST, "localhost");
-    ssh_options_set(client_session, SSH_OPTIONS_USER, "fuzz");
-    ssh_options_set(client_session, SSH_OPTIONS_CIPHERS_C_S, cipher);
-    ssh_options_set(client_session, SSH_OPTIONS_CIPHERS_S_C, cipher);
-    ssh_options_set(client_session, SSH_OPTIONS_HMAC_C_S, hmac);
-    ssh_options_set(client_session, SSH_OPTIONS_HMAC_S_C, hmac);
-
-    /* Set timeout for operations (1 second) */
-    long timeout = 1;
-    ssh_options_set(client_session, SSH_OPTIONS_TIMEOUT, &timeout);
+    /* Configure client; bail on the first failing option-set so we don't
+     * run the rest of the iteration in a partially-configured state.
+     * SSH_OPTIONS_PROCESS_CONFIG is set to false so the fuzzer doesn't read
+     * ~/.ssh/config or /etc/ssh/ssh_config — keeps results deterministic
+     * across environments. SSH_OPTIONS_TIMEOUT is 1 second. */
+    rc = ssh_options_set(client_session, SSH_OPTIONS_FD, &socket_fds[1]);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_HOST, "localhost");
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_USER, "fuzz");
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_CIPHERS_C_S, cipher);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_CIPHERS_S_C, cipher);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_HMAC_C_S, hmac);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_HMAC_S_C, hmac);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_PROCESS_CONFIG, &no);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
+    rc = ssh_options_set(client_session, SSH_OPTIONS_TIMEOUT, &timeout);
+    if (rc != SSH_OK) {
+        goto cleanup;
+    }
 
     if (ssh_connect(client_session) != SSH_OK) {
         goto cleanup;

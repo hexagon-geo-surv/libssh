@@ -2849,6 +2849,52 @@ static void torture_options_set_batch_mode(void **state)
     assert_true(session->opts.batch_mode);
 }
 
+static void torture_options_escape_char(void **state)
+{
+    ssh_session session = *state;
+    int val = 0;
+    int result = 0;
+    int rc = 0;
+
+    /* Default value should be 0 */
+    assert_int_equal(session->opts.escape_char, 0);
+
+    /* NULL value must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, NULL);
+    assert_int_equal(rc, -1);
+
+    /* 0 is reserved for unset and must be rejected */
+    val = 0;
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &val);
+    assert_int_equal(rc, -1);
+
+    /* -1 means "none" */
+    val = -1;
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &val);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(result, -1);
+
+    /* Values less than -1 must be rejected */
+    val = -2;
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &val);
+    assert_int_equal(rc, -1);
+
+    /* Values greater than 255 must be rejected */
+    val = 256;
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &val);
+    assert_int_equal(rc, -1);
+
+    /* Standard tilde escape */
+    val = '~';
+    rc = ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &val);
+    assert_ssh_return_code(session, rc);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
+    assert_ssh_return_code(session, rc);
+    assert_int_equal(result, '~');
+}
+
 static void torture_options_set_preferred_authentications(void **state)
 {
     ssh_session session = *state;
@@ -4454,6 +4500,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_batch_mode,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_escape_char,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_preferred_authentications,

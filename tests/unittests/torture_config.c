@@ -52,6 +52,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG19 "libssh_testconfig19.tmp"
 #define LIBSSH_TESTCONFIG21 "libssh_testconfig21.tmp"
 #define LIBSSH_TESTCONFIG22 "libssh_testconfig22.tmp"
+#define LIBSSH_TESTCONFIG24 "libssh_testconfig24.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -282,6 +283,14 @@ extern LIBSSH_THREAD int ssh_log_level;
     "Host ttyforce\n"              \
     "\tRequestTTY force\n"
 
+#define LIBSSH_TESTCONFIG_STRING24 \
+    "Host tildeescape\n"           \
+    "\tEscapeChar ~\n"             \
+    "Host ctrlcescape\n"           \
+    "\tEscapeChar ^C\n"            \
+    "Host noescape\n"              \
+    "\tEscapeChar none\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -374,6 +383,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
+    unlink(LIBSSH_TESTCONFIG24);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -451,6 +461,9 @@ static int setup_config_files(void **state)
     /* RequestTTY */
     torture_write_file(LIBSSH_TESTCONFIG22,
                        LIBSSH_TESTCONFIG_STRING22);
+    /* EscapeChar */
+    torture_write_file(LIBSSH_TESTCONFIG24,
+                       LIBSSH_TESTCONFIG_STRING24);
 
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
@@ -503,6 +516,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG19);
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
+    unlink(LIBSSH_TESTCONFIG24);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -2629,6 +2643,58 @@ static void torture_config_request_tty_file(void **state)
 }
 
 /**
+ * @brief Verify we can parse EscapeChar configuration option
+ */
+static void torture_config_escape_char(void **state,
+                                       const char *file,
+                                       const char *string)
+{
+    ssh_session session = *state;
+    int result = 0;
+    int rc = 0;
+
+    /* EscapeChar ~: escape_char should be '~' */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "tildeescape");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, '~');
+
+    /* EscapeChar ^C: escape_char should be 3 (Ctrl-C) */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "ctrlcescape");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, 3);
+
+    /* EscapeChar none: escape_char should be -1 */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "noescape");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(result, -1);
+}
+
+/**
+ * @brief Verify we can parse EscapeChar configuration option from string
+ */
+static void torture_config_escape_char_string(void **state)
+{
+    torture_config_escape_char(state, NULL, LIBSSH_TESTCONFIG_STRING24);
+}
+
+/**
+ * @brief Verify we can parse EscapeChar configuration option from file
+ */
+static void torture_config_escape_char_file(void **state)
+{
+    torture_config_escape_char(state, LIBSSH_TESTCONFIG24, NULL);
+}
+
+/**
  * @brief Verify we can parse AdressFamily configuration option
  */
 static void torture_config_address_family(void **state,
@@ -4569,6 +4635,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_request_tty_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_escape_char_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_escape_char_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

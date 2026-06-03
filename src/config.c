@@ -137,7 +137,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"controlpersist", SOC_NA, true},
     {"controlpath", SOC_NA, true},
     {"dynamicforward", SOC_NA, true},
-    {"escapechar", SOC_NA, true},
+    {"escapechar", SOC_ESCAPE_CHAR, true},
     {"exitonforwardfailure", SOC_NA, true},
     {"forwardx11", SOC_NA, true},
     {"forwardx11timeout", SOC_NA, true},
@@ -2019,6 +2019,28 @@ static int ssh_config_parse_line_internal(ssh_session session,
         }
         break;
     }
+    case SOC_ESCAPE_CHAR:
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        if (*parsing) {
+            int value = 0;
+
+            if (strcasecmp(p, "none") == 0) {
+                value = -1;
+            } else if (p[0] == '^' && p[2] == '\0' &&
+                      (unsigned char)p[1] >= 64 && (unsigned char)p[1] < 128) {
+                /* Control character notation like ^C for Ctrl-C */
+                value = (unsigned char)p[1] & 31;
+            } else if (p[0] != '\0' && p[1] == '\0') {
+                value = (unsigned char)p[0];
+            } else {
+                CHECK_COND_OR_FAIL(1, "Invalid argument");
+                break;
+            }
+
+            ssh_options_set(session, SSH_OPTIONS_ESCAPE_CHAR, &value);
+        }
+        break;
     case SOC_CONTROLMASTER:
       p = ssh_config_get_str_tok(&s, NULL);
       CHECK_COND_OR_FAIL(p == NULL, "ControlMaster");

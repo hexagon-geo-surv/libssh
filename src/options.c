@@ -298,6 +298,7 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
     new->opts.control_master        = src->opts.control_master;
     new->opts.number_of_password_prompts = src->opts.number_of_password_prompts;
     new->opts.request_tty           = src->opts.request_tty;
+    new->opts.escape_char           = src->opts.escape_char;
     new->opts.address_family        = src->opts.address_family;
     new->common.log_verbosity       = src->common.log_verbosity;
     new->common.callbacks           = src->common.callbacks;
@@ -770,6 +771,25 @@ int ssh_options_set_algo(ssh_session session,
  *                configuration file and stored for the calling application to
  *                read; libssh does not automatically request a PTY based on
  *                this setting.
+ *                (int)
+ *
+ *              - SSH_OPTIONS_ESCAPE_CHAR
+ *                Set the escape character for the session.
+ *                OpenSSH default is '~'. Accepted values are -1 (none,
+ *                escape sequences disabled) or a single byte value
+ *                in the range 1-255 for a custom escape character.
+ *                In the configuration file, the value may be specified
+ *                as a single character ("~"), as "^X" notation for
+ *                control characters ("^C" for Ctrl-C), or as "none"
+ *                to disable escape sequences.
+ *                Passing NULL, 0, or a value less than -1 or greater
+ *                than 255 is rejected.
+ *                When read via ssh_options_get_int(), 0 means "not
+ *                configured" and the CLI will use the default of '~'.
+ *                Note that this value is parsed from the configuration
+ *                file and stored for the calling application to read;
+ *                libssh does not automatically change the escape
+ *                character based on this setting.
  *                (int)
  *
  * @param  value The value to set. This is a generic pointer and the
@@ -1652,6 +1672,19 @@ int ssh_options_set(ssh_session session,
                 session->opts.batch_mode = *x;
             }
             break;
+        case SSH_OPTIONS_ESCAPE_CHAR:
+            if (value == NULL) {
+                ssh_set_error_invalid(session);
+                return -1;
+            } else {
+                int *x = (int *)value;
+                if (*x == 0 || *x < -1 || *x > 255) {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                session->opts.escape_char = *x;
+            }
+            break;
         case SSH_OPTIONS_PREFERRED_AUTHENTICATIONS:
             v = value;
             SAFE_FREE(session->opts.preferred_authentications);
@@ -1762,6 +1795,7 @@ char *ssh_options_get_algo(ssh_session session,
  *                  - SSH_OPTIONS_STRICTHOSTKEYCHECK
  *                  - SSH_OPTIONS_NODELAY
  *                  - SSH_OPTIONS_NUMBER_OF_PASSWORD_PROMPTS
+ *                  - SSH_OPTIONS_ESCAPE_CHAR
  *                  - SSH_OPTIONS_RSA_MIN_SIZE
  *                  - SSH_OPTIONS_PASSWORD_AUTH
  *                  - SSH_OPTIONS_PUBKEY_AUTH
@@ -1797,6 +1831,9 @@ int ssh_options_get_int(ssh_session session,
         break;
     case SSH_OPTIONS_REQUEST_TTY:
         *value = session->opts.request_tty;
+        break;
+    case SSH_OPTIONS_ESCAPE_CHAR:
+        *value = session->opts.escape_char;
         break;
     case SSH_OPTIONS_CONTROL_MASTER:
         *value = session->opts.control_master;

@@ -568,7 +568,7 @@ int sftp_reply_handle(sftp_client_message msg, ssh_string handle)
  */
 int sftp_reply_attr(sftp_client_message msg, sftp_attributes attr)
 {
-    ssh_buffer out;
+    ssh_buffer out = NULL;
 
     out = ssh_buffer_new();
     if (out == NULL) {
@@ -655,7 +655,7 @@ sftp_reply_names_add(sftp_client_message msg, const char *file,
  */
 int sftp_reply_names(sftp_client_message msg)
 {
-    ssh_buffer out;
+    ssh_buffer out = NULL;
 
     out = ssh_buffer_new();
     if (out == NULL) {
@@ -754,7 +754,7 @@ sftp_reply_status(sftp_client_message msg, uint32_t status, const char *message)
  */
 int sftp_reply_data(sftp_client_message msg, const void *data, int len)
 {
-    ssh_buffer out;
+    ssh_buffer out = NULL;
 
     out = ssh_buffer_new();
     if (out == NULL) {
@@ -793,7 +793,8 @@ static int
 sftp_reply_statvfs(sftp_client_message msg, sftp_statvfs_t st)
 {
     int ret = 0;
-    ssh_buffer out;
+    ssh_buffer out = NULL;
+
     out = ssh_buffer_new();
     if (out == NULL) {
         return -1;

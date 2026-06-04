@@ -3337,7 +3337,7 @@ int ssh_channel_read_nonblocking(ssh_channel channel,
  */
 int ssh_channel_poll(ssh_channel channel, int is_stderr)
 {
-  ssh_buffer stdbuf;
+  ssh_buffer stdbuf = NULL;
 
   if ((channel == NULL) || (channel->flags & SSH_CHANNEL_FLAG_FREED_LOCAL)) {
       return SSH_ERROR;

@@ -658,7 +658,7 @@ sftp_extension_supported(sftp_session sftp,
 }
 
 static sftp_file parse_handle_msg(sftp_message msg){
-  sftp_file file;
+  sftp_file file = NULL;
 
   if(msg->packet_type != SSH_FXP_HANDLE) {
     ssh_set_error(msg->sftp->session, SSH_FATAL,
@@ -695,7 +695,7 @@ sftp_dir sftp_opendir(sftp_session sftp, const char *path)
     sftp_message msg = NULL;
     sftp_file file = NULL;
     sftp_dir dir = NULL;
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     ssh_buffer payload = NULL;
     uint32_t id;
     int rc;
@@ -788,9 +788,9 @@ int sftp_server_version(sftp_session sftp) {
 sftp_attributes sftp_readdir(sftp_session sftp, sftp_dir dir)
 {
     sftp_message msg = NULL;
-    sftp_status_message status;
-    sftp_attributes attr;
-    ssh_buffer payload;
+    sftp_status_message status = NULL;
+    sftp_attributes attr = NULL;
+    ssh_buffer payload = NULL;
     uint32_t id;
     int rc;
 
@@ -919,7 +919,7 @@ void sftp_attributes_free(sftp_attributes file){
 
 static int sftp_handle_close(sftp_session sftp, ssh_string handle)
 {
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     sftp_message msg = NULL;
     ssh_buffer buffer = NULL;
     uint32_t id;
@@ -1028,11 +1028,11 @@ sftp_file sftp_open(sftp_session sftp,
                     mode_t mode)
 {
     sftp_message msg = NULL;
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     struct sftp_attributes_struct attr;
-    sftp_file handle;
+    sftp_file handle = NULL;
     ssh_buffer buffer = NULL;
-    sftp_attributes stat_data;
+    sftp_attributes stat_data = NULL;
     uint32_t sftp_flags = 0;
     uint32_t id;
     int rc;
@@ -1162,7 +1162,7 @@ sftp_read(sftp_file handle, void *buf, size_t count)
 {
     sftp_session sftp = NULL;
     sftp_message msg = NULL;
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     ssh_string datastring = NULL;
     size_t datalen;
     ssh_buffer buffer = NULL;
@@ -1332,7 +1332,7 @@ sftp_async_read(sftp_file file, void *data, uint32_t size, uint32_t id)
 {
     sftp_session sftp = NULL;
     sftp_message msg = NULL;
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     ssh_string datastring = NULL;
     int rc, err = SSH_OK;
     size_t len;
@@ -1414,7 +1414,7 @@ sftp_write(sftp_file file, const void *buf, size_t count)
 {
     sftp_session sftp = NULL;
     sftp_message msg = NULL;
-    sftp_status_message status;
+    sftp_status_message status = NULL;
     ssh_buffer buffer = NULL;
     uint32_t id, write_len;
     ssize_t len;
@@ -1559,7 +1559,7 @@ void sftp_rewind(sftp_file file) {
 int sftp_unlink(sftp_session sftp, const char *file) {
   sftp_status_message status = NULL;
   sftp_message msg = NULL;
-  ssh_buffer buffer;
+  ssh_buffer buffer = NULL;
   uint32_t id;
   int rc;
 
@@ -1632,7 +1632,7 @@ int sftp_unlink(sftp_session sftp, const char *file) {
 int sftp_rmdir(sftp_session sftp, const char *directory) {
   sftp_status_message status = NULL;
   sftp_message msg = NULL;
-  ssh_buffer buffer;
+  ssh_buffer buffer = NULL;
   uint32_t id;
   int rc;
 
@@ -1703,7 +1703,7 @@ int sftp_mkdir(sftp_session sftp, const char *directory, mode_t mode)
     sftp_message msg = NULL;
     sftp_attributes errno_attr = NULL;
     struct sftp_attributes_struct attr;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -1911,7 +1911,7 @@ int sftp_rename(sftp_session sftp, const char *original, const char *newname)
 int sftp_setstat(sftp_session sftp, const char *file, sftp_attributes attr)
 {
     uint32_t id;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     sftp_message msg = NULL;
     sftp_status_message status = NULL;
     int rc;
@@ -2124,7 +2124,7 @@ int sftp_symlink(sftp_session sftp, const char *target, const char *dest)
 {
   sftp_status_message status = NULL;
   sftp_message msg = NULL;
-  ssh_buffer buffer;
+  ssh_buffer buffer = NULL;
   uint32_t id;
   int rc;
 
@@ -2217,7 +2217,7 @@ char *sftp_readlink(sftp_session sftp, const char *path)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2428,7 +2428,7 @@ sftp_statvfs_t sftp_statvfs(sftp_session sftp, const char *path)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2507,9 +2507,9 @@ sftp_statvfs_t sftp_statvfs(sftp_session sftp, const char *path)
 
 int sftp_fsync(sftp_file file)
 {
-    sftp_session sftp;
+    sftp_session sftp = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2551,7 +2551,7 @@ int sftp_fsync(sftp_file file)
 
     /* By specification, this command only returns SSH_FXP_STATUS */
     if (msg->packet_type == SSH_FXP_STATUS) {
-        sftp_status_message status;
+        sftp_status_message status = NULL;
 
         status = parse_status_msg(msg);
         sftp_message_free(msg);
@@ -2603,8 +2603,8 @@ sftp_statvfs_t sftp_fstatvfs(sftp_file file)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    sftp_session sftp;
-    ssh_buffer buffer;
+    sftp_session sftp = NULL;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2723,7 +2723,7 @@ static sftp_limits_t sftp_limits_use_extension(sftp_session sftp)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2866,7 +2866,7 @@ char *sftp_canonicalize_path(sftp_session sftp, const char *path)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -2953,7 +2953,7 @@ static sftp_attributes sftp_xstat(sftp_session sftp,
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 
@@ -3035,7 +3035,7 @@ sftp_attributes sftp_fstat(sftp_file file)
 {
     sftp_status_message status = NULL;
     sftp_message msg = NULL;
-    ssh_buffer buffer;
+    ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
 

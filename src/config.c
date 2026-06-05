@@ -283,7 +283,8 @@ local_parse_file(ssh_session session,
     return;
 }
 
-#if defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER)
+#if defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER) && \
+    !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
 static void local_parse_glob(ssh_session session,
                              const char *fileglob,
                              int *parsing,
@@ -313,7 +314,8 @@ static void local_parse_glob(ssh_session session,
 
     globfree(&globbuf);
 }
-#endif /* HAVE_GLOB HAVE_GLOB_GL_FLAGS_MEMBER */
+#endif /* defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER) && \
+    !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION) */
 
 static enum ssh_config_match_e
 ssh_config_get_match_opcode(const char *keyword)
@@ -1223,11 +1225,12 @@ static int ssh_config_parse_line_internal(ssh_session session,
           SAFE_FREE(x);
           return -1;
         }
-#if defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER)
+#if defined(HAVE_GLOB) && defined(HAVE_GLOB_GL_FLAGS_MEMBER) && \
+    !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
         local_parse_glob(session, path, parsing, depth + 1, global);
 #else
         local_parse_file(session, path, parsing, depth + 1, global);
-#endif /* HAVE_GLOB */
+#endif
         free(path);
       }
       break;

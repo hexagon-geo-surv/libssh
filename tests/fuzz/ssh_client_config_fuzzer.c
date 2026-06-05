@@ -47,6 +47,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     ssh_session session = NULL;
     char *input = NULL;
+    const char *env = NULL;
 
     input = (char *)malloc(size+1);
     if (!input) {
@@ -62,6 +63,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         goto out;
     }
 
+    env = getenv("LIBSSH_VERBOSITY");
+    if (env != NULL && strlen(env) > 0) {
+        ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY_STR, env);
+    }
     /* Make sure we have default options set */
     ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);
     ssh_options_set(session, SSH_OPTIONS_HOST, "example.com");

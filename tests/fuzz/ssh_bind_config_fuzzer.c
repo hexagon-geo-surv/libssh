@@ -48,6 +48,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     ssh_bind bind = NULL;
     char *input = NULL;
+    const char *env = NULL;
 
     input = (char *)malloc(size + 1);
     if (!input) {
@@ -63,6 +64,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         goto out;
     }
 
+    env = getenv("LIBSSH_VERBOSITY");
+    if (env != NULL && strlen(env) > 0) {
+        ssh_bind_options_set(bind, SSH_BIND_OPTIONS_LOG_VERBOSITY_STR, env);
+    }
     ssh_bind_config_parse_string(bind, input);
 
     ssh_bind_free(bind);

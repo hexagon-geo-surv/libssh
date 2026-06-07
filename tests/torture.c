@@ -2107,6 +2107,14 @@ void torture_reset_config(ssh_session session)
             SAFE_FREE(entry);
         }
     }
+    if (session->opts.send_env) {
+        char *pat = NULL;
+        for (pat = ssh_list_pop_head(char *, session->opts.send_env);
+             pat != NULL;
+             pat = ssh_list_pop_head(char *, session->opts.send_env)) {
+            SAFE_FREE(pat);
+        }
+    }
     SAFE_FREE(session->opts.tag);
 }
 

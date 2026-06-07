@@ -1843,6 +1843,8 @@ static void torture_options_copy(void **state)
           "AddressFamily inet6\n"
           "Tag copied-tag\n"
           "LocalForward 8080 web:80\n"
+          "SendEnv LANG LC_*\n"
+          "SendEnv TZ\n"
           "",
           config);
     fclose(config);
@@ -1884,6 +1886,19 @@ static void torture_options_copy(void **state)
     it = ssh_list_get_iterator(session->opts.local_forward);
     assert_non_null(it);
     it2 = ssh_list_get_iterator(new->opts.local_forward);
+    assert_non_null(it2);
+    while (it != NULL && it2 != NULL) {
+        assert_string_equal(it->data, it2->data);
+        it = it->next;
+        it2 = it2->next;
+    }
+    assert_null(it);
+    assert_null(it2);
+
+    /* Check the send_env patterns match */
+    it = ssh_list_get_iterator(session->opts.send_env);
+    assert_non_null(it);
+    it2 = ssh_list_get_iterator(new->opts.send_env);
     assert_non_null(it2);
     while (it != NULL && it2 != NULL) {
         assert_string_equal(it->data, it2->data);
@@ -3195,6 +3210,93 @@ static void torture_options_set_request_tty(void **state)
     val = 100;
     rc = ssh_options_set(session, SSH_OPTIONS_REQUEST_TTY, &val);
     assert_int_equal(rc, -1);
+}
+
+static void torture_options_send_env(void **state)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc;
+
+    /* Getting an unset option will fail */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_not_equal(rc, SSH_OK);
+
+    /* NEXT_SEND_ENV without prior SEND_ENV must return SSH_ERROR */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_ERROR);
+    assert_null(value);
+
+    /* NULL pattern must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, NULL);
+    assert_int_equal(rc, -1);
+
+    /* Empty pattern must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "");
+    assert_int_equal(rc, -1);
+
+    /* Adding two patterns */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "LANG");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "LC_*");
+    assert_ssh_return_code(session, rc);
+
+    /* First pattern */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LANG");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Second pattern */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LC_*");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Iterator exhausted */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_EOF);
+    assert_null(value);
+
+    /* '-' alone (empty pattern after prefix) must be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "-");
+    assert_int_equal(rc, -1);
+
+    /* Removing an existing pattern */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "LANG");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "-LANG");
+    assert_ssh_return_code(session, rc);
+
+    /* Only LC_* should remain */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LC_*");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_EOF);
+    assert_null(value);
+
+    /* Removing a non-existing pattern should not affect existing patterns */
+    rc = ssh_options_set(session, SSH_OPTIONS_SEND_ENV, "-NONEXIST");
+    assert_ssh_return_code(session, rc);
+
+    /* LC_* should still be there */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LC_*");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_EOF);
+    assert_null(value);
 }
 
 static void torture_options_get_int(void **state)
@@ -4591,6 +4693,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_request_tty,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_send_env,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_get_int,

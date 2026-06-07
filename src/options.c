@@ -299,6 +299,24 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
         }
     }
 
+    it = ssh_list_get_iterator(src->opts.send_env);
+    while (it) {
+        int rc = 0;
+        char *pattern = strdup((char *)it->data);
+
+        if (pattern == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+        rc = ssh_list_append(new->opts.send_env, pattern);
+        if (rc < 0) {
+            free(pattern);
+            ssh_free(new);
+            return -1;
+        }
+        it = it->next;
+    }
+
     memcpy(new->opts.options_seen, src->opts.options_seen,
            sizeof(new->opts.options_seen));
 
@@ -809,6 +827,20 @@ int ssh_options_set_algo(ssh_session session,
  *                libssh does not automatically change the escape
  *                character based on this setting.
  *                (int)
+ *              - SSH_OPTIONS_SEND_ENV
+ *                Append one environment variable name pattern to the list of
+ *                patterns to send to the server. Multiple calls accumulate
+ *                patterns. If the value has a leading '-' (for example
+ *                "-LANG"), the matching pattern is removed from the list
+ *                instead of added. Removing a pattern that does not exist
+ *                in the list is not an error and the existing patterns are
+ *                not affected. To iterate the list, use SSH_OPTIONS_SEND_ENV
+ *                followed by SSH_OPTIONS_NEXT_SEND_ENV in ssh_options_get().
+ *                Note that this value is parsed from the configuration file
+ *                and stored for the calling application to read; libssh does
+ *                not automatically send environment variables based on this
+ *                setting.
+ *                (const char *)
  *
  *              - SSH_OPTIONS_LOCAL_FORWARD
  *                Append one local forwarding specification to the list.
@@ -1775,6 +1807,51 @@ int ssh_options_set(ssh_session session,
                 session->opts.request_tty = *x;
             }
             break;
+        case SSH_OPTIONS_SEND_ENV:
+            v = value;
+            if (v == NULL || v[0] == '\0') {
+                ssh_set_error_invalid(session);
+                return -1;
+            }
+            /* A leading '-' removes the pattern from the list */
+            if (v[0] == '-') {
+                const char *pattern = NULL;
+                const char *env_value = NULL;
+                struct ssh_iterator *it = NULL;
+                struct ssh_iterator *next = NULL;
+                int cmp = 0;
+
+                pattern = v + 1;
+                if (pattern[0] == '\0') {
+                    ssh_set_error_invalid(session);
+                    return -1;
+                }
+                it = ssh_list_get_iterator(session->opts.send_env);
+                while (it != NULL) {
+                    env_value = ssh_iterator_value(const char *, it);
+                    cmp = strcmp(env_value, pattern);
+                    next = it->next;
+                    if (cmp == 0) {
+                        free((void *)env_value);
+                        ssh_list_remove(session->opts.send_env, it);
+                    }
+                    it = next;
+                }
+                rc = SSH_OK;
+            } else {
+                q = strdup(v);
+                if (q == NULL) {
+                    ssh_set_error_oom(session);
+                    return -1;
+                }
+                rc = ssh_list_append(session->opts.send_env, q);
+                if (rc < 0) {
+                    free(q);
+                    ssh_set_error_oom(session);
+                    return -1;
+                }
+            }
+            break;
         default:
             ssh_set_error(session, SSH_REQUEST_DENIED, "Unknown ssh option %d", type);
             return -1;
@@ -2004,6 +2081,19 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
  *                Repeat calls to get all entries. SSH_EOF is returned when
  *                the end of list is reached.
  *
+ *              - SSH_OPTIONS_SEND_ENV:
+ *                Get the first environment variable name pattern from the
+ *                send_env list (const char *).\n
+ *                \n
+ *                Returns SSH_ERROR if the list is empty.
+ *
+ *              - SSH_OPTIONS_NEXT_SEND_ENV:
+ *                Get the next environment variable name pattern from the
+ *                send_env list (const char *).\n
+ *                \n
+ *                Repeat calls to get all patterns. SSH_EOF is returned when
+ *                the end of list is reached.
+ *
  *              - SSH_OPTIONS_PROXYCOMMAND:
  *                Get the proxycommand necessary to log into the
  *                remote host. When not explicitly set, it will be read
@@ -2150,6 +2240,30 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
                 return SSH_ERROR;
             }
             src = ssh_iterator_value(char *, session->opts.local_forward_it);
+            break;
+
+        case SSH_OPTIONS_SEND_ENV: {
+            struct ssh_iterator *it = NULL;
+            it = ssh_list_get_iterator(session->opts.send_env);
+            if (it == NULL) {
+                return SSH_ERROR;
+            }
+            session->opts.send_env_it = it;
+            src = ssh_iterator_value(char *, it);
+            break;
+        }
+
+        case SSH_OPTIONS_NEXT_SEND_ENV:
+            if (session->opts.send_env_it != NULL) {
+                session->opts.send_env_it = session->opts.send_env_it->next;
+                if (session->opts.send_env_it == NULL) {
+                    *value = NULL;
+                    return SSH_EOF;
+                }
+            } else {
+                return SSH_ERROR;
+            }
+            src = ssh_iterator_value(char *, session->opts.send_env_it);
             break;
 
         case SSH_OPTIONS_PROXYCOMMAND:

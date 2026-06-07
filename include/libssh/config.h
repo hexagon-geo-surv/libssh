@@ -78,6 +78,7 @@ enum ssh_config_opcode_e {
     SOC_REQUEST_TTY,
     SOC_ESCAPE_CHAR,
     SOC_LOCAL_FORWARD,
+    SOC_SEND_ENV,
 
     SOC_MAX /* Keep this one last in the list */
 };

@@ -53,6 +53,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG21 "libssh_testconfig21.tmp"
 #define LIBSSH_TESTCONFIG22 "libssh_testconfig22.tmp"
 #define LIBSSH_TESTCONFIG24 "libssh_testconfig24.tmp"
+#define LIBSSH_TESTCONFIG25 "libssh_testconfig25.tmp"
 #define LIBSSH_TESTCONFIG27 "libssh_testconfig27.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
@@ -291,6 +292,16 @@ extern LIBSSH_THREAD int ssh_log_level;
     "\tEscapeChar ^C\n"            \
     "Host noescape\n"              \
     "\tEscapeChar none\n"
+#define LIBSSH_TESTCONFIG_STRING25 \
+    "Host withenv\n"               \
+    "\tSendEnv LANG LC_*\n"        \
+    "\tSendEnv TZ\n"               \
+    "Host noenv\n"                 \
+    "\tHostName example.com\n"     \
+    "Host negenv\n"                \
+    "\tSendEnv LANG LC_*\n"        \
+    "\tSendEnv TZ\n"               \
+    "\tSendEnv -LANG\n"
 
 #define LIBSSH_TESTCONFIG_STRING27                      \
     "Host withfwd\n"                                    \
@@ -393,6 +404,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TESTCONFIG24);
+    unlink(LIBSSH_TESTCONFIG25);
     unlink(LIBSSH_TESTCONFIG27);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
@@ -477,6 +489,9 @@ static int setup_config_files(void **state)
     /* LocalForward */
     torture_write_file(LIBSSH_TESTCONFIG27,
                        LIBSSH_TESTCONFIG_STRING27);
+    /* SendEnv */
+    torture_write_file(LIBSSH_TESTCONFIG25,
+                       LIBSSH_TESTCONFIG_STRING25);
 
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
@@ -530,6 +545,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TESTCONFIG24);
+    unlink(LIBSSH_TESTCONFIG25);
     unlink(LIBSSH_TESTCONFIG27);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
@@ -2774,6 +2790,94 @@ static void torture_config_local_forward_file(void **state)
 }
 
 /**
+ * @brief Verify we can parse SendEnv configuration option
+ */
+static void torture_config_send_env(void **state,
+                                    const char *file,
+                                    const char *string)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc = 0;
+
+    /* SendEnv LANG LC_* on matching host: three patterns should be stored */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "withenv");
+    _parse_config(session, file, string, SSH_OK);
+
+    /* First pattern: LANG */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LANG");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Second pattern: LC_* */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LC_*");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Third pattern: TZ */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "TZ");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* No more patterns: SSH_EOF */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_EOF);
+
+    /* Host without SendEnv: getter will return error */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "noenv");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_not_equal(rc, SSH_OK);
+
+    /* SendEnv with negation: -LANG removes LANG, leaving LC_* and TZ */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "negenv");
+    _parse_config(session, file, string, SSH_OK);
+
+    /* First pattern should be LC_* (LANG was removed) */
+    rc = ssh_options_get(session, SSH_OPTIONS_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "LC_*");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Second pattern: TZ */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "TZ");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* No more patterns */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_SEND_ENV, &value);
+    assert_int_equal(rc, SSH_EOF);
+}
+
+/**
+ * @brief Verify we can parse SendEnv configuration option from string
+ */
+static void torture_config_send_env_string(void **state)
+{
+    torture_config_send_env(state, NULL, LIBSSH_TESTCONFIG_STRING25);
+}
+
+/**
+ * @brief Verify we can parse SendEnv configuration option from file
+ */
+static void torture_config_send_env_file(void **state)
+{
+    torture_config_send_env(state, LIBSSH_TESTCONFIG25, NULL);
+}
+
+/**
  * @brief Verify we can parse AdressFamily configuration option
  */
 static void torture_config_address_family(void **state,
@@ -4726,6 +4830,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_local_forward_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_send_env_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_send_env_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

@@ -162,6 +162,11 @@ ssh_session ssh_new(void)
         goto err;
     }
 
+    session->opts.send_env = ssh_list_new();
+    if (session->opts.send_env == NULL) {
+        goto err;
+    }
+
     session->opts.proxy_jumps_user_cb = ssh_list_new();
     if (session->opts.proxy_jumps_user_cb == NULL) {
         goto err;
@@ -392,6 +397,17 @@ void ssh_free(ssh_session session)
     SSH_LIST_FREE(session->opts.proxy_jumps);
     SSH_LIST_FREE(session->opts.proxy_jumps_user_cb);
     SAFE_FREE(session->opts.proxy_jumps_str);
+
+    if (session->opts.send_env) {
+        char *pattern = NULL;
+
+        for (pattern = ssh_list_pop_head(char *, session->opts.send_env);
+             pattern != NULL;
+             pattern = ssh_list_pop_head(char *, session->opts.send_env)) {
+            SAFE_FREE(pattern);
+        }
+        ssh_list_free(session->opts.send_env);
+    }
 
     while ((b = ssh_list_pop_head(struct ssh_buffer_struct *,
                                   session->out_queue)) != NULL) {

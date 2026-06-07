@@ -149,7 +149,7 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
     {"permitlocalcommand", SOC_NA, true},
     {"remoteforward", SOC_NA, true},
     {"requesttty", SOC_REQUEST_TTY, true},
-    {"sendenv", SOC_NA, true},
+    {"sendenv", SOC_SEND_ENV, true},
     {"tunnel", SOC_NA, true},
     {"tunneldevice", SOC_NA, true},
     {"xauthlocation", SOC_NA, true},
@@ -1200,6 +1200,7 @@ static int ssh_config_parse_line_internal(ssh_session session,
       opcode != SOC_IDENTITY &&
       opcode != SOC_CERTIFICATE &&
       opcode != SOC_LOCAL_FORWARD &&
+      opcode != SOC_SEND_ENV &&
       opcode > SOC_UNSUPPORTED &&
       opcode < SOC_MAX) { /* Ignore all unknown types here */
       /* Skip all the options that were already applied */
@@ -2054,6 +2055,16 @@ static int ssh_config_parse_line_internal(ssh_session session,
             value = snprintf(buf, sizeof(buf), "%s %s", p, p2);
             CHECK_COND_OR_FAIL(value >= (int)sizeof(buf), "Forwarding specification too long");
             ssh_options_set(session, SSH_OPTIONS_LOCAL_FORWARD, buf);
+        }
+        break;
+    case SOC_SEND_ENV:
+        p = ssh_config_get_str_tok(&s, NULL);
+        CHECK_COND_OR_FAIL(p == NULL, "Missing argument");
+        if (*parsing) {
+            while (p != NULL && p[0] != '\0') {
+                ssh_options_set(session, SSH_OPTIONS_SEND_ENV, p);
+                p = ssh_config_get_str_tok(&s, NULL);
+            }
         }
         break;
     case SOC_CONTROLMASTER:

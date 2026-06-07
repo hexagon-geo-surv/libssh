@@ -295,6 +295,8 @@ struct ssh_session_struct {
         int escape_char;
         struct ssh_list *local_forward;
         struct ssh_iterator *local_forward_it;
+        struct ssh_list *send_env;
+        struct ssh_iterator *send_env_it;
         char *originalhost;        /* user-supplied host for config matching */
         char *config_hostname; /* normalized HostName pattern, applied later */
         bool config_hostname_only; /* config hostname path: update host only,

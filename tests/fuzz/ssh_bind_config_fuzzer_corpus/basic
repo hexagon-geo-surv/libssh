@@ -1,0 +1,9 @@
+ListenAddress domain.local
+Port 123
+HostKey /tmp/ssh/ssh_host_rsa_key
+LogLevel 4
+Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+MACs hmac-sha1,hmac-sha2-256,hmac-sha2-512,hmac-sha1-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com
+KexAlgorithms ecdh-sha2-nistp521,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha1
+RequiredRsaSize 2233
+

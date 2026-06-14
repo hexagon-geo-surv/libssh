@@ -2099,6 +2099,14 @@ void torture_reset_config(ssh_session session)
     if (ssh_libssh_proxy_jumps()) {
         ssh_proxyjumps_free(session->opts.proxy_jumps);
     }
+    if (session->opts.local_forward) {
+        char *entry = NULL;
+        for (entry = ssh_list_pop_head(char *, session->opts.local_forward);
+             entry != NULL;
+             entry = ssh_list_pop_head(char *, session->opts.local_forward)) {
+            SAFE_FREE(entry);
+        }
+    }
     SAFE_FREE(session->opts.tag);
 }
 

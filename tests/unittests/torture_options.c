@@ -1842,6 +1842,7 @@ static void torture_options_copy(void **state)
           "GSSAPIAuthentication no\n"         /* sets flags */
           "AddressFamily inet6\n"
           "Tag copied-tag\n"
+          "LocalForward 8080 web:80\n"
           "",
           config);
     fclose(config);
@@ -1870,6 +1871,19 @@ static void torture_options_copy(void **state)
     it = ssh_list_get_iterator(session->opts.certificate_non_exp);
     assert_non_null(it);
     it2 = ssh_list_get_iterator(new->opts.certificate_non_exp);
+    assert_non_null(it2);
+    while (it != NULL && it2 != NULL) {
+        assert_string_equal(it->data, it2->data);
+        it = it->next;
+        it2 = it2->next;
+    }
+    assert_null(it);
+    assert_null(it2);
+
+    /* Check the local forwards match */
+    it = ssh_list_get_iterator(session->opts.local_forward);
+    assert_non_null(it);
+    it2 = ssh_list_get_iterator(new->opts.local_forward);
     assert_non_null(it2);
     while (it != NULL && it2 != NULL) {
         assert_string_equal(it->data, it2->data);
@@ -2893,6 +2907,56 @@ static void torture_options_escape_char(void **state)
     rc = ssh_options_get_int(session, SSH_OPTIONS_ESCAPE_CHAR, &result);
     assert_ssh_return_code(session, rc);
     assert_int_equal(result, '~');
+}
+
+static void torture_options_local_forward(void **state)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc;
+
+    /* Getting an unset option will fail */
+    rc = ssh_options_get(session, SSH_OPTIONS_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_ERROR);
+
+    /* NEXT_LOCAL_FORWARD without prior LOCAL_FORWARD will return SSH_ERROR */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_ERROR);
+    assert_null(value);
+
+    /* NULL pattern will be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_LOCAL_FORWARD, NULL);
+    assert_int_equal(rc, -1);
+
+    /* Empty pattern will be rejected */
+    rc = ssh_options_set(session, SSH_OPTIONS_LOCAL_FORWARD, "");
+    assert_int_equal(rc, -1);
+
+    /* Adding two forwarding specs */
+    rc = ssh_options_set(session, SSH_OPTIONS_LOCAL_FORWARD, "8080 web:80");
+    assert_ssh_return_code(session, rc);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_LOCAL_FORWARD, "0.0.0.0:9090 db:3306");
+    assert_ssh_return_code(session, rc);
+
+    /* First entry */
+    rc = ssh_options_get(session, SSH_OPTIONS_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "8080 web:80");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Second entry */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "0.0.0.0:9090 db:3306");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Iterator exhausted */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_EOF);
+    assert_null(value);
 }
 
 static void torture_options_set_preferred_authentications(void **state)
@@ -4503,6 +4567,9 @@ torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_escape_char,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_options_local_forward,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_options_set_preferred_authentications,

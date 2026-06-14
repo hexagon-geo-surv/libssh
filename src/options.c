@@ -199,6 +199,24 @@ int ssh_options_copy(ssh_session src, ssh_session *dest)
         it = ssh_list_get_iterator(src->opts.certificate);
     }
 
+    it = ssh_list_get_iterator(src->opts.local_forward);
+    while (it) {
+        int rc = 0;
+        char *pattern = strdup(ssh_iterator_value(char *, it));
+
+        if (pattern == NULL) {
+            ssh_free(new);
+            return -1;
+        }
+        rc = ssh_list_append(new->opts.local_forward, pattern);
+        if (rc < 0) {
+            free(pattern);
+            ssh_free(new);
+            return -1;
+        }
+        it = it->next;
+    }
+
     if (src->opts.sshdir != NULL) {
         new->opts.sshdir = strdup(src->opts.sshdir);
         if (new->opts.sshdir == NULL) {
@@ -791,6 +809,19 @@ int ssh_options_set_algo(ssh_session session,
  *                libssh does not automatically change the escape
  *                character based on this setting.
  *                (int)
+ *
+ *              - SSH_OPTIONS_LOCAL_FORWARD
+ *                Append one local forwarding specification to the list.
+ *                The format is "<bind_spec> <remote_spec>", for example,
+ *                "8080 web:80" or "0.0.0.0:9090 db:3306". Multiple calls
+ *                accumulate entries. To iterate the list, use
+ *                SSH_OPTIONS_LOCAL_FORWARD followed by
+ *                SSH_OPTIONS_NEXT_LOCAL_FORWARD in ssh_options_get().
+ *                Note that this value is parsed from the configuration
+ *                file and stored for the calling application to read;
+ *                libssh does not automatically set up local forwarding
+ *                based on this setting.
+ *                (const char *)
  *
  * @param  value The value to set. This is a generic pointer and the
  *               datatype which is used should be set according to the
@@ -1685,6 +1716,24 @@ int ssh_options_set(ssh_session session,
                 session->opts.escape_char = *x;
             }
             break;
+        case SSH_OPTIONS_LOCAL_FORWARD:
+            v = value;
+            if (v == NULL || v[0] == '\0') {
+                ssh_set_error_invalid(session);
+                return -1;
+            }
+            q = strdup(v);
+            if (q == NULL) {
+                ssh_set_error_oom(session);
+                return -1;
+            }
+            rc = ssh_list_append(session->opts.local_forward, q);
+            if (rc < 0) {
+                free(q);
+                ssh_set_error_oom(session);
+                return -1;
+            }
+            break;
         case SSH_OPTIONS_PREFERRED_AUTHENTICATIONS:
             v = value;
             SAFE_FREE(session->opts.preferred_authentications);
@@ -1942,6 +1991,19 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
  *                the end of list is reached. Another call will start another
  *                iteration over the same list.
  *
+ *              - SSH_OPTIONS_LOCAL_FORWARD:
+ *                Get the first local forwarding specification from the
+ *                local_forward list (const char *).\n
+ *                \n
+ *                Returns SSH_ERROR if the list is empty.
+ *
+ *              - SSH_OPTIONS_NEXT_LOCAL_FORWARD:
+ *                Get the next local forwarding specification from the
+ *                local_forward list (const char *).\n
+ *                \n
+ *                Repeat calls to get all entries. SSH_EOF is returned when
+ *                the end of list is reached.
+ *
  *              - SSH_OPTIONS_PROXYCOMMAND:
  *                Get the proxycommand necessary to log into the
  *                remote host. When not explicitly set, it will be read
@@ -2064,6 +2126,31 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
             src = ssh_iterator_value(char *, session->opts.identity_it);
             break;
         }
+
+        case SSH_OPTIONS_LOCAL_FORWARD: {
+            struct ssh_iterator *it = NULL;
+            it = ssh_list_get_iterator(session->opts.local_forward);
+            if (it == NULL) {
+                return SSH_ERROR;
+            }
+            session->opts.local_forward_it = it;
+            src = ssh_iterator_value(char *, it);
+            break;
+        }
+
+        case SSH_OPTIONS_NEXT_LOCAL_FORWARD:
+            if (session->opts.local_forward_it != NULL) {
+                session->opts.local_forward_it =
+                    session->opts.local_forward_it->next;
+                if (session->opts.local_forward_it == NULL) {
+                    *value = NULL;
+                    return SSH_EOF;
+                }
+            } else {
+                return SSH_ERROR;
+            }
+            src = ssh_iterator_value(char *, session->opts.local_forward_it);
+            break;
 
         case SSH_OPTIONS_PROXYCOMMAND:
             src = session->opts.ProxyCommand;

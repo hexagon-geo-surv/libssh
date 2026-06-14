@@ -53,6 +53,7 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG21 "libssh_testconfig21.tmp"
 #define LIBSSH_TESTCONFIG22 "libssh_testconfig22.tmp"
 #define LIBSSH_TESTCONFIG24 "libssh_testconfig24.tmp"
+#define LIBSSH_TESTCONFIG27 "libssh_testconfig27.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"
 #define LIBSSH_TEST_PUBKEYALGORITHMS "libssh_test_PubkeyAcceptedAlgorithms.tmp"
@@ -291,6 +292,14 @@ extern LIBSSH_THREAD int ssh_log_level;
     "Host noescape\n"              \
     "\tEscapeChar none\n"
 
+#define LIBSSH_TESTCONFIG_STRING27                      \
+    "Host withfwd\n"                                    \
+    "\tLocalForward 8080 web:80\n"                      \
+    "\tLocalForward 0.0.0.0:9090 db:3306\n"             \
+    "\tLocalForward /tmp/local.sock /tmp/remote.sock\n" \
+    "Host nofwd\n"                                      \
+    "\tHostName example.com\n"
+
 #define LIBSSH_TEST_PUBKEYTYPES_STRING \
     "PubkeyAcceptedKeyTypes "PUBKEYACCEPTEDTYPES"\n"
 
@@ -384,6 +393,7 @@ static int setup_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TESTCONFIG24);
+    unlink(LIBSSH_TESTCONFIG27);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -464,6 +474,9 @@ static int setup_config_files(void **state)
     /* EscapeChar */
     torture_write_file(LIBSSH_TESTCONFIG24,
                        LIBSSH_TESTCONFIG_STRING24);
+    /* LocalForward */
+    torture_write_file(LIBSSH_TESTCONFIG27,
+                       LIBSSH_TESTCONFIG_STRING27);
 
     torture_write_file(LIBSSH_TEST_PUBKEYTYPES,
                        LIBSSH_TEST_PUBKEYTYPES_STRING);
@@ -517,6 +530,7 @@ static int teardown_config_files(void **state)
     unlink(LIBSSH_TESTCONFIG21);
     unlink(LIBSSH_TESTCONFIG22);
     unlink(LIBSSH_TESTCONFIG24);
+    unlink(LIBSSH_TESTCONFIG27);
     unlink(LIBSSH_TEST_PUBKEYTYPES);
     unlink(LIBSSH_TEST_PUBKEYALGORITHMS);
     unlink(LIBSSH_TEST_NONEWLINEEND);
@@ -2695,6 +2709,71 @@ static void torture_config_escape_char_file(void **state)
 }
 
 /**
+ * @brief Verify we can parse LocalForward configuration option
+ */
+static void torture_config_local_forward(void **state,
+                                         const char *file,
+                                         const char *string)
+{
+    ssh_session session = *state;
+    char *value = NULL;
+    int rc = 0;
+
+    /* Host withfwd: three LocalForward entries should be parsed */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "withfwd");
+    _parse_config(session, file, string, SSH_OK);
+
+    /* First entry: "8080 web:80" */
+    rc = ssh_options_get(session, SSH_OPTIONS_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "8080 web:80");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Second entry: "0.0.0.0:9090 db:3306" */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "0.0.0.0:9090 db:3306");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Third entry: "/tmp/local.sock /tmp/remote.sock" (Unix domain socket) */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_OK);
+    assert_string_equal(value, "/tmp/local.sock /tmp/remote.sock");
+    ssh_string_free_char(value);
+    value = NULL;
+
+    /* Iterator should be exhausted after three entries */
+    rc = ssh_options_get(session, SSH_OPTIONS_NEXT_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_EOF);
+
+    /* Host nofwd: no LocalForward lines so list should be empty */
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "nofwd");
+    _parse_config(session, file, string, SSH_OK);
+    rc = ssh_options_get(session, SSH_OPTIONS_LOCAL_FORWARD, &value);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
+/**
+ * @brief Verify we can parse LocalForward configuration option from string
+ */
+static void torture_config_local_forward_string(void **state)
+{
+    torture_config_local_forward(state, NULL, LIBSSH_TESTCONFIG_STRING27);
+}
+
+/**
+ * @brief Verify we can parse LocalForward configuration option from file
+ */
+static void torture_config_local_forward_file(void **state)
+{
+    torture_config_local_forward(state, LIBSSH_TESTCONFIG27, NULL);
+}
+
+/**
  * @brief Verify we can parse AdressFamily configuration option
  */
 static void torture_config_address_family(void **state,
@@ -4641,6 +4720,12 @@ int torture_run_tests(void)
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_escape_char_string,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_local_forward_file,
+                                        setup,
+                                        teardown),
+        cmocka_unit_test_setup_teardown(torture_config_local_forward_string,
                                         setup,
                                         teardown),
         cmocka_unit_test_setup_teardown(torture_config_address_family_file,

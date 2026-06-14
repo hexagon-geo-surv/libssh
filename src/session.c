@@ -152,6 +152,11 @@ ssh_session ssh_new(void)
     /* the default certificates are loaded automatically from the default
      * identities later */
 
+    session->opts.local_forward = ssh_list_new();
+    if (session->opts.local_forward == NULL) {
+        goto err;
+    }
+
     session->opts.proxy_jumps = ssh_list_new();
     if (session->opts.proxy_jumps == NULL) {
         goto err;
@@ -421,6 +426,17 @@ void ssh_free(ssh_session session)
   SAFE_FREE(session->opts.pubkey_accepted_types);
   SAFE_FREE(session->opts.control_path);
   SAFE_FREE(session->opts.preferred_authentications);
+
+  if (session->opts.local_forward) {
+      char *entry = NULL;
+
+      for (entry = ssh_list_pop_head(char *, session->opts.local_forward);
+           entry != NULL;
+           entry = ssh_list_pop_head(char *, session->opts.local_forward)) {
+          SAFE_FREE(entry);
+      }
+      ssh_list_free(session->opts.local_forward);
+  }
 
   for (i = 0; i < SSH_KEX_METHODS; i++) {
       if (session->opts.wanted_methods[i]) {

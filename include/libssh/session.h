@@ -293,6 +293,8 @@ struct ssh_session_struct {
         int number_of_password_prompts;
         int request_tty;
         int escape_char;
+        struct ssh_list *local_forward;
+        struct ssh_iterator *local_forward_it;
         char *originalhost;        /* user-supplied host for config matching */
         char *config_hostname; /* normalized HostName pattern, applied later */
         bool config_hostname_only; /* config hostname path: update host only,

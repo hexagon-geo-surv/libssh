@@ -11,6 +11,13 @@
 #include "libssh/ssh2.h"
 #include "torture.h"
 
+#if defined(HAVE_LIBMBEDCRYPTO)
+#include <mbedtls/version.h>
+#ifndef MBEDTLS_VERSION_MAJOR
+#include <mbedtls/build_info.h>
+#endif
+#endif
+
 #include "socket.c"
 
 uint8_t test_data[]="\x02"
@@ -276,6 +283,8 @@ static void torture_packet_aes256_cbc_etm(UNUSED_PARAM(void **state))
     }
 }
 
+/* no 3DES on mbedTLS v4 */
+#if !(defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4)
 static void torture_packet_3des_cbc(UNUSED_PARAM(void **state))
 {
     int i;
@@ -303,6 +312,7 @@ static void torture_packet_3des_cbc_etm(UNUSED_PARAM(void **state))
         torture_packet("3des-cbc", "hmac-sha1-etm@openssh.com", "none", i);
     }
 }
+#endif /* !(defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4) */
 
 static void torture_packet_chacha20(void **state)
 {
@@ -489,8 +499,11 @@ int torture_run_tests(void) {
         cmocka_unit_test(torture_packet_aes128_cbc_etm),
         cmocka_unit_test(torture_packet_aes192_cbc_etm),
         cmocka_unit_test(torture_packet_aes256_cbc_etm),
+#if !(defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4)
+        /* no 3DES on mbedTLS v4 */
         cmocka_unit_test(torture_packet_3des_cbc),
         cmocka_unit_test(torture_packet_3des_cbc_etm),
+#endif
         cmocka_unit_test(torture_packet_chacha20),
         cmocka_unit_test(torture_packet_aes128_gcm),
         cmocka_unit_test(torture_packet_aes256_gcm),

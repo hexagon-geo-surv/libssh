@@ -24,16 +24,21 @@
 #include "config.h"
 
 #ifdef HAVE_LIBMBEDCRYPTO
-#include <mbedtls/pk.h>
 #include <mbedtls/error.h>
 #include "mbedcrypto-compat.h"
+#if MBEDTLS_VERSION_MAJOR >= 4
+#include "libssh/mbedcrypto_v4.h"
+#endif
 
-#include "libssh/priv.h"
+#include <mbedtls/pk.h>
+
+#include "libssh/bignum.h"
+#include "libssh/buffer.h"
+#include "libssh/libmbedcrypto.h"
+#include "libssh/misc.h"
 #include "libssh/pki.h"
 #include "libssh/pki_priv.h"
-#include "libssh/buffer.h"
-#include "libssh/bignum.h"
-#include "libssh/misc.h"
+#include "libssh/priv.h"
 
 #define MAX_PASSPHRASE_SIZE 1024
 #define MAX_KEY_SIZE 32
@@ -107,9 +112,6 @@ ssh_key pki_private_key_from_base64(const char *b64_key, const char *passphrase,
     /* mbedtls pk_parse_key expects strlen to count the 0 byte */
     size_t b64len = strlen(b64_key) + 1;
     unsigned char tmp[MAX_PASSPHRASE_SIZE] = {0};
-#if MBEDTLS_VERSION_MAJOR > 2
-    mbedtls_ctr_drbg_context *ctr_drbg = ssh_get_mbedtls_ctr_drbg_context();
-#endif
 
     pk = malloc(sizeof(mbedtls_pk_context));
     if (pk == NULL) {
@@ -134,10 +136,10 @@ ssh_key pki_private_key_from_base64(const char *b64_key, const char *passphrase,
                 b64len,
                 tmp,
                 strnlen((const char *)tmp, MAX_PASSPHRASE_SIZE)
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR > 2 && MBEDTLS_VERSION_MAJOR < 4
                     ,
-                mbedtls_ctr_drbg_random,
-                ctr_drbg
+                SSH_MBEDTLS_RNG,
+                SSH_MBEDTLS_RNG_CTX
 #endif
             );
         } else {
@@ -146,10 +148,10 @@ ssh_key pki_private_key_from_base64(const char *b64_key, const char *passphrase,
                                          b64len,
                                          NULL,
                                          0
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR > 2 && MBEDTLS_VERSION_MAJOR < 4
                                          ,
-                                         mbedtls_ctr_drbg_random,
-                                         ctr_drbg
+                                         SSH_MBEDTLS_RNG,
+                                         SSH_MBEDTLS_RNG_CTX
 #endif
             );
         }
@@ -159,16 +161,16 @@ ssh_key pki_private_key_from_base64(const char *b64_key, const char *passphrase,
                                      b64len,
                                      (const unsigned char *)passphrase,
                                      strnlen(passphrase, MAX_PASSPHRASE_SIZE)
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR > 2 && MBEDTLS_VERSION_MAJOR < 4
                                          ,
-                                     mbedtls_ctr_drbg_random,
-                                     ctr_drbg
+                                     SSH_MBEDTLS_RNG,
+                                     SSH_MBEDTLS_RNG_CTX
 #endif
         );
     }
     if (valid != 0) {
         char error_buf[100];
-        mbedtls_strerror(valid, error_buf, 100);
+        ssh_mbedtls_strerror(valid, error_buf, 100);
         SSH_LOG(SSH_LOG_WARN, "Parsing private key %s", error_buf);
         goto fail;
     }
@@ -189,16 +191,25 @@ ssh_key pki_private_key_from_base64(const char *b64_key, const char *passphrase,
         break;
     case MBEDTLS_PK_ECKEY:
     case MBEDTLS_PK_ECDSA: {
+#if MBEDTLS_VERSION_MAJOR < 4
+        mbedtls_ecp_keypair *keypair = NULL;
+#endif
         /* type will be set later */
-        mbedtls_ecp_keypair *keypair = mbedtls_pk_ec(*pk);
-
         key->ecdsa = malloc(sizeof(mbedtls_ecdsa_context));
         if (key->ecdsa == NULL) {
             goto fail;
         }
 
+#if MBEDTLS_VERSION_MAJOR >= 4
+        if (ssh_mbedtls_pk_to_ecdsa(pk, key->ecdsa) != 0) {
+            goto fail;
+        }
+#else
+        keypair = mbedtls_pk_ec(*pk);
+
         mbedtls_ecdsa_init(key->ecdsa);
         mbedtls_ecdsa_from_keypair(key->ecdsa, keypair);
+#endif
         key->pk = pk;
 
         key->ecdsa_nid = pki_key_ecdsa_to_nid(key->ecdsa);
@@ -240,6 +251,33 @@ int pki_privkey_build_rsa(ssh_key key,
                           ssh_string p,
                           ssh_string q)
 {
+#if MBEDTLS_VERSION_MAJOR >= 4
+    int rc;
+
+    key->pk = malloc(sizeof(mbedtls_pk_context));
+    if (key->pk == NULL) {
+        return SSH_ERROR;
+    }
+    mbedtls_pk_init(key->pk);
+
+    rc = ssh_mbedtls_pk_build_rsa_privkey(key->pk,
+                                          ssh_string_data(n),
+                                          ssh_string_len(n),
+                                          ssh_string_data(e),
+                                          ssh_string_len(e),
+                                          ssh_string_data(d),
+                                          ssh_string_len(d),
+                                          ssh_string_data(p),
+                                          ssh_string_len(p),
+                                          ssh_string_data(q),
+                                          ssh_string_len(q));
+    if (rc != 0) {
+        mbedtls_pk_free(key->pk);
+        SAFE_FREE(key->pk);
+        return SSH_ERROR;
+    }
+    return SSH_OK;
+#else
     mbedtls_rsa_context *rsa = NULL;
     const mbedtls_pk_info_t *pk_info = NULL;
     int rc;
@@ -288,10 +326,32 @@ fail:
     mbedtls_pk_free(key->pk);
     SAFE_FREE(key->pk);
     return SSH_ERROR;
+#endif /* MBEDTLS_VERSION_MAJOR >= 4 */
 }
 
 int pki_pubkey_build_rsa(ssh_key key, ssh_string e, ssh_string n)
 {
+#if MBEDTLS_VERSION_MAJOR >= 4
+    int rc;
+
+    key->pk = malloc(sizeof(mbedtls_pk_context));
+    if (key->pk == NULL) {
+        return SSH_ERROR;
+    }
+    mbedtls_pk_init(key->pk);
+
+    rc = ssh_mbedtls_pk_build_rsa_pubkey(key->pk,
+                                         ssh_string_data(n),
+                                         ssh_string_len(n),
+                                         ssh_string_data(e),
+                                         ssh_string_len(e));
+    if (rc != 0) {
+        mbedtls_pk_free(key->pk);
+        SAFE_FREE(key->pk);
+        return SSH_ERROR;
+    }
+    return SSH_OK;
+#else
     mbedtls_rsa_context *rsa = NULL;
     const mbedtls_pk_info_t *pk_info = NULL;
 #if MBEDTLS_VERSION_MAJOR > 2
@@ -365,13 +425,16 @@ exit:
     mbedtls_mpi_free(&E);
 #endif
     return rc;
+#endif /* MBEDTLS_VERSION_MAJOR >= 4 */
 }
 
 ssh_key pki_key_dup(const ssh_key key, int demote)
 {
     ssh_key new = NULL;
     int rc;
+#if MBEDTLS_VERSION_MAJOR < 4
     const mbedtls_pk_info_t *pk_info = NULL;
+#endif
 #if MBEDTLS_VERSION_MAJOR > 2
     mbedtls_mpi N;
     mbedtls_mpi E;
@@ -395,6 +458,23 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
 
     switch(key->type) {
         case SSH_KEYTYPE_RSA: {
+#if MBEDTLS_VERSION_MAJOR >= 4
+            int public_only;
+
+            new->pk = malloc(sizeof(mbedtls_pk_context));
+            if (new->pk == NULL) {
+                goto fail;
+            }
+            mbedtls_pk_init(new->pk);
+
+            public_only = demote || !(key->flags & SSH_KEY_FLAG_PRIVATE);
+            rc = ssh_mbedtls_pk_dup(key->pk, new->pk, public_only);
+            if (rc != 0) {
+                mbedtls_pk_free(new->pk);
+                SAFE_FREE(new->pk);
+                goto fail;
+            }
+#else
             mbedtls_rsa_context *rsa, *new_rsa;
 
             new->pk = malloc(sizeof(mbedtls_pk_context));
@@ -498,6 +578,7 @@ ssh_key pki_key_dup(const ssh_key key, int demote)
                 goto fail;
             }
 #endif
+#endif /* MBEDTLS_VERSION_MAJOR >= 4 */
 
             break;
         }
@@ -562,7 +643,9 @@ cleanup:
 int pki_key_generate_rsa(ssh_key key, int parameter)
 {
     int rc;
+#if MBEDTLS_VERSION_MAJOR < 4
     const mbedtls_pk_info_t *info = NULL;
+#endif
 
     if (parameter == 0) {
         parameter = RSA_DEFAULT_KEY_SIZE;
@@ -575,6 +658,9 @@ int pki_key_generate_rsa(ssh_key key, int parameter)
 
     mbedtls_pk_init(key->pk);
 
+#if MBEDTLS_VERSION_MAJOR >= 4
+    rc = ssh_mbedtls_pk_generate_rsa(key->pk, parameter);
+#else
     info = mbedtls_pk_info_from_type(MBEDTLS_PK_RSA);
     rc = mbedtls_pk_setup(key->pk, info);
     if (rc != 0) {
@@ -583,14 +669,20 @@ int pki_key_generate_rsa(ssh_key key, int parameter)
 
     if (mbedtls_pk_can_do(key->pk, MBEDTLS_PK_RSA)) {
         rc = mbedtls_rsa_gen_key(mbedtls_pk_rsa(*key->pk),
-                                 mbedtls_ctr_drbg_random,
-                                 ssh_get_mbedtls_ctr_drbg_context(),
+                                 SSH_MBEDTLS_RNG,
+                                 SSH_MBEDTLS_RNG_CTX,
                                  parameter,
                                  65537);
         if (rc != 0) {
             mbedtls_pk_free(key->pk);
             return SSH_ERROR;
         }
+    }
+#endif
+    if (rc != 0) {
+        mbedtls_pk_free(key->pk);
+        SAFE_FREE(key->pk);
+        return SSH_ERROR;
     }
 
     return SSH_OK;
@@ -621,11 +713,20 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
 
     switch (ssh_key_type_plain(k1->type)) {
         case SSH_KEYTYPE_RSA: {
+#if MBEDTLS_VERSION_MAJOR < 4
             mbedtls_rsa_context *rsa1, *rsa2;
             if (!mbedtls_pk_can_do(k1->pk, MBEDTLS_PK_RSA) ||
                 !mbedtls_pk_can_do(k2->pk, MBEDTLS_PK_RSA)) {
                 break;
             }
+#else
+            int k1_is_rsa = ssh_mbedtls_pk_is_rsa(k1->pk);
+            int k2_is_rsa = ssh_mbedtls_pk_is_rsa(k2->pk);
+
+            if (!k1_is_rsa || !k2_is_rsa) {
+                break;
+            }
+#endif
 
             if (mbedtls_pk_get_type(k1->pk) != mbedtls_pk_get_type(k2->pk) ||
                 mbedtls_pk_get_bitlen(k1->pk) !=
@@ -635,7 +736,39 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
             }
 
             if (what == SSH_KEY_CMP_PUBLIC) {
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR >= 4
+                rc = ssh_mbedtls_rsa_export_from_pk(k1->pk,
+                                                    &N1,
+                                                    NULL,
+                                                    NULL,
+                                                    NULL,
+                                                    &E1);
+                if (rc != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                rc = ssh_mbedtls_rsa_export_from_pk(k2->pk,
+                                                    &N2,
+                                                    NULL,
+                                                    NULL,
+                                                    NULL,
+                                                    &E2);
+                if (rc != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&N1, &N2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&E1, &E2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+#elif MBEDTLS_VERSION_MAJOR > 2
                 rsa1 = mbedtls_pk_rsa(*k1->pk);
                 rc = mbedtls_rsa_export(rsa1, &N1, NULL, NULL, NULL, &E1);
                 if (rc != 0) {
@@ -673,7 +806,49 @@ int pki_key_compare(const ssh_key k1, const ssh_key k2, enum ssh_keycmp_e what)
                 }
 #endif
             } else if (what == SSH_KEY_CMP_PRIVATE) {
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR >= 4
+                rc = ssh_mbedtls_rsa_export_from_pk(k1->pk,
+                                                    &N1,
+                                                    &P1,
+                                                    &Q1,
+                                                    NULL,
+                                                    &E1);
+                if (rc != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                rc = ssh_mbedtls_rsa_export_from_pk(k2->pk,
+                                                    &N2,
+                                                    &P2,
+                                                    &Q2,
+                                                    NULL,
+                                                    &E2);
+                if (rc != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&N1, &N2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&E1, &E2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&P1, &P2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+
+                if (mbedtls_mpi_cmp_mpi(&Q1, &Q2) != 0) {
+                    rc = 1;
+                    goto cleanup;
+                }
+#elif MBEDTLS_VERSION_MAJOR > 2
                 rsa1 = mbedtls_pk_rsa(*k1->pk);
                 rc = mbedtls_rsa_export(rsa1, &N1, &P1, &Q1, NULL, &E1);
                 if (rc != 0) {
@@ -918,16 +1093,28 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
 
     switch (key->type) {
     case SSH_KEYTYPE_RSA: {
-        mbedtls_rsa_context *rsa = NULL;
         mbedtls_mpi *E_ptr = NULL, *N_ptr = NULL;
+#if MBEDTLS_VERSION_MAJOR < 4
+        mbedtls_rsa_context *rsa = NULL;
 
         if (mbedtls_pk_can_do(key->pk, MBEDTLS_PK_RSA) == 0) {
+#else
+        if (!ssh_mbedtls_pk_is_rsa(key->pk)) {
+#endif
+
             SSH_BUFFER_FREE(buffer);
             return NULL;
         }
 
+#if MBEDTLS_VERSION_MAJOR >= 4
+        rc = ssh_mbedtls_rsa_export_from_pk(key->pk, &N, NULL, NULL, NULL, &E);
+        if (rc != 0) {
+            goto out;
+        }
+        E_ptr = &E;
+        N_ptr = &N;
+#elif MBEDTLS_VERSION_MAJOR > 2
         rsa = mbedtls_pk_rsa(*key->pk);
-#if MBEDTLS_VERSION_MAJOR > 2
         rc = mbedtls_rsa_export(rsa, &N, NULL, NULL, NULL, &E);
         if (rc != 0) {
             goto out;
@@ -936,6 +1123,8 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
         E_ptr = &E;
         N_ptr = &N;
 #else
+        rsa = mbedtls_pk_rsa(*key->pk);
+
         E_ptr = &rsa->E;
         N_ptr = &rsa->N;
 #endif
@@ -975,7 +1164,23 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
                 goto out;
             }
 
-#if MBEDTLS_VERSION_MAJOR > 2
+#if MBEDTLS_VERSION_MAJOR >= 4
+            rc = ssh_mbedtls_rsa_export_from_pk(key->pk, NULL, &P, &Q, &D, NULL);
+            if (rc != 0) {
+                goto out;
+            }
+            rc = ssh_mbedtls_rsa_export_iqmp_from_pk(key->pk, &IQMP);
+            if (rc != 0) {
+                goto out;
+            }
+
+            P_ptr = &P;
+            Q_ptr = &Q;
+            D_ptr = &D;
+            IQMP_ptr = &IQMP;
+#elif MBEDTLS_VERSION_MAJOR > 2
+            rsa = mbedtls_pk_rsa(*key->pk);
+
             rc = mbedtls_rsa_export(rsa, NULL, &P, &Q, &D, NULL);
             if (rc != 0) {
                 goto out;
@@ -991,6 +1196,8 @@ ssh_string pki_key_to_blob(const ssh_key key, enum ssh_key_e type)
             D_ptr = &D;
             IQMP_ptr = &IQMP;
 #else
+            rsa = mbedtls_pk_rsa(*key->pk);
+
             P_ptr = &rsa->P;
             Q_ptr = &rsa->Q;
             D_ptr = &rsa->D;
@@ -1470,9 +1677,13 @@ static ssh_string rsa_do_sign_hash(const unsigned char *digest,
 #if MBEDTLS_VERSION_MAJOR > 2
                          sig_size,
 #endif
-                         &slen,
-                         mbedtls_ctr_drbg_random,
-                         ssh_get_mbedtls_ctr_drbg_context());
+                         &slen
+#if MBEDTLS_VERSION_MAJOR < 4
+                         ,
+                         SSH_MBEDTLS_RNG,
+                         SSH_MBEDTLS_RNG_CTX
+#endif
+    );
 
     if (ok != 0) {
         SAFE_FREE(sig);
@@ -1542,8 +1753,8 @@ ssh_signature pki_do_sign_hash(const ssh_key privkey,
                                     &privkey->ecdsa->MBEDTLS_PRIVATE(d),
                                     hash,
                                     hlen,
-                                    mbedtls_ctr_drbg_random,
-                                    ssh_get_mbedtls_ctr_drbg_context());
+                                    SSH_MBEDTLS_RNG,
+                                    SSH_MBEDTLS_RNG_CTX);
             if (rc != 0) {
                 ssh_signature_free(sig);
                 return NULL;
@@ -1732,7 +1943,7 @@ int pki_verify_data_signature(ssh_signature signature,
                                    ssh_string_len(signature->rsa_sig));
             if (rc != 0) {
                 char error_buf[100];
-                mbedtls_strerror(rc, error_buf, 100);
+                ssh_mbedtls_strerror(rc, error_buf, 100);
                 SSH_LOG(SSH_LOG_TRACE, "RSA error: %s", error_buf);
                 return SSH_ERROR;
             }
@@ -1751,7 +1962,7 @@ int pki_verify_data_signature(ssh_signature signature,
                     signature->ecdsa_sig.s);
             if (rc != 0) {
                 char error_buf[100];
-                mbedtls_strerror(rc, error_buf, 100);
+                ssh_mbedtls_strerror(rc, error_buf, 100);
                 SSH_LOG(SSH_LOG_TRACE, "ECDSA error: %s", error_buf);
                 return SSH_ERROR;
 
@@ -1975,8 +2186,8 @@ int pki_key_generate_ecdsa(ssh_key key, int parameter)
 
     ok = mbedtls_ecdsa_genkey(key->ecdsa,
                               pki_key_ecdsa_nid_to_mbed_gid(key->ecdsa_nid),
-                              mbedtls_ctr_drbg_random,
-                              ssh_get_mbedtls_ctr_drbg_context());
+                              SSH_MBEDTLS_RNG,
+                              SSH_MBEDTLS_RNG_CTX);
 
     if (ok != 0) {
         mbedtls_ecdsa_free(key->ecdsa);

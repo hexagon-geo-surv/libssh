@@ -35,9 +35,12 @@ elseif (WITH_MBEDTLS)
         ${libssh_SOURCE_DIR}/src/getrandom_mbedcrypto.c
         ${libssh_SOURCE_DIR}/src/md_mbedcrypto.c
     )
-    set(override_libs
-        ${MBEDTLS_CRYPTO_LIBRARY}
-    )
+    if (TARGET MbedTLS::mbedcrypto)
+        set(override_libs MbedTLS::mbedcrypto)
+    else ()
+        set(override_libs ${MBEDTLS_CRYPTO_LIBRARY})
+        include_directories(${MBEDTLS_INCLUDE_DIR})
+    endif ()
 else ()
     set (override_src
         ${libssh_SOURCE_DIR}/src/getrandom_crypto.c

@@ -23,19 +23,26 @@
 
 #include "config.h"
 
+#ifdef HAVE_LIBMBEDCRYPTO
 #include "libssh/wrapper.h"
 #include "libssh/crypto.h"
 #include "libssh/priv.h"
 #include "libssh/misc.h"
 #include "mbedcrypto-compat.h"
+
 #if defined(MBEDTLS_CHACHA20_C) && defined(MBEDTLS_POLY1305_C)
 #include "libssh/bytearray.h"
 #include "libssh/chacha20-poly1305-common.h"
+#if MBEDTLS_VERSION_MAJOR < 4
 #include <mbedtls/chacha20.h>
 #include <mbedtls/poly1305.h>
 #endif
+#endif /* defined(MBEDTLS_CHACHA20_C) && defined(MBEDTLS_POLY1305_C) */
 
-#ifdef HAVE_LIBMBEDCRYPTO
+#if MBEDTLS_VERSION_MAJOR >= 4
+#include "libssh/mbedcrypto_v4.h"
+#else /* MBEDTLS_VERSION_MAJOR < 4 */
+
 #include <mbedtls/md.h>
 #ifdef MBEDTLS_GCM_C
 #include <mbedtls/gcm.h>
@@ -44,12 +51,9 @@
 static mbedtls_entropy_context ssh_mbedtls_entropy;
 extern mbedtls_ctr_drbg_context ssh_mbedtls_ctr_drbg;
 
-static int libmbedcrypto_initialized = 0;
+#endif /* MBEDTLS_VERSION_MAJOR < 4 */
 
-void ssh_reseed(void)
-{
-    mbedtls_ctr_drbg_reseed(&ssh_mbedtls_ctr_drbg, NULL, 0);
-}
+static int libmbedcrypto_initialized = 0;
 
 int ssh_kdf(struct ssh_crypto_struct *crypto,
             unsigned char *key, size_t key_len,
@@ -58,6 +62,18 @@ int ssh_kdf(struct ssh_crypto_struct *crypto,
 {
     return sshkdf_derive_key(crypto, key, key_len,
                              key_type, output, requested_len);
+}
+
+#if MBEDTLS_VERSION_MAJOR >= 4
+int ssh_mbedtls_initialized(void)
+{
+    return libmbedcrypto_initialized;
+}
+#else /* MBEDTLS_VERSION_MAJOR < 4 */
+
+void ssh_reseed(void)
+{
+    mbedtls_ctr_drbg_reseed(&ssh_mbedtls_ctr_drbg, NULL, 0);
 }
 
 HMACCTX hmac_init(const void *key, size_t len, enum ssh_hmac_e type)
@@ -125,6 +141,8 @@ int hmac_final(HMACCTX c, unsigned char *hashmacbuf, size_t *len)
     SAFE_FREE(c);
     return rc;
 }
+
+#endif /* MBEDTLS_VERSION_MAJOR < 4 */
 
 static int
 cipher_init(struct ssh_cipher_struct *cipher,
@@ -1066,12 +1084,20 @@ struct ssh_cipher_struct *ssh_get_ciphertab(void)
 int ssh_crypto_init(void)
 {
     UNUSED_VAR(size_t i);
+#if MBEDTLS_VERSION_MAJOR < 4
     int rc;
+#endif
 
     if (libmbedcrypto_initialized) {
         return SSH_OK;
     }
 
+#if MBEDTLS_VERSION_MAJOR >= 4
+    if (psa_crypto_init() != PSA_SUCCESS) {
+        return SSH_ERROR;
+    }
+    libmbedcrypto_initialized = 1;
+#else
     mbedtls_entropy_init(&ssh_mbedtls_entropy);
     mbedtls_ctr_drbg_init(&ssh_mbedtls_ctr_drbg);
 
@@ -1079,7 +1105,10 @@ int ssh_crypto_init(void)
             &ssh_mbedtls_entropy, NULL, 0);
     if (rc != 0) {
         mbedtls_ctr_drbg_free(&ssh_mbedtls_ctr_drbg);
+        mbedtls_entropy_free(&ssh_mbedtls_entropy);
+        return SSH_ERROR;
     }
+#endif
 
 #if !(defined(MBEDTLS_CHACHA20_C) && defined(MBEDTLS_POLY1305_C))
     for (i = 0; ssh_ciphertab[i].name != NULL; i++) {
@@ -1095,15 +1124,19 @@ int ssh_crypto_init(void)
     }
 #endif
 
+#if MBEDTLS_VERSION_MAJOR < 4
     libmbedcrypto_initialized = 1;
+#endif
 
     return SSH_OK;
 }
 
+#if MBEDTLS_VERSION_MAJOR < 4
 mbedtls_ctr_drbg_context *ssh_get_mbedtls_ctr_drbg_context(void)
 {
     return &ssh_mbedtls_ctr_drbg;
 }
+#endif
 
 void ssh_crypto_finalize(void)
 {
@@ -1111,8 +1144,12 @@ void ssh_crypto_finalize(void)
         return;
     }
 
+#if MBEDTLS_VERSION_MAJOR >= 4
+    mbedtls_psa_crypto_free();
+#else /* MBEDTLS_VERSION_MAJOR < 4 */
     mbedtls_ctr_drbg_free(&ssh_mbedtls_ctr_drbg);
     mbedtls_entropy_free(&ssh_mbedtls_entropy);
+#endif
 
     libmbedcrypto_initialized = 0;
 }

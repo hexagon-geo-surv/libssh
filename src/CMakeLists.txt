@@ -217,6 +217,7 @@ elseif (WITH_MBEDTLS)
         threads/mbedtls.c
         libmbedcrypto.c
         mbedcrypto_missing.c
+        mbedcrypto_v4.c
         pki_mbedcrypto.c
         ecdh_mbedcrypto.c
         getrandom_mbedcrypto.c

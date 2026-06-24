@@ -436,6 +436,8 @@ static void torture_algorithms_aes256_gcm_mac(void **state)
     test_algorithm(s->ssh.session, NULL/*kex*/, "aes256-gcm@openssh.com", "hmac-sha1");
 }
 
+/* no 3DES on mbedTLS v4 */
+#if !(defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4)
 static void torture_algorithms_3des_cbc_hmac_sha1(void **state) {
     struct torture_state *s = *state;
 
@@ -495,6 +497,7 @@ static void torture_algorithms_3des_cbc_hmac_sha2_512_etm(void **state) {
 
     test_algorithm(s->ssh.session, NULL/*kex*/, "3des-cbc", "hmac-sha2-512-etm@openssh.com");
 }
+#endif
 
 #if defined(HAVE_BLOWFISH) && defined(OPENSSH_BLOWFISH_CBC)
 static void torture_algorithms_blowfish_cbc_hmac_sha1(void **state) {
@@ -977,6 +980,9 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_algorithms_aes256_gcm,
                                         session_setup,
                                         session_teardown),
+#if defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4
+    /* no 3DES on mbedTLS v4 */
+#else
         cmocka_unit_test_setup_teardown(torture_algorithms_3des_cbc_hmac_sha1,
                                         session_setup,
                                         session_teardown),
@@ -995,6 +1001,7 @@ int torture_run_tests(void) {
         cmocka_unit_test_setup_teardown(torture_algorithms_3des_cbc_hmac_sha2_512_etm,
                                         session_setup,
                                         session_teardown),
+#endif
 #if defined(HAVE_BLOWFISH) && defined(OPENSSH_BLOWFISH_CBC)
         cmocka_unit_test_setup_teardown(torture_algorithms_blowfish_cbc_hmac_sha1,
                                         session_setup,

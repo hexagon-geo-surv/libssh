@@ -27,12 +27,26 @@
 #include "config.h"
 
 #ifdef HAVE_LIBMBEDCRYPTO
-#include <mbedtls/md.h>
+#include <mbedtls/version.h>
+#ifndef MBEDTLS_VERSION_MAJOR
+#include <mbedtls/build_info.h>
+#endif
+
+#if MBEDTLS_VERSION_MAJOR >= 4
+#ifndef MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
+#define MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
+#endif /* MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS */
+#include <mbedtls/private/bignum.h>
+#include <mbedtls/private/cipher.h>
+#else /* MBEDTLS_VERSION_MAJOR < 4 */
 #include <mbedtls/bignum.h>
-#include <mbedtls/pk.h>
 #include <mbedtls/cipher.h>
-#include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/gcm.h>
+#endif /* MBEDTLS_VERSION_MAJOR */
+#include <mbedtls/md.h>
+#include <mbedtls/pk.h>
 #include <mbedtls/platform.h>
 
 #include "libssh/libssh.h"
@@ -42,7 +56,12 @@ typedef mbedtls_md_context_t *SHA256CTX;
 typedef mbedtls_md_context_t *SHA384CTX;
 typedef mbedtls_md_context_t *SHA512CTX;
 typedef mbedtls_md_context_t *MD5CTX;
+#if MBEDTLS_VERSION_MAJOR >= 4
+struct ssh_mbedtls_hmac_context;
+typedef struct ssh_mbedtls_hmac_context *HMACCTX;
+#else
 typedef mbedtls_md_context_t *HMACCTX;
+#endif
 
 #define SHA_DIGEST_LENGTH 20
 #define SHA_DIGEST_LEN SHA_DIGEST_LENGTH
@@ -134,7 +153,14 @@ int ssh_mbedcry_hex2bn(bignum *dest, char *data);
     } \
     } while(0)
 
+#if MBEDTLS_VERSION_MAJOR < 4
+
+#define SSH_MBEDTLS_RNG     mbedtls_ctr_drbg_random
+#define SSH_MBEDTLS_RNG_CTX ssh_get_mbedtls_ctr_drbg_context()
+
 mbedtls_ctr_drbg_context *ssh_get_mbedtls_ctr_drbg_context(void);
+
+#endif /* MBEDTLS_VERSION_MAJOR */
 
 int ssh_mbedtls_random(void *where, int len, int strong);
 

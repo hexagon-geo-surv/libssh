@@ -23,8 +23,12 @@
 
 #include "config.h"
 
-#include "libssh/priv.h"
 #include "libssh/libmbedcrypto.h"
+#include "libssh/priv.h"
+#include "mbedcrypto-compat.h"
+#if MBEDTLS_VERSION_MAJOR >= 4
+#include "libssh/mbedcrypto_v4.h"
+#endif
 
 #ifdef HAVE_LIBMBEDCRYPTO
 bignum ssh_mbedcry_bn_new(void)
@@ -89,8 +93,8 @@ int ssh_mbedcry_rand(bignum rnd, int bits, int top, int bottom)
     }
     rc = mbedtls_mpi_fill_random(rnd,
                                  len,
-                                 mbedtls_ctr_drbg_random,
-                                 ssh_get_mbedtls_ctr_drbg_context());
+                                 SSH_MBEDTLS_RNG,
+                                 SSH_MBEDTLS_RNG_CTX);
     if (rc != 0) {
         return 0;
     }

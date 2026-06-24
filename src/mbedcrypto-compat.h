@@ -1,16 +1,19 @@
 #ifndef MBEDCRYPTO_COMPAT_H
 #define MBEDCRYPTO_COMPAT_H
 
-/* mbedtls/version.h should be available for both v2 and v3
- * v3 defines the version inside build_info.h so if it isn't defined
- * in version.h we should have v3
- */
-#include <mbedtls/cipher.h>
 #include <mbedtls/version.h>
 
 #ifndef MBEDTLS_VERSION_MAJOR
 #include <mbedtls/build_info.h>
 #endif /* MBEDTLS_VERSION_MAJOR */
+
+/*
+ * Heavy v4-only headers (private RSA/ECP/…) live in mbedcrypto_v4.h.
+ * Include that file explicitly only from translation units that need it.
+ */
+#if MBEDTLS_VERSION_MAJOR < 4
+#include <mbedtls/cipher.h>
+#endif
 
 #if MBEDTLS_VERSION_MAJOR < 3
 
@@ -53,4 +56,17 @@ typedef mbedtls_ecdh_context_mbed mbedtls_ecdh_params;
 #endif /* HAVE_MBEDTLS_CURVE25519 */
 
 #endif /* MBEDTLS_VERSION_MAJOR < 3 */
+
+#if MBEDTLS_VERSION_MAJOR >= 4
+void ssh_mbedtls_strerror(int errnum, char *buffer, size_t buflen);
+#else
+#include <mbedtls/error.h>
+static inline void ssh_mbedtls_strerror(int errnum, char *buffer, size_t buflen)
+{
+    mbedtls_strerror(errnum, buffer, buflen);
+}
+/* On v2/v3, delegate to the library-provided mbedtls_ecdh_compute_shared. */
+#define ssh_mbedtls_ecdh_compute_shared mbedtls_ecdh_compute_shared
+#endif
+
 #endif /* MBEDCRYPTO_COMPAT_H */

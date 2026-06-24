@@ -437,32 +437,39 @@ static int torture_pkd_setup_ecdsa_521(void **state) {
     f(client, ecdsa_521_aes128_gcm,    ciphercmd(AES128_GCM),      setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY) \
     f(client, ecdsa_521_aes256_gcm,    ciphercmd(AES256_GCM),      setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY)
 
+#if defined(HAVE_LIBMBEDCRYPTO) && MBEDTLS_VERSION_MAJOR >= 4
+#define PKDTESTS_CIPHER_OPENSSHONLY_3DES_BASED(f, client, ciphercmd) /* no 3DES on mbedTLS v4 */
+#else
+#define PKDTESTS_CIPHER_OPENSSHONLY_3DES_BASED(f, client, ciphercmd) \
+    f(client, rsa_3des_cbc,            ciphercmd("3des-cbc"),      setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
+    f(client, ed25519_3des_cbc,        ciphercmd("3des-cbc"),      setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
+    f(client, ecdsa_256_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
+    f(client, ecdsa_384_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
+    f(client, ecdsa_521_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY)
+#endif
+
 #define PKDTESTS_CIPHER_OPENSSHONLY(f, client, ciphercmd) \
     /* Ciphers. */ \
     PKDTESTS_CIPHER_OPENSSHONLY_FIPS(f, client, ciphercmd) \
-    f(client, rsa_3des_cbc,            ciphercmd("3des-cbc"),      setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
+    PKDTESTS_CIPHER_OPENSSHONLY_3DES_BASED(f, client, ciphercmd) \
     f(client, rsa_aes128_cbc,          ciphercmd("aes128-cbc"),    setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
     f(client, rsa_aes192_cbc,          ciphercmd("aes192-cbc"),    setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
     f(client, rsa_aes256_cbc,          ciphercmd("aes256-cbc"),    setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
     f(client, rsa_aes192_ctr,          ciphercmd("aes192-ctr"),    setup_rsa,        teardown, LIBSSH_RSA_TESTKEY) \
-    f(client, ed25519_3des_cbc,        ciphercmd("3des-cbc"),      setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes128_cbc,      ciphercmd("aes128-cbc"),    setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes256_cbc,      ciphercmd("aes256-cbc"),    setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes192_cbc,      ciphercmd("aes192-cbc"),    setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes192_ctr,      ciphercmd("aes192-ctr"),    setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes128_gcm,      ciphercmd(AES128_GCM),      setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
     f(client, ed25519_aes256_gcm,      ciphercmd(AES256_GCM),      setup_ed25519,    teardown, LIBSSH_ED25519_TESTKEY) \
-    f(client, ecdsa_256_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
     f(client, ecdsa_256_aes128_cbc,    ciphercmd("aes128-cbc"),    setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
     f(client, ecdsa_256_aes192_cbc,    ciphercmd("aes192-cbc"),    setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
     f(client, ecdsa_256_aes256_cbc,    ciphercmd("aes256-cbc"),    setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
     f(client, ecdsa_256_aes192_ctr,    ciphercmd("aes192-ctr"),    setup_ecdsa_256,  teardown, LIBSSH_ECDSA_256_TESTKEY) \
-    f(client, ecdsa_384_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
     f(client, ecdsa_384_aes128_cbc,    ciphercmd("aes128-cbc"),    setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
     f(client, ecdsa_384_aes192_cbc,    ciphercmd("aes192-cbc"),    setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
     f(client, ecdsa_384_aes256_cbc,    ciphercmd("aes256-cbc"),    setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
     f(client, ecdsa_384_aes192_ctr,    ciphercmd("aes192-ctr"),    setup_ecdsa_384,  teardown, LIBSSH_ECDSA_384_TESTKEY) \
-    f(client, ecdsa_521_3des_cbc,      ciphercmd("3des-cbc"),      setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY) \
     f(client, ecdsa_521_aes128_cbc,    ciphercmd("aes128-cbc"),    setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY) \
     f(client, ecdsa_521_aes192_cbc,    ciphercmd("aes192-cbc"),    setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY) \
     f(client, ecdsa_521_aes256_cbc,    ciphercmd("aes256-cbc"),    setup_ecdsa_521,  teardown, LIBSSH_ECDSA_521_TESTKEY) \

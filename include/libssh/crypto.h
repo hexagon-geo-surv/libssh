@@ -32,7 +32,7 @@
 #ifdef HAVE_LIBGCRYPT
 #include <gcrypt.h>
 #elif defined(HAVE_LIBMBEDCRYPTO)
-#include <mbedtls/gcm.h>
+#include "libssh/libmbedcrypto.h"
 #endif
 #ifdef HAVE_OPENSSL_ECDH_H
 #include <openssl/ecdh.h>

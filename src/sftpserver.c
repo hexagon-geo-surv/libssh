@@ -377,7 +377,7 @@ const char *sftp_client_message_get_filename(sftp_client_message msg)
  * @param[in] msg     The SFTP client message to modify.
  * @param[in] newname The new filename to store in the message.
  *
- * @warn On failure, the filename in the message is set to `NULL`. Users of
+ * @warning On failure, the filename in the message is set to `NULL`. Users of
  *       sftp_client_message_get_filename() need to check the return value!
  */
 void

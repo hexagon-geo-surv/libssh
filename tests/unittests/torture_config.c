@@ -54,6 +54,13 @@ extern LIBSSH_THREAD int ssh_log_level;
 #define LIBSSH_TESTCONFIG22 "libssh_testconfig22.tmp"
 #define LIBSSH_TESTCONFIG24 "libssh_testconfig24.tmp"
 #define LIBSSH_TESTCONFIG25 "libssh_testconfig25.tmp"
+/*
+ * The glob pattern below matches 3 or 6 as the last character before .tmp,
+ * so test config filenames ending with 3 or 6 (for example,
+ * libssh_testconfig13.tmp, libssh_testconfig23.tmp) would collide with the
+ * glob include test and will fail. Numbers ending with 3 and 6 are therefore
+ * intentionally skipped when adding new test configuration files.
+ */
 #define LIBSSH_TESTCONFIG27 "libssh_testconfig27.tmp"
 #define LIBSSH_TESTCONFIGGLOB "libssh_testc*[36].tmp"
 #define LIBSSH_TEST_PUBKEYTYPES "libssh_test_PubkeyAcceptedKeyTypes.tmp"

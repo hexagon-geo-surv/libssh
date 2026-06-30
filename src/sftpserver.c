@@ -814,15 +814,21 @@ int sftp_reply_version(sftp_client_message client_msg)
 
     SSH_LOG(SSH_LOG_PROTOCOL, "Sending version packet");
 
-    version = sftp->client_version;
+    /* from draft-spaghetti-sshm-filexfer-00 Section 4:
+     * >  The server responds with a SSH_FXP_VERSION packet, supplying the
+     * >  lowest of its own and the client's version number.
+     */
+    version = MIN(sftp->client_version, LIBSFTP_VERSION);
+
     reply = ssh_buffer_new();
     if (reply == NULL) {
         ssh_set_error_oom(session);
         return -1;
     }
 
-    rc = ssh_buffer_pack(reply, "dssssss",
-                         LIBSFTP_VERSION,
+    rc = ssh_buffer_pack(reply,
+                         "dssssss",
+                         version,
                          "posix-rename@openssh.com",
                          "1",
                          "hardlink@openssh.com",
@@ -844,11 +850,7 @@ int sftp_reply_version(sftp_client_message client_msg)
 
     SSH_LOG(SSH_LOG_PROTOCOL, "Server version sent");
 
-    if (version > LIBSFTP_VERSION) {
-        sftp->version = LIBSFTP_VERSION;
-    } else {
-        sftp->version = version;
-    }
+    sftp->version = version;
 
     return SSH_OK;
 }

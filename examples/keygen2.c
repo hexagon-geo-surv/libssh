@@ -319,12 +319,37 @@ list_fingerprint(char *file)
     ssh_key_free(key);
 }
 
+static int confirm_overwrite(const char *filename)
+{
+    char overwrite[1024] = "";
+    char *fgets_ret = NULL;
+    char *input_ptr = NULL;
+    int first_char_lower = 0;
+
+    printf("File \"%s\" exists. Overwrite it? (y|n) ", filename);
+    fflush(stdout);
+    fgets_ret = fgets(overwrite, sizeof(overwrite), stdin);
+    if (fgets_ret != NULL) {
+        input_ptr = overwrite;
+        while (*input_ptr != '\0' && isspace((unsigned char)*input_ptr)) {
+            input_ptr++;
+        }
+
+        first_char_lower = tolower((unsigned char)*input_ptr);
+    }
+
+    if (first_char_lower == 'y') {
+        return 1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     ssh_pki_ctx ctx = NULL;
     ssh_key key = NULL;
     int ret = EXIT_FAILURE, rc, fd;
-    char overwrite[1024] = "";
 
     char *pubkey_file = NULL;
 
@@ -365,9 +390,10 @@ int main(int argc, char *argv[])
     fd = open(arguments.file, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
     if (fd < 0) {
         if (errno == EEXIST) {
-            printf("File \"%s\" exists. Overwrite it? (y|n) ", arguments.file);
-            rc = scanf("%1023s", overwrite);
-            if (rc > 0 && tolower(overwrite[0]) == 'y') {
+            int confirm_overwrite_ret = 0;
+
+            confirm_overwrite_ret = confirm_overwrite(arguments.file);
+            if (confirm_overwrite_ret) {
                 fd = open(arguments.file, O_WRONLY);
                 if (fd > 0) {
                     close(fd);
@@ -480,9 +506,10 @@ int main(int argc, char *argv[])
               S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd < 0) {
         if (errno == EEXIST) {
-            printf("File \"%s\" exists. Overwrite it? (y|n) ", pubkey_file);
-            rc = scanf("%1023s", overwrite);
-            if (rc > 0 && tolower(overwrite[0]) == 'y') {
+            int confirm_overwrite_ret = 0;
+
+            confirm_overwrite_ret = confirm_overwrite(pubkey_file);
+            if (confirm_overwrite_ret) {
                 fd = open(pubkey_file, O_WRONLY);
                 if (fd > 0) {
                     close(fd);

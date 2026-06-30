@@ -166,9 +166,9 @@ typedef struct sftp_name_id_map_struct *sftp_name_id_map;
 struct sftp_session_struct {
     ssh_session session;
     ssh_channel channel;
-    int server_version;
-    int client_version;
-    int version;
+    int server_version; /**< The server version. Available on client only */
+    int client_version; /**< The client version. Available on server only */
+    int version; /**< The negotiated SFTP protocol version */
     sftp_request_queue queue;
     uint32_t id_counter;
     int errnum;

@@ -514,6 +514,74 @@ static void torture_server_test_sftp_function(void **state)
     assert_int_equal(rc, SSH_OK);
 }
 
+static void torture_server_sftp_init_repeat(void **state)
+{
+    struct test_server_st *tss = *state;
+    struct torture_state *s = NULL;
+    struct torture_sftp *tsftp = NULL;
+    ssh_session session = NULL;
+    sftp_session sftp = NULL;
+    ssh_buffer buffer = NULL;
+    sftp_packet packet = NULL;
+    uint32_t version;
+    int rc;
+
+    assert_non_null(tss);
+
+    s = tss->state;
+    assert_non_null(s);
+
+    session = s->ssh.session;
+    assert_non_null(session);
+
+    rc = ssh_options_set(session, SSH_OPTIONS_USER, SSHD_DEFAULT_USER);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_connect(session);
+    assert_int_equal(rc, SSH_OK);
+
+    rc = ssh_userauth_none(session, NULL);
+    /* This request should return a SSH_REQUEST_DENIED error */
+    if (rc == SSH_AUTH_ERROR) {
+        assert_int_equal(ssh_get_error_code(session), SSH_REQUEST_DENIED);
+    }
+    rc = ssh_userauth_list(session, NULL);
+    assert_true(rc & SSH_AUTH_METHOD_PASSWORD);
+
+    /* Using the default password for the server */
+    rc = ssh_userauth_password(session, NULL, SSHD_DEFAULT_PASSWORD);
+    assert_int_equal(rc, SSH_AUTH_SUCCESS);
+
+    /* init sftp session */
+    tsftp = s->ssh.tsftp;
+    sftp = sftp_new(session);
+    assert_non_null(sftp);
+    tsftp->sftp = sftp;
+
+    buffer = ssh_buffer_new();
+    assert_non_null(buffer);
+
+    /* send one version N-1 */
+    rc = ssh_buffer_pack(buffer, "d", LIBSFTP_VERSION - 1);
+    assert_int_equal(rc, SSH_OK);
+    rc = sftp_packet_write(sftp, SSH_FXP_INIT, buffer);
+    SSH_BUFFER_FREE(buffer);
+    assert_int_equal(rc, 9);
+
+    packet = sftp_packet_read(sftp);
+    assert_non_null(packet);
+    assert_int_equal(packet->type, SSH_FXP_VERSION);
+
+    /* Make sure we get the expected version N-1 */
+    rc = ssh_buffer_unpack(packet->payload, "d", &version);
+    assert_int_equal(rc, SSH_OK);
+    assert_int_equal(version, LIBSFTP_VERSION - 1);
+
+    /* Repeated INIT will fail on server */
+    rc = sftp_init(sftp);
+    assert_int_equal(rc, SSH_ERROR);
+}
+
 static void torture_server_sftp_open_read_write(void **state)
 {
     struct test_server_st *tss = *state;
@@ -1582,6 +1650,9 @@ int torture_run_tests(void) {
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_test_sftp_function,
+                                        session_setup,
+                                        session_teardown),
+        cmocka_unit_test_setup_teardown(torture_server_sftp_init_repeat,
                                         session_setup,
                                         session_teardown),
         cmocka_unit_test_setup_teardown(torture_server_sftp_open_read_write,

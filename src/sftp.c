@@ -496,7 +496,7 @@ int sftp_init(sftp_session sftp)
     rc = ssh_buffer_unpack(packet->payload, "s", &ext_name);
     while (rc == SSH_OK) {
         uint32_t count = sftp->ext->count;
-        char **tmp;
+        char **tmp = NULL;
 
         rc = ssh_buffer_unpack(packet->payload, "s", &ext_data);
         if (rc == SSH_ERROR) {

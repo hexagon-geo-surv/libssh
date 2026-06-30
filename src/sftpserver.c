@@ -616,6 +616,15 @@ int sftp_reply_version(sftp_client_message client_msg)
     ssh_buffer reply;
     int rc;
 
+    /* The SSH_FXP_INIT can be received only once -- repeated initialization
+     * is not supported */
+    if (sftp->version > 0) {
+        ssh_set_error(sftp->session,
+                      SSH_FATAL,
+                      "Received duplicate INIT message");
+        return SSH_ERROR;
+    }
+
     SSH_LOG(SSH_LOG_PROTOCOL, "Sending version packet");
 
     /* from draft-spaghetti-sshm-filexfer-00 Section 4:

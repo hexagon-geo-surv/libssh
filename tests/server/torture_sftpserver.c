@@ -462,6 +462,9 @@ static void torture_server_test_sftp_function(void **state)
     rc = sftp_init(sftp);
     assert_int_equal(rc, SSH_OK);
 
+    /* Assert some information about the connected session */
+    assert_int_equal(sftp->server_version, LIBSFTP_VERSION);
+
     /* symbol link */
     rc = sftp_symlink(sftp, "/tmp/this_is_the_link", "/tmp/sftp_symlink_test");
     assert_int_equal(rc, SSH_OK);

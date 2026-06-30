@@ -130,7 +130,6 @@ sftp_make_client_message(sftp_session sftp, sftp_packet packet)
                 printf("unpack init failed!\n");
                 goto error;
             }
-            version = ntohl(version);
             sftp->client_version = version;
             break;
         case SSH_FXP_CLOSE:

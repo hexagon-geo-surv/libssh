@@ -1275,6 +1275,9 @@ static void torture_server_sftp_handle_overrun(void **state)
     handle = sftp_open(sftp, name, O_WRONLY | O_CREAT, 0700);
     assert_non_null(handle);
 
+    rc = sftp_close(handle);
+    assert_int_equal(rc, SSH_OK);
+
     /* Craft an malicious SFTP packet trying to access handle 256
      * (SFTP_HANDLES) */
     buffer = ssh_buffer_new();
@@ -1301,9 +1304,6 @@ static void torture_server_sftp_handle_overrun(void **state)
     sftp_message_free(msg);
     assert_int_equal(status->status, SSH_FX_INVALID_HANDLE);
     status_msg_free(status);
-
-    rc = sftp_close(handle);
-    assert_int_equal(rc, SSH_OK);
 }
 
 static void torture_server_sftp_payload_overrun(void **state)

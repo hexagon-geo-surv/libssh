@@ -135,6 +135,11 @@ static ssh_channel sftp_channel_new_session_cb(ssh_session session, void *userda
         goto end;
     }
 
+    if (sdata->channel != NULL) {
+        fprintf(stderr, "Only one channel is supported\n");
+        goto end;
+    }
+
     chan = ssh_channel_new(session);
     if (chan == NULL) {
         fprintf(stderr, "Error creating channel: %s\n",

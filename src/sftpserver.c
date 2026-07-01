@@ -2474,6 +2474,11 @@ sftp_channel_default_subsystem_request(ssh_session session,
     if (strcmp(subsystem, "sftp") == 0) {
         sftp_session *sftp = (sftp_session *)userdata;
 
+        /* The SFTP subsystem was already initialized on this channel */
+        if (*sftp != NULL) {
+            return SSH_ERROR;
+        }
+
         /* initialize sftp session and file handler */
         *sftp = sftp_server_new(session, channel);
         if (*sftp == NULL) {

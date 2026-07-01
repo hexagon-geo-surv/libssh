@@ -288,8 +288,7 @@ int ssh_scp_close(ssh_scp scp)
             return SSH_ERROR;
         }
 
-        ssh_channel_free(scp->channel);
-        scp->channel = NULL;
+        SSH_CHANNEL_FREE(scp->channel);
     }
 
     scp->state = SSH_SCP_NEW;

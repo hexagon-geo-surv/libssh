@@ -135,8 +135,7 @@ int benchmarks_ssh_latency(ssh_session session, float *average){
     times[i]=elapsed_time(&ts);
   }
   ssh_channel_close(channel);
-  ssh_channel_free(channel);
-  channel=NULL;
+  SSH_CHANNEL_FREE(channel);
   printf("SSH request times : %f ms ; %f ms ; %f ms\n", times[0], times[1], times[2]);
   *average=(times[0]+times[1]+times[2])/3;
   return 0;

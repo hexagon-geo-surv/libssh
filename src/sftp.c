@@ -354,8 +354,7 @@ void sftp_free(sftp_session sftp)
             ptr = old;
         }
 
-        ssh_channel_free(sftp->channel);
-        sftp->channel = NULL;
+        SSH_CHANNEL_FREE(sftp->channel);
     }
 
     SAFE_FREE(sftp->handles);

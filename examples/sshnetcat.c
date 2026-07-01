@@ -146,8 +146,7 @@ static void select_loop(ssh_session session, ssh_channel channel)
                 }
             }
             if (channel && ssh_channel_is_closed(channel)) {
-                ssh_channel_free(channel);
-                channel = NULL;
+                SSH_CHANNEL_FREE(channel);
                 channels[0] = NULL;
             }
             if (outchannels[0]) {
@@ -161,8 +160,8 @@ static void select_loop(ssh_session session, ssh_channel channel)
                         return;
                     }
                     if (lus == 0) {
-                        ssh_channel_free(channel);
-                        channel = channels[0] = NULL;
+                        SSH_CHANNEL_FREE(channel);
+                        channels[0] = NULL;
                     } else {
                         ret = write(1, buffer, lus);
                         if (ret < 0) {
@@ -183,8 +182,8 @@ static void select_loop(ssh_session session, ssh_channel channel)
                         return;
                     }
                     if (lus == 0) {
-                        ssh_channel_free(channel);
-                        channel = channels[0] = NULL;
+                        SSH_CHANNEL_FREE(channel);
+                        channels[0] = NULL;
                     } else {
                         ret = write(2, buffer, lus);
                         if (ret < 0) {
@@ -197,8 +196,7 @@ static void select_loop(ssh_session session, ssh_channel channel)
                 }
             }
             if (channel && ssh_channel_is_closed(channel)) {
-                ssh_channel_free(channel);
-                channel = NULL;
+                SSH_CHANNEL_FREE(channel);
             }
         } while (ret == EINTR || ret == SSH_EINTR);
     }

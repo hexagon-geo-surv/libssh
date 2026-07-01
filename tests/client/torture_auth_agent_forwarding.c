@@ -282,8 +282,7 @@ static void torture_auth_agent_forwarding(void **state)
     /* Any channel created in the callback is freed */
     if (cb_state->created_channel) {
         ssh_channel_close(cb_state->created_channel);
-        ssh_channel_free(cb_state->created_channel);
-        cb_state->created_channel = NULL;
+        SSH_CHANNEL_FREE(cb_state->created_channel);
     }
 }
 

@@ -528,8 +528,7 @@ public:
     this->session = &ssh_session;
   }
   ~Channel(){
-    ssh_channel_free(channel);
-    channel=NULL;
+    SSH_CHANNEL_FREE(channel);
   }
 
   /** @brief accept an incoming X11 connection

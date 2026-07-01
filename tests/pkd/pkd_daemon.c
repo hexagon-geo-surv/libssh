@@ -220,8 +220,7 @@ static ssh_channel pkd_channel_openreq_cb(ssh_session s,
     pkd_channel_cb.userdata = userdata;
     if (ssh_set_channel_callbacks(c, &pkd_channel_cb) != SSH_OK) {
         pkderr("ssh_set_channel_callbacks: %s\n", ssh_get_error(s));
-        ssh_channel_free(c);
-        c = NULL;
+        SSH_CHANNEL_FREE(c);
     }
 
     *out = c;

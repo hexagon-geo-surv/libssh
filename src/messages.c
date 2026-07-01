@@ -1595,8 +1595,7 @@ ssh_channel ssh_message_channel_request_open_reply_accept(ssh_message msg)
     }
     rc = ssh_message_channel_request_open_reply_accept_channel(msg, chan);
     if (rc < 0) {
-        ssh_channel_free(chan);
-        chan = NULL;
+        SSH_CHANNEL_FREE(chan);
     }
     return chan;
 }

@@ -132,8 +132,7 @@ do_cleanup(struct cleanup_node_struct **head_ref)
             if (gone->data->channel) {
                 _close_socket(*gone->data);
                 ssh_remove_channel_callbacks(gone->data->channel, gone->data->cb_chan);
-                ssh_channel_free(gone->data->channel);
-                gone->data->channel = NULL;
+                SSH_CHANNEL_FREE(gone->data->channel);
 
                 SAFE_FREE(gone->data->p_fd);
                 SAFE_FREE(gone->data->cb_chan);

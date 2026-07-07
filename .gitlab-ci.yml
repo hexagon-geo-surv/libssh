@@ -809,7 +809,6 @@ coverity:
   extends: .build_options
   tags:
     - saas-macos-medium-m1
-  image: macos-14-xcode-15
   before_script:
     - echo "MacOS runner started"
     - brew update

@@ -348,7 +348,7 @@ int ecdh_build_k(ssh_session session)
                           NULL);
     EC_POINT_clear_free(pubkey);
     if (rc <= 0) {
-        free(secret);
+        BURN_FREE(secret, secret_len);
         return -1;
     }
 #else
@@ -448,7 +448,7 @@ int ecdh_build_k(ssh_session session)
                       "Could not derive shared key: %s",
                       ERR_error_string(ERR_get_error(), NULL));
         EVP_PKEY_CTX_free(dh_ctx);
-        free(secret);
+        BURN_FREE(secret, secret_len);
         return -1;
     }
 
@@ -456,7 +456,7 @@ int ecdh_build_k(ssh_session session)
 #endif /* OPENSSL_VERSION_NUMBER */
 
     bignum_bin2bn(secret, secret_len, &next_crypto->shared_secret);
-    free(secret);
+    BURN_FREE(secret, secret_len);
 
     if (next_crypto->shared_secret == NULL) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L

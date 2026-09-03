@@ -114,6 +114,7 @@ int ssh_curve25519_build_k(ssh_session session)
     bignum_bin2bn(k,
                   CURVE25519_SECRET_SIZE,
                   &session->next_crypto->shared_secret);
+    ssh_burn(k, sizeof(ssh_curve25519_secret));
     if (session->next_crypto->shared_secret == NULL) {
         return SSH_ERROR;
     }

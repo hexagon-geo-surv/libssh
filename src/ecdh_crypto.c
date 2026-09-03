@@ -288,71 +288,72 @@ int ssh_client_ecdh_init(ssh_session session)
 int ecdh_build_k(ssh_session session)
 {
     struct ssh_crypto_struct *next_crypto = session->next_crypto;
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-    const EC_GROUP *group = EC_KEY_get0_group(next_crypto->ecdh_privkey);
-    EC_POINT *pubkey = NULL;
-    void *buffer = NULL;
+    ssh_string peer_pubkey = NULL;
+    void *secret = NULL;
+    size_t secret_len;
     int rc;
-    int len = (EC_GROUP_get_degree(group) + 7) / 8;
-    bignum_CTX ctx = bignum_ctx_new();
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+    const EC_GROUP *group = NULL;
+    EC_POINT *pubkey = NULL;
+    bignum_CTX ctx = NULL;
+#else
+    const char *curve = NULL;
+    EVP_PKEY *pubkey = NULL;
+    OSSL_PARAM_BLD *param_bld = NULL;
+    EVP_PKEY_CTX *dh_ctx = NULL;
+#endif /* OPENSSL_VERSION_NUMBER */
+
+    if (session->server) {
+        peer_pubkey = next_crypto->ecdh_client_pubkey;
+    } else {
+        peer_pubkey = next_crypto->ecdh_server_pubkey;
+    }
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+    group = EC_KEY_get0_group(next_crypto->ecdh_privkey);
+
+    ctx = bignum_ctx_new();
     if (ctx == NULL) {
         return -1;
     }
+
+    secret_len = (EC_GROUP_get_degree(group) + 7) / 8;
     pubkey = EC_POINT_new(group);
     if (pubkey == NULL) {
         bignum_ctx_free(ctx);
         return -1;
     }
 
-    if (session->server) {
-        rc = EC_POINT_oct2point(group,
-                                pubkey,
-                                ssh_string_data(next_crypto->ecdh_client_pubkey),
-                                ssh_string_len(next_crypto->ecdh_client_pubkey),
-                                ctx);
-    } else {
-        rc = EC_POINT_oct2point(group,
-                                pubkey,
-                                ssh_string_data(next_crypto->ecdh_server_pubkey),
-                                ssh_string_len(next_crypto->ecdh_server_pubkey),
-                                ctx);
-    }
+    rc = EC_POINT_oct2point(group,
+                            pubkey,
+                            ssh_string_data(peer_pubkey),
+                            ssh_string_len(peer_pubkey),
+                            ctx);
     bignum_ctx_free(ctx);
     if (rc <= 0) {
         EC_POINT_clear_free(pubkey);
         return -1;
     }
 
-    buffer = malloc(len);
-    if (buffer == NULL) {
+    secret = malloc(secret_len);
+    if (secret == NULL) {
         EC_POINT_clear_free(pubkey);
         return -1;
     }
 
-    rc = ECDH_compute_key(buffer,
-                          len,
+    rc = ECDH_compute_key(secret,
+                          secret_len,
                           pubkey,
                           next_crypto->ecdh_privkey,
                           NULL);
     EC_POINT_clear_free(pubkey);
     if (rc <= 0) {
-        free(buffer);
+        free(secret);
         return -1;
     }
-
-    bignum_bin2bn(buffer, len, &next_crypto->shared_secret);
-    free(buffer);
 #else
-    const char *curve = NULL;
-    EVP_PKEY *pubkey = NULL;
-    void *secret = NULL;
-    size_t secret_len;
-    int rc;
-    ssh_string peer_pubkey = NULL;
-    OSSL_PARAM_BLD *param_bld = OSSL_PARAM_BLD_new();
-    EVP_PKEY_CTX *dh_ctx = EVP_PKEY_CTX_new_from_pkey(NULL,
-                                                      next_crypto->ecdh_privkey,
-                                                      NULL);
+    param_bld = OSSL_PARAM_BLD_new();
+    dh_ctx = EVP_PKEY_CTX_new_from_pkey(NULL, next_crypto->ecdh_privkey, NULL);
 
     if (dh_ctx == NULL || param_bld == NULL) {
         ssh_set_error_oom(session);
@@ -372,11 +373,6 @@ int ecdh_build_k(ssh_session session)
         return -1;
     }
 
-    if (session->server) {
-        peer_pubkey = next_crypto->ecdh_client_pubkey;
-    } else {
-        peer_pubkey = next_crypto->ecdh_server_pubkey;
-    }
     rc = OSSL_PARAM_BLD_push_octet_string(param_bld,
                                           OSSL_PKEY_PARAM_PUB_KEY,
                                           ssh_string_data(peer_pubkey),
@@ -457,10 +453,11 @@ int ecdh_build_k(ssh_session session)
     }
 
     EVP_PKEY_CTX_free(dh_ctx);
+#endif /* OPENSSL_VERSION_NUMBER */
 
     bignum_bin2bn(secret, secret_len, &next_crypto->shared_secret);
     free(secret);
-#endif /* OPENSSL_VERSION_NUMBER */
+
     if (next_crypto->shared_secret == NULL) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
         EC_KEY_free(next_crypto->ecdh_privkey);
